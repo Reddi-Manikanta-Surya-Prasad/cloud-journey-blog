@@ -1561,6 +1561,8 @@ function FullPostView({
   const canManagePost = currentUser?.userId === post.authorSub
   const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
   const canInteract = !!currentUser
+  const canShare = true
+  const canListen = true
   const postLiked = currentUser ? post.likes.includes(currentUser.userId) : false
   const contentBlocks = useMemo(() => parseContentBlocks(post.content), [post.content])
   const readMinutes = useMemo(() => estimateReadMinutes(post.content), [post.content])
@@ -1621,14 +1623,43 @@ function FullPostView({
     }
     const text = contentToSpeechText(post.content)
     if (!text) return
-    const utterance = new SpeechSynthesisUtterance(`${post.title}. ${text}`)
-    utterance.rate = 1
-    utterance.pitch = 1
-    utterance.onend = () => setSpeaking(false)
-    utterance.onerror = () => setSpeaking(false)
-    setSpeaking(true)
-    synth.cancel()
-    synth.speak(utterance)
+
+    const speakNow = () => {
+      const utterance = new SpeechSynthesisUtterance(`${post.title}. ${text}`)
+      utterance.rate = 1
+      utterance.pitch = 1
+
+      const voices = synth.getVoices ? synth.getVoices() : []
+      if (voices.length) {
+        const preferred =
+          voices.find((v) => v.lang?.toLowerCase().startsWith((navigator.language || 'en').toLowerCase().split('-')[0])) ||
+          voices.find((v) => v.default) ||
+          voices[0]
+        if (preferred) {
+          utterance.voice = preferred
+          utterance.lang = preferred.lang || navigator.language || 'en-US'
+        }
+      } else {
+        utterance.lang = navigator.language || 'en-US'
+      }
+
+      utterance.onend = () => setSpeaking(false)
+      utterance.onerror = () => setSpeaking(false)
+
+      setSpeaking(true)
+      synth.cancel()
+      synth.resume?.()
+      synth.speak(utterance)
+
+      // Some mobile browsers ignore the first request; retry once if needed.
+      setTimeout(() => {
+        if (!synth.speaking && !synth.pending) {
+          synth.speak(utterance)
+        }
+      }, 180)
+    }
+
+    speakNow()
   }
 
   return (
@@ -1739,7 +1770,7 @@ function FullPostView({
         <button
           className="ghost icon-action"
           onClick={onShare}
-          disabled={!canInteract}
+          disabled={!canShare}
           aria-label="Copy share link"
           title="Copy link"
         >
@@ -1757,7 +1788,7 @@ function FullPostView({
         <button
           className={`ghost icon-action ${speaking ? 'saved-active' : ''}`}
           onClick={handleListenToggle}
-          disabled={!canInteract}
+          disabled={!canListen}
           aria-label="Listen to post"
           title="Listen"
         >
@@ -1766,7 +1797,7 @@ function FullPostView({
         </button>
       </div>
       {!canInteract ? (
-        <p className="guest-action-hint">Login to like, comment, share, save, or listen.</p>
+        <p className="guest-action-hint">Login to like, comment, and save posts.</p>
       ) : null}
 
       <section className="comments">
