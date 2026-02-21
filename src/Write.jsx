@@ -26,8 +26,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [bgColor, setBgColor] = useState('#fff59d')
   const [handStyle, setHandStyle] = useState('hand1')
   const [showFormatMenu, setShowFormatMenu] = useState(true)
+  const [activeField, setActiveField] = useState('content')
+  const titleRef = useRef(null)
   const textareaRef = useRef(null)
   const attachInputRef = useRef(null)
+  const titleSelectionRef = useRef({ start: 0, end: 0 })
   const selectionRef = useRef({ start: 0, end: 0 })
 
   const preserveSelection = (e) => {
@@ -40,6 +43,15 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     selectionRef.current = {
       start: ta.selectionStart ?? 0,
       end: ta.selectionEnd ?? 0,
+    }
+  }
+
+  const captureTitleSelection = () => {
+    const input = titleRef.current
+    if (!input) return
+    titleSelectionRef.current = {
+      start: input.selectionStart ?? 0,
+      end: input.selectionEnd ?? 0,
     }
   }
 
@@ -71,29 +83,86 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     insertAtCursor('\ncodestart js\n// Write code here\ncodeend\n')
   }
 
-  const wrapSelection = (prefix, suffix, placeholder = 'text') => {
+  const applyListPrefix = (mode) => {
     const ta = textareaRef.current
     const value = form.content || ''
-    if (!ta) {
-      insertAtCursor(`${prefix}${placeholder}${suffix}`)
-      return
-    }
+    if (!ta || !value) return
 
-    let start = ta.selectionStart ?? value.length
-    let end = ta.selectionEnd ?? value.length
+    let start = ta.selectionStart ?? 0
+    let end = ta.selectionEnd ?? 0
     if (start === end && selectionRef.current.end > selectionRef.current.start) {
       start = selectionRef.current.start
       end = selectionRef.current.end
     }
-    const selected = value.slice(start, end) || placeholder
-    const replacement = `${prefix}${selected}${suffix}`
-    const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
+
+    // If no explicit selection, apply on the current line.
+    if (start === end) {
+      const lineStart = value.lastIndexOf('\n', Math.max(start - 1, 0)) + 1
+      const nextBreak = value.indexOf('\n', start)
+      const lineEnd = nextBreak === -1 ? value.length : nextBreak
+      start = lineStart
+      end = lineEnd
+    }
+
+    const blockStart = value.lastIndexOf('\n', Math.max(start - 1, 0)) + 1
+    const endLineBreak = value.indexOf('\n', end)
+    const blockEnd = endLineBreak === -1 ? value.length : endLineBreak
+    const selectedBlock = value.slice(blockStart, blockEnd)
+
+    const lines = selectedBlock.split('\n')
+    let counter = 1
+    const listPrefix = (line) => {
+      const trimmed = line.trim()
+      if (!trimmed) return line
+      const leading = line.match(/^\s*/)?.[0] || ''
+      const content = line
+        .replace(/^\s*(?:\d+[.)]\s+|[-*•●◦○]\s+)/, '')
+        .trim()
+
+      if (mode === 'number') return `${leading}${counter++}. ${content}`
+      if (mode === 'dot') return `${leading}• ${content}`
+      if (mode === 'circle') return `${leading}◦ ${content}`
+      if (mode === 'dash') return `${leading}- ${content}`
+      return `${leading}* ${content}`
+    }
+
+    const replacedBlock = lines.map(listPrefix).join('\n')
+    const next = `${value.slice(0, blockStart)}${replacedBlock}${value.slice(blockEnd)}`
     setForm((prev) => ({ ...prev, content: next }))
 
     requestAnimationFrame(() => {
       ta.focus()
-      ta.setSelectionRange(start, start + replacement.length)
+      ta.setSelectionRange(blockStart, blockStart + replacedBlock.length)
       captureSelection()
+    })
+  }
+
+  const wrapSelection = (prefix, suffix, placeholder = 'text') => {
+    const isTitle = activeField === 'title'
+    const el = isTitle ? titleRef.current : textareaRef.current
+    const value = isTitle ? form.title || '' : form.content || ''
+    const fieldSelectionRef = isTitle ? titleSelectionRef : selectionRef
+    if (!el) {
+      if (!isTitle) insertAtCursor(`${prefix}${placeholder}${suffix}`)
+      return
+    }
+
+    let start = el.selectionStart ?? value.length
+    let end = el.selectionEnd ?? value.length
+    if (start === end && fieldSelectionRef.current.end > fieldSelectionRef.current.start) {
+      start = fieldSelectionRef.current.start
+      end = fieldSelectionRef.current.end
+    }
+    const selected = value.slice(start, end) || placeholder
+    const replacement = `${prefix}${selected}${suffix}`
+    const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
+    setForm((prev) => ({ ...prev, [isTitle ? 'title' : 'content']: next }))
+
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(start, start + replacement.length)
+      if (isTitle) captureTitleSelection()
+      else captureSelection()
     })
   }
 
@@ -112,20 +181,55 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
   const normalizeHandwritingTags = (text) => {
     let next = String(text || '')
+    // Legacy compatibility: treat [hand]..[/hand] as [hand1]..[/hand1].
+    next = next.replace(/\[(\/?)hand\]/g, (_, slash) => `[${slash}hand1]`)
     next = next.replace(/(\[hand(?:10|[1-9])\])(?:\s*\1)+/g, '$1')
     next = next.replace(/(\[\/hand(?:10|[1-9])\])(?:\s*\1)+/g, '$1')
-    return next
+    next = next.replace(/\[hand(?:10|[1-9])\]\s*\[\/hand(?:10|[1-9])\]/g, '')
+
+    // Remove dangling/mismatched hand tags so markers never appear in published posts.
+    const re = /\[(\/?)hand(10|[1-9])\]/g
+    const chunks = []
+    const stack = []
+    let last = 0
+    let m
+
+    while ((m = re.exec(next)) !== null) {
+      chunks.push(next.slice(last, m.index))
+      const closing = m[1] === '/'
+      const style = `hand${m[2]}`
+      if (!closing) {
+        const marker = { style, text: m[0], keep: true }
+        chunks.push(marker)
+        stack.push(marker)
+      } else if (stack.length && stack[stack.length - 1].style === style) {
+        stack.pop()
+        chunks.push(m[0])
+      }
+      last = re.lastIndex
+    }
+    chunks.push(next.slice(last))
+
+    stack.forEach((marker) => {
+      marker.keep = false
+    })
+
+    return chunks
+      .map((part) => (typeof part === 'string' ? part : part.keep ? part.text : ''))
+      .join('')
   }
 
   const applyHandStyle = (style) => {
     setHandStyle(style)
-    const ta = textareaRef.current
-    const value = form.content || ''
-    let start = ta?.selectionStart ?? value.length
-    let end = ta?.selectionEnd ?? value.length
-    if (start === end && selectionRef.current.end > selectionRef.current.start) {
-      start = selectionRef.current.start
-      end = selectionRef.current.end
+    const isTitle = activeField === 'title'
+    const el = isTitle ? titleRef.current : textareaRef.current
+    const value = isTitle ? form.title || '' : form.content || ''
+    const fieldSelectionRef = isTitle ? titleSelectionRef : selectionRef
+    let start = el?.selectionStart ?? value.length
+    let end = el?.selectionEnd ?? value.length
+    if (start === end && fieldSelectionRef.current.end > fieldSelectionRef.current.start) {
+      start = fieldSelectionRef.current.start
+      end = fieldSelectionRef.current.end
     }
     // Docs-like fallback: if no selection, apply style to the whole content.
     if (start === end && value.trim()) {
@@ -136,17 +240,18 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
     const selected = value.slice(start, end)
     const cleaned = selected
-      .replace(/\[hand(?:10|[1-9])\]/g, '')
-      .replace(/\[\/hand(?:10|[1-9])\]/g, '')
+      .replace(/\[hand(?:10|[1-9])?\]/g, '')
+      .replace(/\[\/hand(?:10|[1-9])?\]/g, '')
     const replacement = `[${style}]${cleaned}[/${style}]`
     const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
-    setForm((prev) => ({ ...prev, content: next }))
+    setForm((prev) => ({ ...prev, [isTitle ? 'title' : 'content']: next }))
 
     requestAnimationFrame(() => {
-      if (!ta) return
-      ta.focus()
-      ta.setSelectionRange(start, start + replacement.length)
-      captureSelection()
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(start, start + replacement.length)
+      if (isTitle) captureTitleSelection()
+      else captureSelection()
     })
   }
 
@@ -242,9 +347,10 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       if (!form.title.trim() || !form.content.trim() || busy || inlineBusy) return
+      const cleanedContent = normalizeHandwritingTags(form.content)
       onSubmit({
         title: form.title.trim(),
-        content: form.content,
+        content: cleanedContent,
       })
       if (!initialValue && draftKey) localStorage.removeItem(draftKey)
       return
@@ -290,8 +396,13 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       ) : null}
       <label>Title</label>
       <input
+        ref={titleRef}
         value={form.title}
         onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+        onFocus={() => setActiveField('title')}
+        onSelect={captureTitleSelection}
+        onMouseUp={captureTitleSelection}
+        onKeyUp={captureTitleSelection}
         placeholder="Write a strong title"
       />
 
@@ -323,8 +434,23 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy} title="Heading 2">
                 H2
               </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('number')} disabled={inlineBusy || busy} title="Numbered list">
+                1.
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('dot')} disabled={inlineBusy || busy} title="Bullet list">
+                •
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('circle')} disabled={inlineBusy || busy} title="Circle bullet list">
+                ◦
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('dash')} disabled={inlineBusy || busy} title="Dash list">
+                -
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('star')} disabled={inlineBusy || busy} title="Star list">
+                *
+              </button>
               <label className="mini-field mini-field-icon" title="Text color">
-                A
+                <span className="swatch-label">A</span>
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
               </label>
               <button
@@ -338,7 +464,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                 Color
               </button>
               <label className="mini-field mini-field-icon" title="Highlight color">
-                Bg
+                <span className="swatch-label">Bg</span>
                 <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
               </label>
               <button
@@ -440,6 +566,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         rows={14}
         value={form.content}
         onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
+        onFocus={() => setActiveField('content')}
         onKeyDown={handleEditorKeyDown}
         onKeyUp={captureSelection}
         onMouseUp={captureSelection}
@@ -452,7 +579,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <small>
-        Tip: Use **bold**, _italic_, # headings, [color=#hex]text[/color], [bg=#hex]text[/bg], [hand1..hand10]text[/...]. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
+        Tip: Use **bold**, _italic_, # headings, lists (1., •, ◦, -, *), [color=#hex]text[/color], [bg=#hex]text[/bg], [hand1..hand10]text[/...]. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
       </small>
 
       <div className="writer-stats">

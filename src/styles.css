@@ -452,6 +452,19 @@ body::-webkit-scrollbar {
   margin: 0 0 14px;
 }
 
+.post-content ul,
+.post-content ol,
+.full-post-content ul,
+.full-post-content ol {
+  margin: 0 0 14px 22px;
+  padding: 0;
+}
+
+.post-content li,
+.full-post-content li {
+  margin-bottom: 6px;
+}
+
 .post-content p:last-child,
 .full-post-content p:last-child {
   margin-bottom: 0;
@@ -906,7 +919,9 @@ body::-webkit-scrollbar {
 
 .mini-field-icon {
   min-width: 92px;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 8px;
 }
 
 .mini-field input[type='color'] {
@@ -920,6 +935,12 @@ body::-webkit-scrollbar {
   border-radius: 6px;
   cursor: pointer;
   box-sizing: border-box;
+}
+
+.mini-field .swatch-label {
+  min-width: 24px;
+  text-align: right;
+  line-height: 1;
 }
 
 .inline-toolbar select {
@@ -939,7 +960,7 @@ body::-webkit-scrollbar {
 }
 
 .inline-toolbar .icon-tool {
-  min-width: 66px;
+  min-width: 52px;
   height: 42px;
   padding: 0 12px;
   display: inline-flex;

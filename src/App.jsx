@@ -80,8 +80,40 @@ function buildReadableParagraphs(rawText) {
   return grouped
 }
 
+function sanitizeHandTagsForRender(text) {
+  let next = String(text || '')
+  next = next.replace(/\[(\/?)hand\]/g, (_, slash) => `[${slash}hand1]`)
+
+  const re = /\[(\/?)hand(10|[1-9])\]/g
+  const chunks = []
+  const stack = []
+  let last = 0
+  let m
+  while ((m = re.exec(next)) !== null) {
+    chunks.push(next.slice(last, m.index))
+    const closing = m[1] === '/'
+    const style = `hand${m[2]}`
+    if (!closing) {
+      const marker = { style, text: m[0], keep: true }
+      chunks.push(marker)
+      stack.push(marker)
+    } else if (stack.length && stack[stack.length - 1].style === style) {
+      stack.pop()
+      chunks.push(m[0])
+    }
+    last = re.lastIndex
+  }
+  chunks.push(next.slice(last))
+  stack.forEach((marker) => {
+    marker.keep = false
+  })
+  return chunks
+    .map((part) => (typeof part === 'string' ? part : part.keep ? part.text : ''))
+    .join('')
+}
+
 function renderInlineRichText(text, keyPrefix = 'rt') {
-  const source = String(text || '')
+  const source = sanitizeHandTagsForRender(text)
   if (!source) return null
 
   const patterns = [
@@ -102,9 +134,9 @@ function renderInlineRichText(text, keyPrefix = 'rt') {
       ),
     },
     {
-      re: /\[(hand(?:10|[1-9]))\]([\s\S]*?)\[\/\1\]/,
+      re: /\[(hand(?:10|[1-9])?)\]([\s\S]*?)\[\/\1\]/,
       render: (match, children, key) => (
-        <span key={key} className={match[1]}>
+        <span key={key} className={match[1] === 'hand' ? 'hand1' : match[1]}>
           {children}
         </span>
       ),
@@ -142,6 +174,9 @@ function renderStyledTextBlock(text, keyPrefix = 'txt') {
   const lines = String(text || '').split('\n')
   const blocks = []
   let paraLines = []
+  let listMode = null
+  let listStart = 1
+  let listItems = []
 
   const flushParagraph = (suffix) => {
     if (!paraLines.length) return
@@ -154,18 +189,63 @@ function renderStyledTextBlock(text, keyPrefix = 'txt') {
     paraLines = []
   }
 
+  const flushList = (suffix) => {
+    if (!listItems.length || !listMode) return
+    if (listMode === 'ol') {
+      blocks.push(
+        <ol key={`${keyPrefix}-ol-${suffix}`} start={listStart}>
+          {listItems.map((item, idx) => (
+            <li key={`${keyPrefix}-oli-${suffix}-${idx}`}>
+              {renderInlineRichText(item, `${keyPrefix}-oli-${suffix}-${idx}`)}
+            </li>
+          ))}
+        </ol>,
+      )
+    } else {
+      blocks.push(
+        <ul key={`${keyPrefix}-ul-${suffix}`}>
+          {listItems.map((item, idx) => (
+            <li key={`${keyPrefix}-uli-${suffix}-${idx}`}>
+              {renderInlineRichText(item, `${keyPrefix}-uli-${suffix}-${idx}`)}
+            </li>
+          ))}
+        </ul>,
+      )
+    }
+    listMode = null
+    listItems = []
+  }
+
   lines.forEach((rawLine, index) => {
     const line = rawLine.trimEnd()
     if (!line.trim()) {
       flushParagraph(index)
+      flushList(index)
       return
     }
+
+    const ordered = line.match(/^\s*(\d+)[.)]\s+(.+)$/)
+    const unordered = line.match(/^\s*([-*•●◦○])\s+(.+)$/)
+    if (ordered || unordered) {
+      flushParagraph(index)
+      const nextMode = ordered ? 'ol' : 'ul'
+      if (listMode && listMode !== nextMode) flushList(index)
+      if (!listMode) {
+        listMode = nextMode
+        listStart = ordered ? Number(ordered[1]) || 1 : 1
+      }
+      listItems.push((ordered ? ordered[2] : unordered[2]).trim())
+      return
+    }
+
+    if (listMode) flushList(index)
 
     const h3 = line.match(/^###\s+(.+)/)
     const h2 = line.match(/^##\s+(.+)/)
     const h1 = line.match(/^#\s+(.+)/)
     if (h1 || h2 || h3) {
       flushParagraph(index)
+      flushList(index)
       const headingText = (h1?.[1] || h2?.[1] || h3?.[1] || '').trim()
       const className = h1 ? 'rich-h1' : h2 ? 'rich-h2' : 'rich-h3'
       blocks.push(
@@ -180,6 +260,7 @@ function renderStyledTextBlock(text, keyPrefix = 'txt') {
   })
 
   flushParagraph('last')
+  flushList('last')
   return blocks
 }
 
@@ -1944,7 +2025,7 @@ function PostPreviewCard({
       ) : (
         <div className="preview-placeholder">No cover media</div>
       )}
-      <h4>{post.title}</h4>
+      <h4>{renderInlineRichText(post.title, `card-title-${post.id}`)}</h4>
       <div className="by-follow-row">
         <small>By {post.authorName}</small>
         {canFollowAuthor ? (
@@ -2111,7 +2192,7 @@ function FullPostView({
 
       <div className="post-head">
         <div>
-          <h2>{post.title}</h2>
+          <h2>{renderInlineRichText(post.title, `full-title-${post.id}`)}</h2>
           <small>
             Owner: {post.authorName} | Created: {new Date(post.createdAt).toLocaleString()} | Updated: {new Date(post.updatedAt).toLocaleString()}
           </small>
