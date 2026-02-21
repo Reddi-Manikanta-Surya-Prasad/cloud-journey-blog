@@ -737,6 +737,10 @@ body::-webkit-scrollbar {
   background: rgba(255, 255, 255, 0.64);
 }
 
+.inline-toolbar > * {
+  align-self: stretch;
+}
+
 .format-toolbar-shell {
   display: flex;
   justify-content: flex-start;
@@ -789,6 +793,8 @@ body::-webkit-scrollbar {
   color: #264d7b;
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 .mini-field-icon {
@@ -801,19 +807,23 @@ body::-webkit-scrollbar {
   height: 30px;
   border: 1px solid #8db3df;
   padding: 0;
+  margin: 0;
+  display: block;
   background: #fff;
   border-radius: 6px;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .inline-toolbar select {
   width: auto;
   min-width: 170px;
-  height: 40px;
+  height: 42px;
   border-radius: 10px;
   border: 1px solid #b7d2f7;
   background: #ffffff;
   padding: 6px 10px;
+  box-sizing: border-box;
 }
 
 .inline-toolbar .hand-style-select {

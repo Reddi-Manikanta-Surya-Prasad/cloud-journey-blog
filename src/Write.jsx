@@ -127,6 +127,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       start = selectionRef.current.start
       end = selectionRef.current.end
     }
+    // Docs-like fallback: if no selection, apply style to the whole content.
+    if (start === end && value.trim()) {
+      start = 0
+      end = value.length
+    }
     if (start === end) return
 
     const selected = value.slice(start, end)
