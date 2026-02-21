@@ -1135,6 +1135,55 @@ body::-webkit-scrollbar {
   letter-spacing: 0.1px;
 }
 
+.icon-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.16rem;
+  line-height: 1;
+}
+
+.icon-bold {
+  font-weight: 800;
+}
+
+.icon-italic {
+  font-style: italic;
+}
+
+.icon-underline {
+  text-decoration: underline;
+}
+
+.icon-strike {
+  text-decoration: line-through;
+  font-size: 1.02rem;
+  letter-spacing: 0;
+}
+
+.list-tool {
+  min-width: 86px;
+}
+
+.list-preview {
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.color-icon-tool .color-a {
+  text-decoration: underline;
+  text-decoration-color: #2f7be5;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+
+.color-icon-tool .highlight-a {
+  background: #fff59d;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
 .rich-h1,
 .rich-h2,
 .rich-h3 {

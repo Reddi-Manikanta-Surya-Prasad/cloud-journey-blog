@@ -671,26 +671,56 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         {showFormatMenu ? (
           <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
             <div className="ribbon-group">
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold">B</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic">I</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1">H1</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2">H2</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list">1.</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bullet list">•</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet list">◦</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet list">▪</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet list">*</button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash list">-</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold" aria-label="Bold">
+                <span className="icon-glyph icon-bold">B</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic" aria-label="Italic">
+                <span className="icon-glyph icon-italic">I</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('underline')} disabled={inlineBusy || busy} title="Underline" aria-label="Underline">
+                <span className="icon-glyph icon-underline">U</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('strikeThrough')} disabled={inlineBusy || busy} title="Strikethrough" aria-label="Strikethrough">
+                <span className="icon-glyph icon-strike">ab</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1" aria-label="Heading 1">
+                <span className="icon-glyph">H1</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2" aria-label="Heading 2">
+                <span className="icon-glyph">H2</span>
+              </button>
+              <button type="button" className="ghost icon-tool list-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bulleted list" aria-label="Bulleted list">
+                <span className="list-preview">{'\u2022'} {`\u2013`} {`\u2013`}</span>
+              </button>
+              <button type="button" className="ghost icon-tool list-tool" onMouseDown={preserveSelection} onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list" aria-label="Numbered list">
+                <span className="list-preview">1. {`\u2013`} {`\u2013`}</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet" aria-label="Circle bullet">
+                <span className="icon-glyph">{'\u25E6'}</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet" aria-label="Square bullet">
+                <span className="icon-glyph">{'\u25AA'}</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet" aria-label="Star bullet">
+                <span className="icon-glyph">*</span>
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash bullet" aria-label="Dash bullet">
+                <span className="icon-glyph">{`\u2013`}</span>
+              </button>
               <label className="mini-field mini-field-icon" title="Text color">
                 <span className="swatch-label">A</span>
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
               </label>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color">Color</button>
+              <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color" aria-label="Apply text color">
+                <span className="icon-glyph color-a">A</span>
+              </button>
               <label className="mini-field mini-field-icon" title="Highlight color">
                 <span className="swatch-label">Bg</span>
                 <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
               </label>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight">Highlight</button>
+              <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight" aria-label="Apply highlight">
+                <span className="icon-glyph highlight-a">A</span>
+              </button>
               <span className="ribbon-caption">Text</span>
             </div>
 
@@ -707,8 +737,10 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                   </option>
                 ))}
               </select>
-              <button type="button" className={`ghost hand-sample ${handStyle}`} onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Sample</button>
-              <button type="button" className="ghost hand-action icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Pen</button>
+              <button type="button" className={`ghost hand-sample ${handStyle}`} onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Preview handwriting">Sample</button>
+              <button type="button" className="ghost hand-action icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply handwriting" aria-label="Apply handwriting">
+                <span className="icon-glyph">{'\u270E'}</span>
+              </button>
               <span className="ribbon-caption">Styles</span>
             </div>
 
