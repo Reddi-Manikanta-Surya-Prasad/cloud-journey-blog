@@ -533,6 +533,17 @@ function estimateReadMinutes(content) {
   return Math.max(1, Math.ceil(words / 220))
 }
 
+function skillMeta(level) {
+  const normalized = String(level || '').toLowerCase()
+  if (normalized === 'advanced') {
+    return { label: 'Advanced', icon: '🔴', cls: 'skill-advanced' }
+  }
+  if (normalized === 'intermediate') {
+    return { label: 'Intermediate', icon: '🟡', cls: 'skill-intermediate' }
+  }
+  return { label: 'Beginner friendly', icon: '🟢', cls: 'skill-beginner' }
+}
+
 function contentToSpeechText(content) {
   const blocks = parseContentBlocks(content || '')
   const chunks = blocks
@@ -1242,6 +1253,17 @@ function App() {
       const out = await client.models.Post.create({
         title: payload.title,
         content: payload.content,
+        skillLevel: payload.skillLevel || 'beginner',
+        tldr: payload.tldr || '',
+        beginnerSummary: payload.beginnerSummary || '',
+        proSummary: payload.proSummary || '',
+        whyMatters: payload.whyMatters || '',
+        commonMistakes: payload.commonMistakes || '',
+        timeToPracticeMins: Number(payload.timeToPracticeMins) || 0,
+        nextTopicTitle: payload.nextTopicTitle || '',
+        nextTopicUrl: payload.nextTopicUrl || '',
+        roadmapUrl: payload.roadmapUrl || '',
+        versionLabel: payload.versionLabel || '',
         mediaType: cover.mediaType,
         mediaUrl: cover.mediaUrl,
         mediaPath: cover.mediaPath,
@@ -1272,6 +1294,17 @@ function App() {
         id: editingPostId,
         title: payload.title,
         content: payload.content,
+        skillLevel: payload.skillLevel || 'beginner',
+        tldr: payload.tldr || '',
+        beginnerSummary: payload.beginnerSummary || '',
+        proSummary: payload.proSummary || '',
+        whyMatters: payload.whyMatters || '',
+        commonMistakes: payload.commonMistakes || '',
+        timeToPracticeMins: Number(payload.timeToPracticeMins) || 0,
+        nextTopicTitle: payload.nextTopicTitle || '',
+        nextTopicUrl: payload.nextTopicUrl || '',
+        roadmapUrl: payload.roadmapUrl || '',
+        versionLabel: payload.versionLabel || '',
         mediaType: cover.mediaType,
         mediaUrl: cover.mediaUrl,
         mediaPath: cover.mediaPath,
@@ -2159,6 +2192,8 @@ function PostPreviewCard({
   resolveMediaSource,
 }) {
   const readMinutes = estimateReadMinutes(post.content)
+  const practiceMins = Number(post.timeToPracticeMins || 0)
+  const skill = skillMeta(post.skillLevel)
   const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
   const coverSource = post.mediaPath || post.mediaUrl || ''
   const coverType = post.mediaType === 'video' ? 'video' : 'image'
@@ -2184,6 +2219,7 @@ function PostPreviewCard({
         </div>
       )}
       <h4>{renderRichTitle(post.title, `card-title-${post.id}`)}</h4>
+      <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
       <div className="by-follow-row">
         <small>By {post.authorName}</small>
         {canFollowAuthor ? (
@@ -2202,6 +2238,7 @@ function PostPreviewCard({
       {saved ? <span className="saved-chip">Saved</span> : null}
       <div className="preview-meta">
         <span>{readMinutes} min read</span>
+        {practiceMins > 0 ? <span>{practiceMins} min practice</span> : null}
         <span>{post.likes.length} likes</span>
         <span>{post.comments.length} comments</span>
       </div>
@@ -2232,6 +2269,7 @@ function FullPostView({
   const [editingCommentText, setEditingCommentText] = useState('')
   const [openCommentMenuId, setOpenCommentMenuId] = useState(null)
   const [speaking, setSpeaking] = useState(false)
+  const [depthMode, setDepthMode] = useState('beginner')
   const postRef = useRef(null)
   const [readProgress, setReadProgress] = useState(0)
 
@@ -2243,6 +2281,10 @@ function FullPostView({
   const postLiked = currentUser ? post.likes.includes(currentUser.userId) : false
   const contentBlocks = useMemo(() => parseContentBlocks(post.content), [post.content])
   const readMinutes = useMemo(() => estimateReadMinutes(post.content), [post.content])
+  const practiceMins = Number(post.timeToPracticeMins || 0)
+  const skill = skillMeta(post.skillLevel)
+  const depthSummary =
+    depthMode === 'pro' ? (post.proSummary || post.beginnerSummary || '') : (post.beginnerSummary || post.proSummary || '')
   const hasInlineMedia = useMemo(
     () => contentBlocks.some((block) => block.type === 'image' || block.type === 'video'),
     [contentBlocks],
@@ -2354,8 +2396,11 @@ function FullPostView({
           <small>
             Owner: {post.authorName} | Created: {new Date(post.createdAt).toLocaleString()} | Updated: {new Date(post.updatedAt).toLocaleString()}
           </small>
+          <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
+          {post.versionLabel ? <div className="version-pill">Updated: {post.versionLabel}</div> : null}
           <div className="post-insights">
             <span>{readMinutes} min read</span>
+            {practiceMins > 0 ? <span>{practiceMins} min practice</span> : null}
             <span>{post.likes.length} likes</span>
             <span>{post.comments.length} comments</span>
           </div>
@@ -2377,6 +2422,47 @@ function FullPostView({
       </div>
 
       <div className="full-post-content">
+        <div className="depth-toggle-row">
+          <small>Explain mode:</small>
+          <button
+            type="button"
+            className={`ghost ${depthMode === 'beginner' ? 'saved-active' : ''}`}
+            onClick={() => setDepthMode('beginner')}
+          >
+            Beginner
+          </button>
+          <button
+            type="button"
+            className={`ghost ${depthMode === 'pro' ? 'saved-active' : ''}`}
+            onClick={() => setDepthMode('pro')}
+          >
+            Pro
+          </button>
+        </div>
+        {post.tldr ? (
+          <section className="phase1-callout tldr">
+            <h4>If You're Short on Time</h4>
+            <p>{post.tldr}</p>
+          </section>
+        ) : null}
+        {depthSummary ? (
+          <section className="phase1-callout mode-summary">
+            <h4>{depthMode === 'pro' ? 'Pro Mode Summary' : 'Beginner Mode Summary'}</h4>
+            <p>{depthSummary}</p>
+          </section>
+        ) : null}
+        {post.whyMatters ? (
+          <section className="phase1-callout why-matters">
+            <h4>Why This Matters in Real Life</h4>
+            <p>{post.whyMatters}</p>
+          </section>
+        ) : null}
+        {post.commonMistakes ? (
+          <section className="phase1-callout gotchas">
+            <h4>Mistakes & Gotchas</h4>
+            <p>{post.commonMistakes}</p>
+          </section>
+        ) : null}
         {!hasInlineMedia && coverSource ? (
           <InlineMedia
             type={coverType}
@@ -2425,6 +2511,24 @@ function FullPostView({
           }
           return renderStyledTextBlock(block.value, `${post.id}-full-text-${index}`)
         })}
+        {post.nextTopicTitle || post.nextTopicUrl || post.roadmapUrl ? (
+          <section className="phase1-callout next-path">
+            <h4>What to Learn Next</h4>
+            {post.nextTopicTitle ? <p>{post.nextTopicTitle}</p> : null}
+            <div className="next-links">
+              {post.nextTopicUrl ? (
+                <a href={post.nextTopicUrl} target="_blank" rel="noreferrer">
+                  Next Blog
+                </a>
+              ) : null}
+              {post.roadmapUrl ? (
+                <a href={post.roadmapUrl} target="_blank" rel="noreferrer">
+                  Roadmap
+                </a>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <div className="post-meta-actions">

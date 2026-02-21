@@ -271,6 +271,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         ? {
             title: normalizeTitleContent(initialValue.title || ''),
             content: normalizeEditorContent(initialValue.content || ''),
+            skillLevel: initialValue.skillLevel || 'beginner',
+            tldr: initialValue.tldr || '',
+            beginnerSummary: initialValue.beginnerSummary || '',
+            proSummary: initialValue.proSummary || '',
+            whyMatters: initialValue.whyMatters || '',
+            commonMistakes: initialValue.commonMistakes || '',
+            timeToPracticeMins: initialValue.timeToPracticeMins || '',
+            nextTopicTitle: initialValue.nextTopicTitle || '',
+            nextTopicUrl: initialValue.nextTopicUrl || '',
+            roadmapUrl: initialValue.roadmapUrl || '',
+            versionLabel: initialValue.versionLabel || '',
           }
         : null,
     [initialValue],
@@ -280,6 +291,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     normalizedInitial || {
       title: '',
       content: '',
+      skillLevel: 'beginner',
+      tldr: '',
+      beginnerSummary: '',
+      proSummary: '',
+      whyMatters: '',
+      commonMistakes: '',
+      timeToPracticeMins: '',
+      nextTopicTitle: '',
+      nextTopicUrl: '',
+      roadmapUrl: '',
+      versionLabel: '',
     },
   )
   const [inlineBusy, setInlineBusy] = useState(false)
@@ -518,10 +540,35 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     onSubmit({
       title: cleanedTitle,
       content: cleanedContent,
+      skillLevel: form.skillLevel || 'beginner',
+      tldr: form.tldr.trim(),
+      beginnerSummary: form.beginnerSummary.trim(),
+      proSummary: form.proSummary.trim(),
+      whyMatters: form.whyMatters.trim(),
+      commonMistakes: form.commonMistakes.trim(),
+      timeToPracticeMins: Number(form.timeToPracticeMins) || 0,
+      nextTopicTitle: form.nextTopicTitle.trim(),
+      nextTopicUrl: form.nextTopicUrl.trim(),
+      roadmapUrl: form.roadmapUrl.trim(),
+      versionLabel: form.versionLabel.trim(),
     })
 
     if (!initialValue) {
-      setForm({ title: '', content: '' })
+      setForm({
+        title: '',
+        content: '',
+        skillLevel: 'beginner',
+        tldr: '',
+        beginnerSummary: '',
+        proSummary: '',
+        whyMatters: '',
+        commonMistakes: '',
+        timeToPracticeMins: '',
+        nextTopicTitle: '',
+        nextTopicUrl: '',
+        roadmapUrl: '',
+        versionLabel: '',
+      })
       if (editorRef.current) editorRef.current.innerHTML = ''
       if (titleEditorRef.current) titleEditorRef.current.innerHTML = ''
       if (draftKey) localStorage.removeItem(draftKey)
@@ -560,6 +607,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         setForm({
           title: normalizeTitleContent(parsed.title || ''),
           content: normalizeEditorContent(parsed.content || ''),
+          skillLevel: parsed.skillLevel || 'beginner',
+          tldr: parsed.tldr || '',
+          beginnerSummary: parsed.beginnerSummary || '',
+          proSummary: parsed.proSummary || '',
+          whyMatters: parsed.whyMatters || '',
+          commonMistakes: parsed.commonMistakes || '',
+          timeToPracticeMins: parsed.timeToPracticeMins || '',
+          nextTopicTitle: parsed.nextTopicTitle || '',
+          nextTopicUrl: parsed.nextTopicUrl || '',
+          roadmapUrl: parsed.roadmapUrl || '',
+          versionLabel: parsed.versionLabel || '',
         })
         setDraftRestored(true)
       }
@@ -573,6 +631,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     const payload = JSON.stringify({
       title: normalizeTitleContent(form.title),
       content: sanitizeEditorHtml(form.content),
+      skillLevel: form.skillLevel || 'beginner',
+      tldr: form.tldr || '',
+      beginnerSummary: form.beginnerSummary || '',
+      proSummary: form.proSummary || '',
+      whyMatters: form.whyMatters || '',
+      commonMistakes: form.commonMistakes || '',
+      timeToPracticeMins: form.timeToPracticeMins || '',
+      nextTopicTitle: form.nextTopicTitle || '',
+      nextTopicUrl: form.nextTopicUrl || '',
+      roadmapUrl: form.roadmapUrl || '',
+      versionLabel: form.versionLabel || '',
       updatedAt: Date.now(),
     })
     localStorage.setItem(draftKey, payload)
@@ -679,6 +748,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       onSubmit({
         title: cleanedTitle,
         content: cleanedContent,
+        skillLevel: form.skillLevel || 'beginner',
+        tldr: form.tldr.trim(),
+        beginnerSummary: form.beginnerSummary.trim(),
+        proSummary: form.proSummary.trim(),
+        whyMatters: form.whyMatters.trim(),
+        commonMistakes: form.commonMistakes.trim(),
+        timeToPracticeMins: Number(form.timeToPracticeMins) || 0,
+        nextTopicTitle: form.nextTopicTitle.trim(),
+        nextTopicUrl: form.nextTopicUrl.trim(),
+        roadmapUrl: form.roadmapUrl.trim(),
+        versionLabel: form.versionLabel.trim(),
       })
       if (!initialValue && draftKey) localStorage.removeItem(draftKey)
     }
@@ -697,8 +777,22 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           <button
             type="button"
             className="ghost"
-            onClick={() => {
-              setForm({ title: '', content: '' })
+              onClick={() => {
+              setForm({
+                title: '',
+                content: '',
+                skillLevel: 'beginner',
+                tldr: '',
+                beginnerSummary: '',
+                proSummary: '',
+                whyMatters: '',
+                commonMistakes: '',
+                timeToPracticeMins: '',
+                nextTopicTitle: '',
+                nextTopicUrl: '',
+                roadmapUrl: '',
+                versionLabel: '',
+              })
               if (editorRef.current) editorRef.current.innerHTML = ''
               if (draftKey) localStorage.removeItem(draftKey)
               setDraftRestored(false)
@@ -883,6 +977,97 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       <small>
         Tip: WYSIWYG mode is on. No raw [color]/[hand] handlers shown in edit mode. Painter/Diagram exports auto-attach as images.
       </small>
+
+      <div className="phase1-grid">
+        <label>Skill Level</label>
+        <select
+          value={form.skillLevel}
+          onChange={(e) => setForm((prev) => ({ ...prev, skillLevel: e.target.value }))}
+        >
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+
+        <label>If You Are Short On Time (TL;DR)</label>
+        <textarea
+          rows={2}
+          value={form.tldr}
+          onChange={(e) => setForm((prev) => ({ ...prev, tldr: e.target.value }))}
+          placeholder="2-minute summary..."
+        />
+
+        <label>Beginner Mode Summary (ELI5)</label>
+        <textarea
+          rows={3}
+          value={form.beginnerSummary}
+          onChange={(e) => setForm((prev) => ({ ...prev, beginnerSummary: e.target.value }))}
+          placeholder="Explain this in ultra simple terms..."
+        />
+
+        <label>Pro Mode Summary</label>
+        <textarea
+          rows={3}
+          value={form.proSummary}
+          onChange={(e) => setForm((prev) => ({ ...prev, proSummary: e.target.value }))}
+          placeholder="Advanced technical details..."
+        />
+
+        <label>Why This Matters In Real Life</label>
+        <textarea
+          rows={2}
+          value={form.whyMatters}
+          onChange={(e) => setForm((prev) => ({ ...prev, whyMatters: e.target.value }))}
+          placeholder="How real teams use this..."
+        />
+
+        <label>Mistakes & Gotchas</label>
+        <textarea
+          rows={2}
+          value={form.commonMistakes}
+          onChange={(e) => setForm((prev) => ({ ...prev, commonMistakes: e.target.value }))}
+          placeholder="Common failures to avoid..."
+        />
+
+        <label>Time To Practice (minutes)</label>
+        <input
+          type="number"
+          min="0"
+          value={form.timeToPracticeMins}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, timeToPracticeMins: e.target.value }))
+          }
+          placeholder="15"
+        />
+
+        <label>Version Label</label>
+        <input
+          value={form.versionLabel}
+          onChange={(e) => setForm((prev) => ({ ...prev, versionLabel: e.target.value }))}
+          placeholder="Updated for Terraform v1.6 | Feb 2026"
+        />
+
+        <label>What To Learn Next (title)</label>
+        <input
+          value={form.nextTopicTitle}
+          onChange={(e) => setForm((prev) => ({ ...prev, nextTopicTitle: e.target.value }))}
+          placeholder="Next: Terraform State Deep Dive"
+        />
+
+        <label>Next Topic URL</label>
+        <input
+          value={form.nextTopicUrl}
+          onChange={(e) => setForm((prev) => ({ ...prev, nextTopicUrl: e.target.value }))}
+          placeholder="https://..."
+        />
+
+        <label>Roadmap URL</label>
+        <input
+          value={form.roadmapUrl}
+          onChange={(e) => setForm((prev) => ({ ...prev, roadmapUrl: e.target.value }))}
+          placeholder="https://..."
+        />
+      </div>
 
       <div className="writer-stats">
         <span>{wordCount} words</span>

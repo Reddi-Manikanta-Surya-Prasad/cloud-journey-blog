@@ -401,6 +401,39 @@ body::-webkit-scrollbar {
   color: #234a79;
 }
 
+.skill-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 5px 10px;
+  margin-top: 4px;
+  border: 1px solid #d4e6ff;
+}
+
+.skill-beginner {
+  background: #eafcf1;
+  color: #1f6a42;
+}
+
+.skill-intermediate {
+  background: #fff9e5;
+  color: #8a6510;
+}
+
+.skill-advanced {
+  background: #ffecec;
+  color: #8d1f1f;
+}
+
+.version-pill {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: #335b86;
+}
+
 .saved-chip {
   display: inline-block;
   margin-top: 8px;
@@ -936,6 +969,52 @@ body::-webkit-scrollbar {
   background: #eaf5ff;
   border-radius: 999px;
   padding: 4px 8px;
+}
+
+.phase1-grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.phase1-grid label {
+  margin-top: 2px;
+}
+
+.depth-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.phase1-callout {
+  border: 1px solid #d5e6ff;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+}
+
+.phase1-callout h4 {
+  margin: 0 0 6px;
+  color: #1c4676;
+}
+
+.phase1-callout p {
+  margin: 0;
+}
+
+.next-links {
+  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.next-links a {
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .admin-panel h3,
