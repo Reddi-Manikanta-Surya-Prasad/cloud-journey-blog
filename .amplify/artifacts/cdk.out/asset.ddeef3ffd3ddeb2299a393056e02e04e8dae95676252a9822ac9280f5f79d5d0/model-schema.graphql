@@ -1,0 +1,42 @@
+type Post @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [read]},
+  {allow: owner, operations: [create, update, delete, read], ownerField: "owner"}])
+{
+  title: String!
+  content: String!
+  mediaType: String
+  mediaUrl: String
+  mediaPath: String
+  authorSub: String!
+  authorName: String!
+  likes: [PostLike] @hasMany(references: ["postId"])
+  comments: [Comment] @hasMany(references: ["postId"])
+}
+
+type Comment @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [read, create, update, delete]}])
+{
+  postId: ID!
+  post: Post @belongsTo(references: ["postId"])
+  text: String!
+  authorSub: String!
+  authorName: String!
+  likes: [CommentLike] @hasMany(references: ["commentId"])
+}
+
+type CommentLike @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [read, create, delete]}])
+{
+  commentId: ID!
+  comment: Comment @belongsTo(references: ["commentId"])
+  likerSub: String!
+}
+
+type PostLike @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [read, create, delete]}])
+{
+  postId: ID!
+  post: Post @belongsTo(references: ["postId"])
+  likerSub: String!
+  likerName: String
+}
