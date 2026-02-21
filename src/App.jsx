@@ -170,6 +170,21 @@ function renderInlineRichText(text, keyPrefix = 'rt') {
   return [source]
 }
 
+function sanitizePublishedHtml(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript:/gi, '')
+}
+
+function isLikelyHtmlContent(content) {
+  const source = String(content || '').trim()
+  if (!source) return false
+  return /<(p|div|span|strong|em|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(source)
+}
+
 function renderStyledTextBlock(text, keyPrefix = 'txt') {
   const lines = String(text || '').split('\n')
   const blocks = []
@@ -356,6 +371,10 @@ function splitMixedTextIntoBlocks(text) {
 }
 
 function parseContentBlocks(content) {
+  if (isLikelyHtmlContent(content)) {
+    return [{ type: 'html', value: sanitizePublishedHtml(content) }]
+  }
+
   const lines = (content || '').split('\n')
   const blocks = []
   let textBuffer = []
@@ -426,6 +445,29 @@ function parseContentBlocks(content) {
 }
 
 function deriveCoverMedia(content) {
+  if (isLikelyHtmlContent(content)) {
+    const source = String(content || '')
+    const img = source.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1]
+    if (img) {
+      return {
+        mediaType: 'image',
+        mediaUrl: img.startsWith('media/') ? null : img,
+        mediaPath: img.startsWith('media/') ? img : null,
+      }
+    }
+    const vid =
+      source.match(/<video[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1] ||
+      source.match(/<source[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1]
+    if (vid) {
+      return {
+        mediaType: 'video',
+        mediaUrl: vid.startsWith('media/') ? null : vid,
+        mediaPath: vid.startsWith('media/') ? vid : null,
+      }
+    }
+    return { mediaType: null, mediaUrl: null, mediaPath: null }
+  }
+
   const firstMedia = parseContentBlocks(content).find(
     (block) => block.type === 'image' || block.type === 'video',
   )
@@ -441,6 +483,18 @@ function deriveCoverMedia(content) {
 }
 
 function stripReadableText(content) {
+  if (isLikelyHtmlContent(content)) {
+    return String(content || '')
+      .replace(/<pre[\s\S]*?<\/pre>/gi, ' ')
+      .replace(/<code[\s\S]*?<\/code>/gi, ' ')
+      .replace(/<img[^>]*>/gi, ' ')
+      .replace(/<video[\s\S]*?<\/video>/gi, ' ')
+      .replace(/<source[^>]*>/gi, ' ')
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+  }
+
   return (content || '')
     .replace(/\[\[(img|vid):.+?\]\]/g, ' ')
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[^\n]*\n?/g, ' '))
@@ -2228,6 +2282,15 @@ function FullPostView({
           />
         ) : null}
         {contentBlocks.map((block, index) => {
+          if (block.type === 'html') {
+            return (
+              <div
+                key={`${post.id}-full-html-${index}`}
+                className="rich-html"
+                dangerouslySetInnerHTML={{ __html: block.value }}
+              />
+            )
+          }
           if (block.type === 'image') {
             return (
               <InlineMedia

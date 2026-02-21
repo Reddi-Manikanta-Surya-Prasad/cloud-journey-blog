@@ -1,5 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 
+function sanitizeEditorHtml(html) {
+  const raw = String(html || '')
+  if (!raw.trim()) return ''
+  let next = raw
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript:/gi, '')
+  return next.trim()
+}
+
+function stripHtmlForStats(html) {
+  return String(html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUpload, draftKey }) {
   const handStyles = [
     { value: 'hand1', label: 'Hand 1' },
@@ -26,233 +47,89 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [bgColor, setBgColor] = useState('#fff59d')
   const [handStyle, setHandStyle] = useState('hand1')
   const [showFormatMenu, setShowFormatMenu] = useState(true)
-  const [activeField, setActiveField] = useState('content')
   const titleRef = useRef(null)
-  const textareaRef = useRef(null)
+  const editorRef = useRef(null)
   const attachInputRef = useRef(null)
-  const titleSelectionRef = useRef({ start: 0, end: 0 })
-  const selectionRef = useRef({ start: 0, end: 0 })
 
-  const preserveSelection = (e) => {
-    e.preventDefault()
+  const updateEditorHtmlState = () => {
+    const html = editorRef.current?.innerHTML || ''
+    setForm((prev) => ({ ...prev, content: sanitizeEditorHtml(html) }))
   }
 
-  const captureSelection = () => {
-    const ta = textareaRef.current
-    if (!ta) return
-    selectionRef.current = {
-      start: ta.selectionStart ?? 0,
-      end: ta.selectionEnd ?? 0,
-    }
+  const runCommand = (command, value = null) => {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.focus()
+    document.execCommand(command, false, value)
+    updateEditorHtmlState()
   }
 
-  const captureTitleSelection = () => {
-    const input = titleRef.current
-    if (!input) return
-    titleSelectionRef.current = {
-      start: input.selectionStart ?? 0,
-      end: input.selectionEnd ?? 0,
-    }
-  }
+  const wrapSelectionWithClass = (className) => {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.focus()
+    const selection = window.getSelection()
+    if (!selection || !selection.rangeCount) return
+    const range = selection.getRangeAt(0)
 
-  const insertAtCursor = (text) => {
-    const ta = textareaRef.current
-    const value = form.content || ''
-    if (!ta) {
-      setForm((prev) => ({ ...prev, content: `${value}\n${text}\n` }))
+    // If nothing selected, apply style to all editor content.
+    if (selection.isCollapsed) {
+      const current = editor.innerHTML || ''
+      if (!current.trim()) return
+      editor.innerHTML = `<span class="${className}">${current}</span>`
+      updateEditorHtmlState()
       return
     }
 
-    const start = ta.selectionStart ?? value.length
-    const end = ta.selectionEnd ?? value.length
-    const next = `${value.slice(0, start)}${text}${value.slice(end)}`
-    setForm((prev) => ({ ...prev, content: next }))
+    const selectedText = range.toString()
+    if (!selectedText.trim()) return
+    const fragment = document.createElement('span')
+    fragment.className = className
+    fragment.textContent = selectedText
+    range.deleteContents()
+    range.insertNode(fragment)
+    selection.removeAllRanges()
+    updateEditorHtmlState()
+  }
 
-    requestAnimationFrame(() => {
-      ta.focus()
-      const pos = start + text.length
-      ta.setSelectionRange(pos, pos)
-    })
+  const applyUnorderedStyle = (styleType) => {
+    runCommand('insertUnorderedList')
+    const selection = window.getSelection()
+    if (!selection || !selection.anchorNode) return
+    let node = selection.anchorNode
+    while (node && node !== editorRef.current) {
+      if (node.nodeName?.toLowerCase() === 'ul') {
+        if (styleType === 'star') node.style.listStyleType = '"✶ "'
+        else if (styleType === 'dash') node.style.listStyleType = '"- "'
+        else node.style.listStyleType = styleType
+        break
+      }
+      node = node.parentNode
+    }
+    updateEditorHtmlState()
   }
 
   const insertCodeTemplate = () => {
-    insertAtCursor('\n```js\n// Write code here\n```\n')
+    runCommand(
+      'insertHTML',
+      '<pre><code>// Write code here</code></pre><p><br></p>',
+    )
   }
 
   const insertCodeMarkerTemplate = () => {
-    insertAtCursor('\ncodestart js\n// Write code here\ncodeend\n')
+    runCommand(
+      'insertHTML',
+      '<pre><code>// Write code here</code></pre><p><br></p>',
+    )
   }
 
-  const applyListPrefix = (mode) => {
-    const ta = textareaRef.current
-    const value = form.content || ''
-    if (!ta || !value) return
-
-    let start = ta.selectionStart ?? 0
-    let end = ta.selectionEnd ?? 0
-    if (start === end && selectionRef.current.end > selectionRef.current.start) {
-      start = selectionRef.current.start
-      end = selectionRef.current.end
-    }
-
-    // If no explicit selection, apply on the current line.
-    if (start === end) {
-      const lineStart = value.lastIndexOf('\n', Math.max(start - 1, 0)) + 1
-      const nextBreak = value.indexOf('\n', start)
-      const lineEnd = nextBreak === -1 ? value.length : nextBreak
-      start = lineStart
-      end = lineEnd
-    }
-
-    const blockStart = value.lastIndexOf('\n', Math.max(start - 1, 0)) + 1
-    const endLineBreak = value.indexOf('\n', end)
-    const blockEnd = endLineBreak === -1 ? value.length : endLineBreak
-    const selectedBlock = value.slice(blockStart, blockEnd)
-
-    const lines = selectedBlock.split('\n')
-    let counter = 1
-    const listPrefix = (line) => {
-      const trimmed = line.trim()
-      if (!trimmed) return line
-      const leading = line.match(/^\s*/)?.[0] || ''
-      const content = line
-        .replace(/^\s*(?:\d+[.)]\s+|[-*•●◦○]\s+)/, '')
-        .trim()
-
-      if (mode === 'number') return `${leading}${counter++}. ${content}`
-      if (mode === 'dot') return `${leading}• ${content}`
-      if (mode === 'circle') return `${leading}◦ ${content}`
-      if (mode === 'dash') return `${leading}- ${content}`
-      return `${leading}* ${content}`
-    }
-
-    const replacedBlock = lines.map(listPrefix).join('\n')
-    const next = `${value.slice(0, blockStart)}${replacedBlock}${value.slice(blockEnd)}`
-    setForm((prev) => ({ ...prev, content: next }))
-
-    requestAnimationFrame(() => {
-      ta.focus()
-      ta.setSelectionRange(blockStart, blockStart + replacedBlock.length)
-      captureSelection()
-    })
-  }
-
-  const wrapSelection = (prefix, suffix, placeholder = 'text') => {
-    const isTitle = activeField === 'title'
-    const el = isTitle ? titleRef.current : textareaRef.current
-    const value = isTitle ? form.title || '' : form.content || ''
-    const fieldSelectionRef = isTitle ? titleSelectionRef : selectionRef
-    if (!el) {
-      if (!isTitle) insertAtCursor(`${prefix}${placeholder}${suffix}`)
-      return
-    }
-
-    let start = el.selectionStart ?? value.length
-    let end = el.selectionEnd ?? value.length
-    if (start === end && fieldSelectionRef.current.end > fieldSelectionRef.current.start) {
-      start = fieldSelectionRef.current.start
-      end = fieldSelectionRef.current.end
-    }
-    const selected = value.slice(start, end) || placeholder
-    const replacement = `${prefix}${selected}${suffix}`
-    const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
-    setForm((prev) => ({ ...prev, [isTitle ? 'title' : 'content']: next }))
-
-    requestAnimationFrame(() => {
-      el.focus()
-      el.setSelectionRange(start, start + replacement.length)
-      if (isTitle) captureTitleSelection()
-      else captureSelection()
-    })
-  }
-
-  const removeLastMediaToken = () => {
-    setForm((prev) => {
-      const content = prev.content || ''
-      const matches = [...content.matchAll(/\n?\[\[(img|vid):.+?\]\]\n?/g)]
-      if (!matches.length) return prev
-      const last = matches[matches.length - 1]
-      const start = last.index
-      const end = start + last[0].length
-      const next = `${content.slice(0, start)}${content.slice(end)}`
-      return { ...prev, content: next.replace(/\n{3,}/g, '\n\n') }
-    })
-  }
-
-  const normalizeHandwritingTags = (text) => {
-    let next = String(text || '')
-    // Legacy compatibility: treat [hand]..[/hand] as [hand1]..[/hand1].
-    next = next.replace(/\[(\/?)hand\]/g, (_, slash) => `[${slash}hand1]`)
-    next = next.replace(/(\[hand(?:10|[1-9])\])(?:\s*\1)+/g, '$1')
-    next = next.replace(/(\[\/hand(?:10|[1-9])\])(?:\s*\1)+/g, '$1')
-    next = next.replace(/\[hand(?:10|[1-9])\]\s*\[\/hand(?:10|[1-9])\]/g, '')
-
-    // Remove dangling/mismatched hand tags so markers never appear in published posts.
-    const re = /\[(\/?)hand(10|[1-9])\]/g
-    const chunks = []
-    const stack = []
-    let last = 0
-    let m
-
-    while ((m = re.exec(next)) !== null) {
-      chunks.push(next.slice(last, m.index))
-      const closing = m[1] === '/'
-      const style = `hand${m[2]}`
-      if (!closing) {
-        const marker = { style, text: m[0], keep: true }
-        chunks.push(marker)
-        stack.push(marker)
-      } else if (stack.length && stack[stack.length - 1].style === style) {
-        stack.pop()
-        chunks.push(m[0])
-      }
-      last = re.lastIndex
-    }
-    chunks.push(next.slice(last))
-
-    stack.forEach((marker) => {
-      marker.keep = false
-    })
-
-    return chunks
-      .map((part) => (typeof part === 'string' ? part : part.keep ? part.text : ''))
-      .join('')
-  }
-
-  const applyHandStyle = (style) => {
-    setHandStyle(style)
-    const isTitle = activeField === 'title'
-    const el = isTitle ? titleRef.current : textareaRef.current
-    const value = isTitle ? form.title || '' : form.content || ''
-    const fieldSelectionRef = isTitle ? titleSelectionRef : selectionRef
-    let start = el?.selectionStart ?? value.length
-    let end = el?.selectionEnd ?? value.length
-    if (start === end && fieldSelectionRef.current.end > fieldSelectionRef.current.start) {
-      start = fieldSelectionRef.current.start
-      end = fieldSelectionRef.current.end
-    }
-    // Docs-like fallback: if no selection, apply style to the whole content.
-    if (start === end && value.trim()) {
-      start = 0
-      end = value.length
-    }
-    if (start === end) return
-
-    const selected = value.slice(start, end)
-    const cleaned = selected
-      .replace(/\[hand(?:10|[1-9])?\]/g, '')
-      .replace(/\[\/hand(?:10|[1-9])?\]/g, '')
-    const replacement = `[${style}]${cleaned}[/${style}]`
-    const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
-    setForm((prev) => ({ ...prev, [isTitle ? 'title' : 'content']: next }))
-
-    requestAnimationFrame(() => {
-      if (!el) return
-      el.focus()
-      el.setSelectionRange(start, start + replacement.length)
-      if (isTitle) captureTitleSelection()
-      else captureSelection()
-    })
+  const removeLastMediaNode = () => {
+    const editor = editorRef.current
+    if (!editor) return
+    const media = editor.querySelectorAll('img[data-inline-media], video[data-inline-media]')
+    if (!media.length) return
+    media[media.length - 1].remove()
+    updateEditorHtmlState()
   }
 
   const insertUploadedFile = async (file, kind) => {
@@ -260,7 +137,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     setInlineBusy(true)
     try {
       const source = await onInlineUpload(file)
-      insertAtCursor(`\n[[${kind}:${source}]]\n`)
+      if (kind === 'vid') {
+        runCommand(
+          'insertHTML',
+          `<p><video data-inline-media="1" controls playsinline preload="metadata" src="${source}"></video></p><p><br></p>`,
+        )
+      } else {
+        runCommand(
+          'insertHTML',
+          `<p><img data-inline-media="1" src="${source}" alt="Inline media" loading="lazy" decoding="async" /></p><p><br></p>`,
+        )
+      }
     } catch {
       alert('Could not upload file for inline insertion.')
     } finally {
@@ -280,10 +167,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     const items = Array.from(e.clipboardData?.items || [])
     const imageItem = items.find((item) => item.type?.startsWith('image/'))
     if (!imageItem) return
-
     const file = imageItem.getAsFile()
     if (!file) return
-
     e.preventDefault()
     void insertUploadedFile(file, 'img')
   }
@@ -301,8 +186,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.title.trim() || !form.content.trim() || busy || inlineBusy) return
-    const cleanedContent = normalizeHandwritingTags(form.content)
+    const cleanedContent = sanitizeEditorHtml(form.content)
+    if (!form.title.trim() || !cleanedContent.trim() || busy || inlineBusy) return
 
     onSubmit({
       title: form.title.trim(),
@@ -311,9 +196,18 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
     if (!initialValue) {
       setForm({ title: '', content: '' })
+      if (editorRef.current) editorRef.current.innerHTML = ''
       if (draftKey) localStorage.removeItem(draftKey)
     }
   }
+
+  useEffect(() => {
+    if (!editorRef.current) return
+    const next = sanitizeEditorHtml(form.content)
+    if (editorRef.current.innerHTML !== next) {
+      editorRef.current.innerHTML = next
+    }
+  }, [form.content])
 
   useEffect(() => {
     if (initialValue || !draftKey) return
@@ -324,7 +218,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       if (parsed?.title || parsed?.content) {
         setForm({
           title: parsed.title || '',
-          content: parsed.content || '',
+          content: sanitizeEditorHtml(parsed.content || ''),
         })
         setDraftRestored(true)
       }
@@ -337,7 +231,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if (initialValue || !draftKey) return
     const payload = JSON.stringify({
       title: form.title,
-      content: form.content,
+      content: sanitizeEditorHtml(form.content),
       updatedAt: Date.now(),
     })
     localStorage.setItem(draftKey, payload)
@@ -346,34 +240,19 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const handleEditorKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
-      if (!form.title.trim() || !form.content.trim() || busy || inlineBusy) return
-      const cleanedContent = normalizeHandwritingTags(form.content)
+      const cleanedContent = sanitizeEditorHtml(form.content)
+      if (!form.title.trim() || !cleanedContent.trim() || busy || inlineBusy) return
       onSubmit({
         title: form.title.trim(),
         content: cleanedContent,
       })
       if (!initialValue && draftKey) localStorage.removeItem(draftKey)
-      return
     }
-
-    if (e.key !== 'Tab') return
-    e.preventDefault()
-    const ta = textareaRef.current
-    const value = form.content || ''
-    if (!ta) return
-    const start = ta.selectionStart ?? value.length
-    const end = ta.selectionEnd ?? value.length
-    const next = `${value.slice(0, start)}  ${value.slice(end)}`
-    setForm((prev) => ({ ...prev, content: next }))
-    requestAnimationFrame(() => {
-      ta.focus()
-      const pos = start + 2
-      ta.setSelectionRange(pos, pos)
-    })
   }
 
-  const wordCount = form.content.trim() ? form.content.trim().split(/\s+/).length : 0
-  const charCount = form.content.length
+  const plain = stripHtmlForStats(form.content)
+  const wordCount = plain ? plain.split(/\s+/).length : 0
+  const charCount = plain.length
 
   return (
     <form className="card writer" onSubmit={handleSubmit}>
@@ -386,6 +265,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
             className="ghost"
             onClick={() => {
               setForm({ title: '', content: '' })
+              if (editorRef.current) editorRef.current.innerHTML = ''
               if (draftKey) localStorage.removeItem(draftKey)
               setDraftRestored(false)
             }}
@@ -394,15 +274,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           </button>
         </p>
       ) : null}
+
       <label>Title</label>
       <input
         ref={titleRef}
         value={form.title}
         onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-        onFocus={() => setActiveField('title')}
-        onSelect={captureTitleSelection}
-        onMouseUp={captureTitleSelection}
-        onKeyUp={captureTitleSelection}
         placeholder="Write a strong title"
       />
 
@@ -422,32 +299,35 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         {showFormatMenu ? (
           <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
             <div className="ribbon-group">
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy} title="Bold">
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold">
                 B
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy} title="Italic">
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic">
                 I
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy} title="Heading 1">
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1">
                 H1
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy} title="Heading 2">
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2">
                 H2
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('number')} disabled={inlineBusy || busy} title="Numbered list">
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list">
                 1.
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('dot')} disabled={inlineBusy || busy} title="Bullet list">
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bullet list">
                 •
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('circle')} disabled={inlineBusy || busy} title="Circle bullet list">
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet list">
                 ◦
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('dash')} disabled={inlineBusy || busy} title="Dash list">
-                -
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet list">
+                ▪
               </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyListPrefix('star')} disabled={inlineBusy || busy} title="Star list">
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet list">
                 *
+              </button>
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash list">
+                -
               </button>
               <label className="mini-field mini-field-icon" title="Text color">
                 <span className="swatch-label">A</span>
@@ -456,8 +336,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button
                 type="button"
                 className="ghost icon-tool"
-                onMouseDown={preserveSelection}
-                onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
+                onClick={() => runCommand('foreColor', textColor)}
                 disabled={inlineBusy || busy}
                 title="Apply text color"
               >
@@ -470,8 +349,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button
                 type="button"
                 className="ghost icon-tool"
-                onMouseDown={preserveSelection}
-                onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
+                onClick={() => runCommand('hiliteColor', bgColor)}
                 disabled={inlineBusy || busy}
                 title="Apply highlight"
               >
@@ -484,7 +362,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <select
                 className={`style-select ${handStyle}`}
                 value={handStyle}
-                onChange={(e) => applyHandStyle(e.target.value)}
+                onChange={(e) => setHandStyle(e.target.value)}
                 title="Select handwriting style"
               >
                 {handStyles.map((style) => (
@@ -496,8 +374,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button
                 type="button"
                 className={`ghost hand-sample ${handStyle}`}
-                onMouseDown={preserveSelection}
-                onClick={() => applyHandStyle(handStyle)}
+                onClick={() => wrapSelectionWithClass(handStyle)}
                 disabled={inlineBusy || busy}
                 title="Apply selected handwriting to selected text"
               >
@@ -506,10 +383,9 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button
                 type="button"
                 className="ghost hand-action icon-tool"
-                onMouseDown={preserveSelection}
-                onClick={() => applyHandStyle(handStyle)}
+                onClick={() => wrapSelectionWithClass(handStyle)}
                 disabled={inlineBusy || busy}
-                title="Wrap selected text with handwriting style"
+                title="Apply selected handwriting"
               >
                 Pen
               </button>
@@ -544,7 +420,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button
                 type="button"
                 className="ghost"
-                onClick={removeLastMediaToken}
+                onClick={removeLastMediaNode}
                 disabled={inlineBusy || busy}
               >
                 Remove Last Image/Video
@@ -561,25 +437,22 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           </div>
         ) : null}
       </div>
-      <textarea
-        ref={textareaRef}
-        rows={14}
-        value={form.content}
-        onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
-        onFocus={() => setActiveField('content')}
+
+      <div
+        ref={editorRef}
+        className="rich-editor"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={updateEditorHtmlState}
         onKeyDown={handleEditorKeyDown}
-        onKeyUp={captureSelection}
-        onMouseUp={captureSelection}
-        onSelect={captureSelection}
-        onFocus={captureSelection}
         onPaste={handlePaste}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
-        placeholder="Write your story. Use codestart ... codeend for IDE-style code section. Paste screenshot/image (Ctrl+V) at cursor."
+        data-placeholder="Write your story with rich formatting..."
       />
 
       <small>
-        Tip: Use **bold**, _italic_, # headings, lists (1., •, ◦, -, *), [color=#hex]text[/color], [bg=#hex]text[/bg], [hand1..hand10]text[/...]. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
+        Tip: Rich editor mode enabled. You can style selected text directly, like Word/Google Docs. Ctrl+Enter to publish.
       </small>
 
       <div className="writer-stats">
@@ -588,7 +461,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       </div>
 
       <div className="button-row">
-        <button type="submit" disabled={!form.title.trim() || !form.content.trim() || busy || inlineBusy}>
+        <button type="submit" disabled={!form.title.trim() || !stripHtmlForStats(form.content).trim() || busy || inlineBusy}>
           {busy ? 'Saving...' : submitLabel}
         </button>
         {onCancel ? (
