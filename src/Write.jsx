@@ -110,6 +110,13 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     })
   }
 
+  const normalizeHandwritingTags = (text) => {
+    let next = String(text || '')
+    next = next.replace(/(\[hand(?:10|[1-9])\])(?:\s*\1)+/g, '$1')
+    next = next.replace(/(\[\/hand(?:10|[1-9])\])(?:\s*\1)+/g, '$1')
+    return next
+  }
+
   const applyHandStyle = (style) => {
     setHandStyle(style)
     const ta = textareaRef.current
@@ -185,10 +192,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.content.trim() || busy || inlineBusy) return
+    const cleanedContent = normalizeHandwritingTags(form.content)
 
     onSubmit({
       title: form.title.trim(),
-      content: form.content,
+      content: cleanedContent,
     })
 
     if (!initialValue) {
@@ -362,7 +370,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
             type="button"
             className="ghost hand-action icon-tool"
             onMouseDown={preserveSelection}
-            onClick={() => wrapSelection(`[${handStyle}]`, `[/${handStyle}]`, 'handwritten text')}
+            onClick={() => applyHandStyle(handStyle)}
             disabled={inlineBusy || busy}
             title="Wrap selected text with handwriting style"
           >
