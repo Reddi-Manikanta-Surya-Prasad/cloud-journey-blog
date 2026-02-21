@@ -727,17 +727,45 @@ body::-webkit-scrollbar {
 .inline-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin: 8px 0 12px;
+  padding: 8px;
+  border: 1px solid #deebff;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.inline-toolbar .ghost {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid #d3e4ff;
+  background: #ffffff;
+  color: #1f4a7a;
+  box-shadow: 0 1px 2px rgba(17, 63, 112, 0.06);
+}
+
+.inline-toolbar .ghost:hover {
+  background: #f2f8ff;
+  border-color: #9cc5ff;
+  box-shadow: 0 4px 10px rgba(11, 83, 160, 0.14);
+}
+
+.inline-toolbar .ghost:disabled {
+  opacity: 0.62;
+  box-shadow: none;
 }
 
 .mini-field {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 10px;
-  background: #e8f2ff;
+  border: 1px solid #d3e4ff;
+  background: #fff;
   color: #264d7b;
   font-size: 0.78rem;
   font-weight: 700;
@@ -746,14 +774,36 @@ body::-webkit-scrollbar {
 .mini-field input[type='color'] {
   width: 34px;
   height: 28px;
-  border: none;
+  border: 1px solid #8db3df;
   padding: 0;
-  background: transparent;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .inline-toolbar select {
   width: auto;
-  min-width: 150px;
+  min-width: 170px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #b7d2f7;
+  background: #ffffff;
+  padding: 6px 10px;
+}
+
+.inline-toolbar .hand-style-select {
+  font-family: 'Segoe Script', 'Lucida Handwriting', cursive;
+  color: #234e7f;
+}
+
+.inline-toolbar .icon-tool {
+  min-width: 42px;
+  height: 40px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.1px;
 }
 
 .rich-h1,
@@ -787,6 +837,32 @@ body::-webkit-scrollbar {
 
 .hand3 {
   font-family: 'Comic Sans MS', 'Bradley Hand', cursive;
+}
+
+.inline-toolbar .hand-action {
+  font-family: 'Segoe Script', 'Lucida Handwriting', cursive;
+  letter-spacing: 0.2px;
+  min-width: 72px;
+}
+
+.handwriting-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inline-toolbar .hand-preview {
+  min-width: 96px;
+  font-size: 1rem;
+  background: #fff;
+  border: 1px solid #d3e4ff;
+}
+
+.inline-toolbar .hand-preview.active {
+  background: #eef7ff;
+  border-color: #48a6ff;
+  box-shadow: 0 0 0 2px rgba(72, 166, 255, 0.16);
 }
 
 .hidden-input {

@@ -14,6 +14,20 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [handStyle, setHandStyle] = useState('hand1')
   const textareaRef = useRef(null)
   const attachInputRef = useRef(null)
+  const selectionRef = useRef({ start: 0, end: 0 })
+
+  const preserveSelection = (e) => {
+    e.preventDefault()
+  }
+
+  const captureSelection = () => {
+    const ta = textareaRef.current
+    if (!ta) return
+    selectionRef.current = {
+      start: ta.selectionStart ?? 0,
+      end: ta.selectionEnd ?? 0,
+    }
+  }
 
   const insertAtCursor = (text) => {
     const ta = textareaRef.current
@@ -51,8 +65,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       return
     }
 
-    const start = ta.selectionStart ?? value.length
-    const end = ta.selectionEnd ?? value.length
+    let start = ta.selectionStart ?? value.length
+    let end = ta.selectionEnd ?? value.length
+    if (start === end && selectionRef.current.end > selectionRef.current.start) {
+      start = selectionRef.current.start
+      end = selectionRef.current.end
+    }
     const selected = value.slice(start, end) || placeholder
     const replacement = `${prefix}${selected}${suffix}`
     const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
@@ -61,6 +79,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     requestAnimationFrame(() => {
       ta.focus()
       ta.setSelectionRange(start, start + replacement.length)
+      captureSelection()
     })
   }
 
@@ -234,75 +253,81 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
       <label>Content</label>
       <div className="inline-toolbar">
-        <button type="button" className="ghost" onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy}>
-          Bold
+        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy}>
+          B
         </button>
-        <button type="button" className="ghost" onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy}>
-          Italic
+        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy}>
+          I
         </button>
-        <button type="button" className="ghost" onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy}>
+        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy}>
           H1
         </button>
-        <button type="button" className="ghost" onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy}>
+        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy}>
           H2
         </button>
         <label className="mini-field">
-          Text
+          A
           <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
         </label>
         <button
           type="button"
-          className="ghost"
+          className="ghost icon-tool"
+          onMouseDown={preserveSelection}
           onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
           disabled={inlineBusy || busy}
         >
-          Apply Text Color
+          Color
         </button>
         <label className="mini-field">
-          Highlight
+          Bg
           <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
         </label>
         <button
           type="button"
-          className="ghost"
+          className="ghost icon-tool"
+          onMouseDown={preserveSelection}
           onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
           disabled={inlineBusy || busy}
         >
-          Apply Highlight
+          Highlight
         </button>
         <div className="handwriting-picker" role="group" aria-label="Pick handwriting style">
           <button
             type="button"
             className={`ghost hand-preview hand1 ${handStyle === 'hand1' ? 'active' : ''}`}
+            onMouseDown={preserveSelection}
             onClick={() => applyHandStyle('hand1')}
             disabled={inlineBusy || busy}
           >
-            Note Style 1
+            Note 1
           </button>
           <button
             type="button"
             className={`ghost hand-preview hand2 ${handStyle === 'hand2' ? 'active' : ''}`}
+            onMouseDown={preserveSelection}
             onClick={() => applyHandStyle('hand2')}
             disabled={inlineBusy || busy}
           >
-            Note Style 2
+            Note 2
           </button>
           <button
             type="button"
             className={`ghost hand-preview hand3 ${handStyle === 'hand3' ? 'active' : ''}`}
+            onMouseDown={preserveSelection}
             onClick={() => applyHandStyle('hand3')}
             disabled={inlineBusy || busy}
           >
-            Note Style 3
+            Note 3
           </button>
         </div>
         <button
           type="button"
-          className="ghost hand-action"
+          className="ghost hand-action icon-tool"
+          onMouseDown={preserveSelection}
           onClick={() => wrapSelection(`[${handStyle}]`, `[/${handStyle}]`, 'handwritten text')}
           disabled={inlineBusy || busy}
         >
-          ✍ Apply Handwriting
+          Pen
         </button>
       </div>
       <div className="button-row">
@@ -352,6 +377,10 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         value={form.content}
         onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
         onKeyDown={handleEditorKeyDown}
+        onKeyUp={captureSelection}
+        onMouseUp={captureSelection}
+        onSelect={captureSelection}
+        onFocus={captureSelection}
         onPaste={handlePaste}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
