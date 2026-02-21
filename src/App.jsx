@@ -1268,6 +1268,9 @@ function App() {
                   currentUser={currentUser}
                   isFollowing={followedAuthorSubs.includes(post.authorSub)}
                   onToggleFollow={toggleFollowAuthor}
+                  resolveMediaSource={(source) =>
+                    source.startsWith('media/') ? mediaUrlCache[source] || '' : source
+                  }
                   onOpen={() => {
                     setActivePostId(post.id)
                     setPostQueryParam(post.id)
@@ -1480,9 +1483,12 @@ function PostPreviewCard({
   currentUser,
   isFollowing = false,
   onToggleFollow,
+  resolveMediaSource,
 }) {
   const readMinutes = estimateReadMinutes(post.content)
   const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
+  const coverSource = post.mediaPath || post.mediaUrl || ''
+  const coverType = post.mediaType === 'video' ? 'video' : 'image'
   return (
     <article
       className={`card preview-card ${featured ? 'featured' : ''}`}
@@ -1490,12 +1496,13 @@ function PostPreviewCard({
       role="button"
       tabIndex={0}
     >
-      {post.mediaUrl ? (
-        post.mediaType === 'video' ? (
-          <video className="preview-media" src={post.mediaUrl} muted preload="metadata" playsInline />
-        ) : (
-          <img className="preview-media" src={post.mediaUrl} alt={post.title} loading="lazy" decoding="async" />
-        )
+      {coverSource ? (
+        <InlineMedia
+          type={coverType}
+          source={coverSource}
+          alt={post.title}
+          resolveMediaSource={resolveMediaSource}
+        />
       ) : (
         <div className="preview-placeholder">No cover media</div>
       )}
