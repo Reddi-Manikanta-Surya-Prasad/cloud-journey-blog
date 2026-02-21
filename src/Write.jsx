@@ -217,6 +217,59 @@ function stripHtmlForStats(html) {
     .trim()
 }
 
+function parseAttachedMediaFromContent(html) {
+  const raw = String(html || '')
+  if (!raw.trim()) return { content: '', attachments: [] }
+  if (typeof document === 'undefined') return { content: raw, attachments: [] }
+
+  const root = document.createElement('div')
+  root.innerHTML = raw
+  const attachments = []
+  root.querySelectorAll('figure[data-post-attachment="1"]').forEach((node) => {
+    const img = node.querySelector('img[data-inline-media]')
+    const vid = node.querySelector('video[data-inline-media]')
+    if (img?.getAttribute('src')) {
+      attachments.push({ type: 'img', source: img.getAttribute('src') })
+    } else if (vid?.getAttribute('src')) {
+      attachments.push({ type: 'vid', source: vid.getAttribute('src') })
+    }
+    node.remove()
+  })
+  return { content: sanitizeEditorHtml(root.innerHTML), attachments }
+}
+
+function appendAttachmentsToContent(html, attachments) {
+  const cleaned = sanitizeEditorHtml(html)
+  if (!attachments?.length || typeof document === 'undefined') return cleaned
+  const root = document.createElement('div')
+  root.innerHTML = cleaned
+  attachments.forEach((item) => {
+    if (!item?.source) return
+    const figure = document.createElement('figure')
+    figure.setAttribute('data-post-attachment', '1')
+    figure.className = 'post-attachment-block'
+    if (item.type === 'vid') {
+      const video = document.createElement('video')
+      video.setAttribute('data-inline-media', '1')
+      video.setAttribute('controls', 'true')
+      video.setAttribute('playsinline', 'true')
+      video.setAttribute('preload', 'metadata')
+      video.setAttribute('src', item.source)
+      figure.appendChild(video)
+    } else {
+      const img = document.createElement('img')
+      img.setAttribute('data-inline-media', '1')
+      img.setAttribute('src', item.source)
+      img.setAttribute('alt', 'Post attachment')
+      img.setAttribute('loading', 'lazy')
+      img.setAttribute('decoding', 'async')
+      figure.appendChild(img)
+    }
+    root.appendChild(figure)
+  })
+  return sanitizeEditorHtml(root.innerHTML)
+}
+
 async function dataUrlToFile(dataUrl, filename) {
   const res = await fetch(dataUrl)
   const blob = await res.blob()
@@ -265,12 +318,13 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     { value: 'hand10', label: 'Hand 10' },
   ]
 
-  const normalizedInitial = useMemo(
-    () =>
-      initialValue
-        ? {
-            title: normalizeTitleContent(initialValue.title || ''),
-            content: normalizeEditorContent(initialValue.content || ''),
+  const normalizedInitial = useMemo(() => {
+    if (!initialValue) return null
+    const extracted = parseAttachedMediaFromContent(initialValue.content || '')
+    return {
+      title: normalizeTitleContent(initialValue.title || ''),
+      content: normalizeEditorContent(extracted.content || ''),
+      attachments: extracted.attachments || [],
             skillLevel: initialValue.skillLevel || 'beginner',
             tldr: initialValue.tldr || '',
             beginnerSummary: initialValue.beginnerSummary || '',
@@ -281,11 +335,9 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
             nextTopicTitle: initialValue.nextTopicTitle || '',
             nextTopicUrl: initialValue.nextTopicUrl || '',
             roadmapUrl: initialValue.roadmapUrl || '',
-            versionLabel: initialValue.versionLabel || '',
-          }
-        : null,
-    [initialValue],
-  )
+      versionLabel: initialValue.versionLabel || '',
+    }
+  }, [initialValue])
 
   const [form, setForm] = useState(
     normalizedInitial || {
@@ -304,6 +356,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       versionLabel: '',
     },
   )
+  const [attachments, setAttachments] = useState(normalizedInitial?.attachments || [])
   const [inlineBusy, setInlineBusy] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
   const [textColor, setTextColor] = useState('#0f4c81')
@@ -323,6 +376,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const titleEditorRef = useRef(null)
   const editorRef = useRef(null)
   const attachInputRef = useRef(null)
+  const inlineInsertInputRef = useRef(null)
   const numberMenuRef = useRef(null)
   const bulletMenuRef = useRef(null)
   const painterCanvasRef = useRef(null)
@@ -427,19 +481,6 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>', 'content')
   }
 
-  const insertCodeMarkerTemplate = () => {
-    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>', 'content')
-  }
-
-  const removeLastMediaNode = () => {
-    const editor = editorRef.current
-    if (!editor) return
-    const media = editor.querySelectorAll('img[data-inline-media], video[data-inline-media]')
-    if (!media.length) return
-    media[media.length - 1].remove()
-    updateEditorHtmlState()
-  }
-
   const insertUploadedFile = async (file, kind) => {
     if (!file || !onInlineUpload) return
     setInlineBusy(true)
@@ -465,13 +506,26 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     }
   }
 
+  const attachUploadedFile = async (file, kind) => {
+    if (!file || !onInlineUpload) return
+    setInlineBusy(true)
+    try {
+      const source = await onInlineUpload(file)
+      setAttachments((prev) => [...prev, { type: kind === 'vid' ? 'vid' : 'img', source }])
+    } catch {
+      alert('Could not attach file.')
+    } finally {
+      setInlineBusy(false)
+    }
+  }
+
   const autoAttachPainterImage = async () => {
     const canvas = painterCanvasRef.current
     if (!canvas) return
     try {
       const dataUrl = canvas.toDataURL('image/png')
       const file = await dataUrlToFile(dataUrl, `paint-${Date.now()}.png`)
-      await insertUploadedFile(file, 'img')
+      await attachUploadedFile(file, 'img')
     } catch {
       alert('Could not attach painter image.')
     }
@@ -482,11 +536,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     try {
       const dataUrl = await svgToPngDataUrl(diagramSvg)
       const file = await dataUrlToFile(dataUrl, `diagram-${Date.now()}.png`)
-      await insertUploadedFile(file, 'img')
+      await attachUploadedFile(file, 'img')
     } catch {
       try {
         const svgFile = await svgToFile(diagramSvg, `diagram-${Date.now()}.svg`)
-        await insertUploadedFile(svgFile, 'img')
+        await attachUploadedFile(svgFile, 'img')
       } catch {
         alert('Could not attach diagram image.')
       }
@@ -494,6 +548,14 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   }
 
   const handleAttachPick = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const kind = file.type.startsWith('video/') ? 'vid' : 'img'
+    void attachUploadedFile(file, kind)
+    e.target.value = ''
+  }
+
+  const handleInlineInsertPick = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     const kind = file.type.startsWith('video/') ? 'vid' : 'img'
@@ -539,7 +601,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if (!stripHtmlForStats(cleanedTitle).trim() || !cleanedContent.trim() || busy || inlineBusy) return
     onSubmit({
       title: cleanedTitle,
-      content: cleanedContent,
+      content: appendAttachmentsToContent(cleanedContent, attachments),
       skillLevel: form.skillLevel || 'beginner',
       tldr: form.tldr.trim(),
       beginnerSummary: form.beginnerSummary.trim(),
@@ -571,6 +633,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       })
       if (editorRef.current) editorRef.current.innerHTML = ''
       if (titleEditorRef.current) titleEditorRef.current.innerHTML = ''
+      setAttachments([])
       if (draftKey) localStorage.removeItem(draftKey)
     }
   }
@@ -594,6 +657,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   useEffect(() => {
     if (normalizedInitial) {
       setForm(normalizedInitial)
+      setAttachments(normalizedInitial.attachments || [])
     }
   }, [normalizedInitial])
 
@@ -604,9 +668,10 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     try {
       const parsed = JSON.parse(saved)
       if (parsed?.title || parsed?.content) {
+        const extracted = parseAttachedMediaFromContent(parsed.content || '')
         setForm({
           title: normalizeTitleContent(parsed.title || ''),
-          content: normalizeEditorContent(parsed.content || ''),
+          content: normalizeEditorContent(extracted.content || ''),
           skillLevel: parsed.skillLevel || 'beginner',
           tldr: parsed.tldr || '',
           beginnerSummary: parsed.beginnerSummary || '',
@@ -619,6 +684,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           roadmapUrl: parsed.roadmapUrl || '',
           versionLabel: parsed.versionLabel || '',
         })
+        setAttachments(Array.isArray(parsed.attachments) ? parsed.attachments : extracted.attachments || [])
         setDraftRestored(true)
       }
     } catch {
@@ -631,6 +697,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     const payload = JSON.stringify({
       title: normalizeTitleContent(form.title),
       content: sanitizeEditorHtml(form.content),
+      attachments,
       skillLevel: form.skillLevel || 'beginner',
       tldr: form.tldr || '',
       beginnerSummary: form.beginnerSummary || '',
@@ -645,7 +712,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       updatedAt: Date.now(),
     })
     localStorage.setItem(draftKey, payload)
-  }, [form, draftKey, initialValue])
+  }, [form, attachments, draftKey, initialValue])
 
   useEffect(() => {
     if (!showPainter) return
@@ -747,7 +814,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       if (!stripHtmlForStats(cleanedTitle).trim() || !cleanedContent.trim() || busy || inlineBusy) return
       onSubmit({
         title: cleanedTitle,
-        content: cleanedContent,
+        content: appendAttachmentsToContent(cleanedContent, attachments),
         skillLevel: form.skillLevel || 'beginner',
         tldr: form.tldr.trim(),
         beginnerSummary: form.beginnerSummary.trim(),
@@ -793,7 +860,9 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                 roadmapUrl: '',
                 versionLabel: '',
               })
+              setAttachments([])
               if (editorRef.current) editorRef.current.innerHTML = ''
+              if (titleEditorRef.current) titleEditorRef.current.innerHTML = ''
               if (draftKey) localStorage.removeItem(draftKey)
               setDraftRestored(false)
             }}
@@ -903,15 +972,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                 ) : null}
               </div>
               <label className="mini-field mini-field-icon" title="Text color">
-                <span className="swatch-label">A</span>
+                <span className="swatch-label swatch-icon-a">A</span>
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+                <span className="swatch-caret">▾</span>
               </label>
               <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color" aria-label="Apply text color">
                 <span className="icon-glyph color-a">A</span>
               </button>
               <label className="mini-field mini-field-icon" title="Highlight color">
-                <span className="swatch-label">Bg</span>
+                <span className="swatch-label swatch-icon-pen">{'\u270E'}</span>
                 <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+                <span className="swatch-caret">▾</span>
               </label>
               <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight" aria-label="Apply highlight">
                 <span className="icon-glyph highlight-a">A</span>
@@ -941,11 +1012,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
             <div className="ribbon-group">
               <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeTemplate} disabled={inlineBusy || busy} title="Insert code block" aria-label="Insert code block">{'</>'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeMarkerTemplate} disabled={inlineBusy || busy} title="Insert IDE code template" aria-label="Insert IDE code template">{'{ }'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video" aria-label="Attach image or video">{'\u{1F5BC}\u{FE0F}'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={removeLastMediaNode} disabled={inlineBusy || busy} title="Remove last media" aria-label="Remove last media">{'\u{1F5D1}\u{FE0F}'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => inlineInsertInputRef.current?.click()} disabled={inlineBusy || busy} title="Insert image or video at cursor" aria-label="Insert image or video at cursor">{'\u2795'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video below editor" aria-label="Attach image or video below editor">{'\u{1F4CE}'}</button>
               <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy} title="Open painter tool" aria-label="Open painter tool">{'\u{1F3A8}'}</button>
               <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy} title="Open architecture diagram tool" aria-label="Open architecture diagram tool">{'\u{1F3D7}\u{FE0F}'}</button>
+              <input
+                ref={inlineInsertInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden-input"
+                onChange={handleInlineInsertPick}
+              />
               <input
                 ref={attachInputRef}
                 type="file"
@@ -977,6 +1054,48 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       <small>
         Tip: WYSIWYG mode is on. No raw [color]/[hand] handlers shown in edit mode. Painter/Diagram exports auto-attach as images.
       </small>
+      {attachments.length ? (
+        <div className="attachment-tray">
+          <div className="attachment-tray-head">Post Attachments</div>
+          <div className="attachment-grid">
+            {attachments.map((item, idx) => (
+              <div className="attachment-item" key={`${item.source}-${idx}`}>
+                {item.type === 'vid' ? (
+                  <video src={item.source} controls playsInline preload="metadata" />
+                ) : (
+                  <img src={item.source} alt={`attachment-${idx + 1}`} loading="lazy" decoding="async" />
+                )}
+                <div className="attachment-actions">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      const mediaHtml =
+                        item.type === 'vid'
+                          ? `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${item.source}"></video></div><p><br></p>`
+                          : `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><img data-inline-media="1" src="${item.source}" alt="Inline media" loading="lazy" decoding="async" /></div><p><br></p>`
+                      runCommand('insertHTML', mediaHtml, 'content')
+                      setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                    }}
+                    title="Insert in content"
+                  >
+                    Insert inline
+                  </button>
+                  <button
+                    type="button"
+                    className="attachment-delete"
+                    onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                    title="Delete attachment"
+                    aria-label="Delete attachment"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="phase1-grid">
         <label>Skill Level</label>
