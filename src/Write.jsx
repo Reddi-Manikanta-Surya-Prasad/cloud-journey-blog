@@ -296,133 +296,144 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <label>Content</label>
-      <div className="format-toolbar-shell">
-        <button
-          type="button"
-          className="ghost format-toggle"
-          onClick={() => setShowFormatMenu((prev) => !prev)}
-          aria-expanded={showFormatMenu}
-          aria-controls="writer-style-menu"
-        >
-          Format {showFormatMenu ? '▲' : '▼'}
-        </button>
-      </div>
-      {showFormatMenu ? (
-        <div id="writer-style-menu" className="inline-toolbar">
-          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy} title="Bold">
-            B
-          </button>
-          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy} title="Italic">
-            I
-          </button>
-          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy} title="Heading 1">
-            H1
-          </button>
-          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy} title="Heading 2">
-            H2
-          </button>
-          <label className="mini-field mini-field-icon" title="Text color">
-            A
-            <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
-          </label>
+      <div className="editor-ribbon">
+        <div className="format-toolbar-shell">
           <button
             type="button"
-            className="ghost icon-tool"
-            onMouseDown={preserveSelection}
-            onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
-            disabled={inlineBusy || busy}
-            title="Apply text color"
+            className="ghost format-toggle"
+            onClick={() => setShowFormatMenu((prev) => !prev)}
+            aria-expanded={showFormatMenu}
+            aria-controls="writer-style-menu"
           >
-            Color
-          </button>
-          <label className="mini-field mini-field-icon" title="Highlight color">
-            Bg
-            <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
-          </label>
-          <button
-            type="button"
-            className="ghost icon-tool"
-            onMouseDown={preserveSelection}
-            onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
-            disabled={inlineBusy || busy}
-            title="Apply highlight"
-          >
-            Highlight
-          </button>
-          <select
-            className={`style-select ${handStyle}`}
-            value={handStyle}
-            onChange={(e) => applyHandStyle(e.target.value)}
-            title="Select handwriting style"
-          >
-            {handStyles.map((style) => (
-              <option key={style.value} value={style.value}>
-                {style.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={`ghost hand-sample ${handStyle}`}
-            onMouseDown={preserveSelection}
-            onClick={() => applyHandStyle(handStyle)}
-            disabled={inlineBusy || busy}
-            title="Apply selected handwriting to selected text"
-          >
-            Sample
-          </button>
-          <button
-            type="button"
-            className="ghost hand-action icon-tool"
-            onMouseDown={preserveSelection}
-            onClick={() => applyHandStyle(handStyle)}
-            disabled={inlineBusy || busy}
-            title="Wrap selected text with handwriting style"
-          >
-            Pen
+            Format {showFormatMenu ? '▲' : '▼'}
           </button>
         </div>
-      ) : null}
-      <div className="button-row">
-        <button
-          type="button"
-          className="ghost"
-          onClick={insertCodeTemplate}
-          disabled={inlineBusy || busy}
-        >
-          Insert Code Block
-        </button>
-        <button
-          type="button"
-          className="ghost"
-          onClick={insertCodeMarkerTemplate}
-          disabled={inlineBusy || busy}
-        >
-          Insert codestart/codeend
-        </button>
-        <button
-          type="button"
-          className="ghost"
-          onClick={() => attachInputRef.current?.click()}
-          disabled={inlineBusy || busy}
-        >
-          Attach Image/Video
-        </button>
-        <button
-          type="button"
-          className="ghost"
-          onClick={removeLastMediaToken}
-          disabled={inlineBusy || busy}
-        >
-          Remove Last Image/Video
-        </button>
-        <input
-          ref={attachInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden-input"
-          onChange={handleAttachPick}
-        />
+        {showFormatMenu ? (
+          <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
+            <div className="ribbon-group">
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy} title="Bold">
+                B
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy} title="Italic">
+                I
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy} title="Heading 1">
+                H1
+              </button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy} title="Heading 2">
+                H2
+              </button>
+              <label className="mini-field mini-field-icon" title="Text color">
+                A
+                <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+              </label>
+              <button
+                type="button"
+                className="ghost icon-tool"
+                onMouseDown={preserveSelection}
+                onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
+                disabled={inlineBusy || busy}
+                title="Apply text color"
+              >
+                Color
+              </button>
+              <label className="mini-field mini-field-icon" title="Highlight color">
+                Bg
+                <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+              </label>
+              <button
+                type="button"
+                className="ghost icon-tool"
+                onMouseDown={preserveSelection}
+                onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
+                disabled={inlineBusy || busy}
+                title="Apply highlight"
+              >
+                Highlight
+              </button>
+              <span className="ribbon-caption">Text</span>
+            </div>
+
+            <div className="ribbon-group">
+              <select
+                className={`style-select ${handStyle}`}
+                value={handStyle}
+                onChange={(e) => applyHandStyle(e.target.value)}
+                title="Select handwriting style"
+              >
+                {handStyles.map((style) => (
+                  <option key={style.value} value={style.value}>
+                    {style.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={`ghost hand-sample ${handStyle}`}
+                onMouseDown={preserveSelection}
+                onClick={() => applyHandStyle(handStyle)}
+                disabled={inlineBusy || busy}
+                title="Apply selected handwriting to selected text"
+              >
+                Sample
+              </button>
+              <button
+                type="button"
+                className="ghost hand-action icon-tool"
+                onMouseDown={preserveSelection}
+                onClick={() => applyHandStyle(handStyle)}
+                disabled={inlineBusy || busy}
+                title="Wrap selected text with handwriting style"
+              >
+                Pen
+              </button>
+              <span className="ribbon-caption">Styles</span>
+            </div>
+
+            <div className="ribbon-group">
+              <button
+                type="button"
+                className="ghost"
+                onClick={insertCodeTemplate}
+                disabled={inlineBusy || busy}
+              >
+                Insert Code
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={insertCodeMarkerTemplate}
+                disabled={inlineBusy || busy}
+              >
+                Insert codestart/codeend
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => attachInputRef.current?.click()}
+                disabled={inlineBusy || busy}
+              >
+                Attach Image/Video
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={removeLastMediaToken}
+                disabled={inlineBusy || busy}
+              >
+                Remove Last Image/Video
+              </button>
+              <input
+                ref={attachInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden-input"
+                onChange={handleAttachPick}
+              />
+              <span className="ribbon-caption">Media & Code</span>
+            </div>
+          </div>
+        ) : null}
       </div>
       <textarea
         ref={textareaRef}
