@@ -977,3 +977,82 @@ button.danger {
   tab-size: 2;
 }
 
+
+@media (max-width: 760px) {
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+  }
+
+  .header-left {
+    align-items: center;
+  }
+
+  .header-right {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .header-right .username-btn,
+  .header-right .guest-pill,
+  .header-right .ghost,
+  .header-right .notification-wrap,
+  .header-right .notification-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .notification-wrap {
+    position: static;
+  }
+
+  .notification-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 132px;
+    max-height: min(60vh, 420px);
+    width: auto;
+    z-index: 120;
+  }
+
+  .floating-toolbar {
+    padding-top: 6px;
+  }
+
+  .discover-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    overflow: visible;
+  }
+
+  .discover-row input,
+  .discover-row select,
+  .discover-row .cta-publish {
+    width: 100%;
+    height: 56px;
+  }
+
+  .discover-row > * {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .content-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .header-right {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .notification-panel {
+    top: 120px;
+  }
+}
