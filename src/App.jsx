@@ -78,6 +78,113 @@ function buildReadableParagraphs(rawText) {
   return grouped
 }
 
+function renderInlineRichText(text, keyPrefix = 'rt') {
+  const source = String(text || '')
+  if (!source) return null
+
+  const patterns = [
+    {
+      re: /\[color=([#a-zA-Z0-9(),.\s%-]+)\]([\s\S]*?)\[\/color\]/,
+      render: (match, children, key) => (
+        <span key={key} style={{ color: match[1].trim() }}>
+          {children}
+        </span>
+      ),
+    },
+    {
+      re: /\[bg=([#a-zA-Z0-9(),.\s%-]+)\]([\s\S]*?)\[\/bg\]/,
+      render: (match, children, key) => (
+        <span key={key} style={{ background: match[1].trim(), padding: '0 2px', borderRadius: '4px' }}>
+          {children}
+        </span>
+      ),
+    },
+    {
+      re: /\[(hand1|hand2|hand3)\]([\s\S]*?)\[\/\1\]/,
+      render: (match, children, key) => (
+        <span key={key} className={match[1]}>
+          {children}
+        </span>
+      ),
+    },
+    {
+      re: /\*\*([^*]+)\*\*/,
+      render: (_match, children, key) => <strong key={key}>{children}</strong>,
+    },
+    {
+      re: /_([^_]+)_/,
+      render: (_match, children, key) => <em key={key}>{children}</em>,
+    },
+  ]
+
+  for (let i = 0; i < patterns.length; i += 1) {
+    const { re, render } = patterns[i]
+    const m = source.match(re)
+    if (!m || m.index === undefined) continue
+    const start = m.index
+    const end = start + m[0].length
+    const before = source.slice(0, start)
+    const after = source.slice(end)
+    const inner = m[2] ?? m[1]
+    return [
+      ...(before ? renderInlineRichText(before, `${keyPrefix}-b-${i}`) : []),
+      render(m, renderInlineRichText(inner, `${keyPrefix}-m-${i}`), `${keyPrefix}-v-${i}`),
+      ...(after ? renderInlineRichText(after, `${keyPrefix}-a-${i}`) : []),
+    ]
+  }
+
+  return [source]
+}
+
+function renderStyledTextBlock(text, keyPrefix = 'txt') {
+  const lines = String(text || '').split('\n')
+  const blocks = []
+  let paraLines = []
+
+  const flushParagraph = (suffix) => {
+    if (!paraLines.length) return
+    blocks.push(
+      <p key={`${keyPrefix}-p-${suffix}`}>
+        {paraLines.map((line, idx) => (
+          <span key={`${keyPrefix}-p-${suffix}-${idx}`}>
+            {renderInlineRichText(line, `${keyPrefix}-pi-${suffix}-${idx}`)}
+            {idx < paraLines.length - 1 ? <br /> : null}
+          </span>
+        ))}
+      </p>,
+    )
+    paraLines = []
+  }
+
+  lines.forEach((rawLine, index) => {
+    const line = rawLine.trimEnd()
+    if (!line.trim()) {
+      flushParagraph(index)
+      return
+    }
+
+    const h3 = line.match(/^###\s+(.+)/)
+    const h2 = line.match(/^##\s+(.+)/)
+    const h1 = line.match(/^#\s+(.+)/)
+    if (h1 || h2 || h3) {
+      flushParagraph(index)
+      const headingText = (h1?.[1] || h2?.[1] || h3?.[1] || '').trim()
+      const className = h1 ? 'rich-h1' : h2 ? 'rich-h2' : 'rich-h3'
+      blocks.push(
+        <div className={className} key={`${keyPrefix}-h-${index}`}>
+          {renderInlineRichText(headingText, `${keyPrefix}-h-${index}`)}
+        </div>,
+      )
+      return
+    }
+
+    paraLines.push(line)
+  })
+
+  flushParagraph('last')
+  return blocks
+}
+
 const INLINE_MEDIA_RE = /^\[\[(img|vid):(.+)\]\]$/
 const MD_IMAGE_RE = /^!\[[^\]]*]\(([^)]+)\)$/
 
@@ -1789,9 +1896,7 @@ function FullPostView({
           if (block.type === 'code') {
             return <CodeBlock key={`${post.id}-full-code-${index}`} code={block.code} lang={block.lang} />
           }
-          return buildReadableParagraphs(block.value).map((paragraph, pIndex) => (
-            <p key={`${post.id}-full-text-${index}-${pIndex}`}>{paragraph}</p>
-          ))
+          return renderStyledTextBlock(block.value, `${post.id}-full-text-${index}`)
         })}
       </div>
 

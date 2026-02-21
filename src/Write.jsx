@@ -9,6 +9,9 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   )
   const [inlineBusy, setInlineBusy] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
+  const [textColor, setTextColor] = useState('#0f4c81')
+  const [bgColor, setBgColor] = useState('#fff59d')
+  const [handStyle, setHandStyle] = useState('hand1')
   const textareaRef = useRef(null)
   const attachInputRef = useRef(null)
 
@@ -38,6 +41,40 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
   const insertCodeMarkerTemplate = () => {
     insertAtCursor('\ncodestart js\n// Write code here\ncodeend\n')
+  }
+
+  const wrapSelection = (prefix, suffix, placeholder = 'text') => {
+    const ta = textareaRef.current
+    const value = form.content || ''
+    if (!ta) {
+      insertAtCursor(`${prefix}${placeholder}${suffix}`)
+      return
+    }
+
+    const start = ta.selectionStart ?? value.length
+    const end = ta.selectionEnd ?? value.length
+    const selected = value.slice(start, end) || placeholder
+    const replacement = `${prefix}${selected}${suffix}`
+    const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
+    setForm((prev) => ({ ...prev, content: next }))
+
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(start, start + replacement.length)
+    })
+  }
+
+  const removeLastMediaToken = () => {
+    setForm((prev) => {
+      const content = prev.content || ''
+      const matches = [...content.matchAll(/\n?\[\[(img|vid):.+?\]\]\n?/g)]
+      if (!matches.length) return prev
+      const last = matches[matches.length - 1]
+      const start = last.index
+      const end = start + last[0].length
+      const next = `${content.slice(0, start)}${content.slice(end)}`
+      return { ...prev, content: next.replace(/\n{3,}/g, '\n\n') }
+    })
   }
 
   const insertUploadedFile = async (file, kind) => {
@@ -185,6 +222,57 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <label>Content</label>
+      <div className="inline-toolbar">
+        <button type="button" className="ghost" onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy}>
+          Bold
+        </button>
+        <button type="button" className="ghost" onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy}>
+          Italic
+        </button>
+        <button type="button" className="ghost" onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy}>
+          H1
+        </button>
+        <button type="button" className="ghost" onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy}>
+          H2
+        </button>
+        <label className="mini-field">
+          Text
+          <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+        </label>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
+          disabled={inlineBusy || busy}
+        >
+          Apply Text Color
+        </button>
+        <label className="mini-field">
+          Highlight
+          <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+        </label>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
+          disabled={inlineBusy || busy}
+        >
+          Apply Highlight
+        </button>
+        <select value={handStyle} onChange={(e) => setHandStyle(e.target.value)} disabled={inlineBusy || busy}>
+          <option value="hand1">Handwritten 1</option>
+          <option value="hand2">Handwritten 2</option>
+          <option value="hand3">Handwritten 3</option>
+        </select>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => wrapSelection(`[${handStyle}]`, `[/${handStyle}]`, 'handwritten text')}
+          disabled={inlineBusy || busy}
+        >
+          Apply Handwriting
+        </button>
+      </div>
       <div className="button-row">
         <button
           type="button"
@@ -210,6 +298,14 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         >
           Attach Image/Video
         </button>
+        <button
+          type="button"
+          className="ghost"
+          onClick={removeLastMediaToken}
+          disabled={inlineBusy || busy}
+        >
+          Remove Last Image/Video
+        </button>
         <input
           ref={attachInputRef}
           type="file"
@@ -231,7 +327,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <small>
-        Tip: Use `codestart js` and `codeend` for code. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
+        Tip: Use **bold**, _italic_, # headings, [color=#hex]text[/color], [bg=#hex]text[/bg], [hand1|hand2|hand3]text[/...]. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
       </small>
 
       <div className="writer-stats">
