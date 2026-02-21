@@ -114,8 +114,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     setHandStyle(style)
     const ta = textareaRef.current
     const value = form.content || ''
-    const start = ta?.selectionStart ?? value.length
-    const end = ta?.selectionEnd ?? value.length
+    let start = ta?.selectionStart ?? value.length
+    let end = ta?.selectionEnd ?? value.length
+    if (start === end && selectionRef.current.end > selectionRef.current.start) {
+      start = selectionRef.current.start
+      end = selectionRef.current.end
+    }
     if (start !== end) {
       wrapSelection(`[${style}]`, `[/${style}]`, 'handwritten text')
     }
@@ -322,7 +326,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           <select
             className={`style-select ${handStyle}`}
             value={handStyle}
-            onChange={(e) => setHandStyle(e.target.value)}
+            onChange={(e) => applyHandStyle(e.target.value)}
             title="Select handwriting style"
           >
             {handStyles.map((style) => (

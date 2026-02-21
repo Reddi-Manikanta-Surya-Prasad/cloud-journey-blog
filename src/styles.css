@@ -565,7 +565,9 @@ body::-webkit-scrollbar {
 }
 
 .icon-action .icon {
-  font-size: 1rem;
+  width: 1.2em;
+  text-align: center;
+  font-size: 1.02rem;
   line-height: 1;
 }
 
@@ -864,30 +866,37 @@ body::-webkit-scrollbar {
 
 .hand4 {
   font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+  letter-spacing: 0.2px;
 }
 
 .hand5 {
   font-family: 'Lucida Handwriting', 'Brush Script MT', cursive;
+  font-style: italic;
 }
 
 .hand6 {
   font-family: 'Bradley Hand', 'Segoe Script', cursive;
+  letter-spacing: 0.35px;
 }
 
 .hand7 {
   font-family: 'Brush Script MT', 'Snell Roundhand', cursive;
+  font-size: 1.04em;
 }
 
 .hand8 {
   font-family: 'Chalkboard SE', 'Comic Sans MS', cursive;
+  font-weight: 600;
 }
 
 .hand9 {
   font-family: 'Papyrus', 'Segoe Print', cursive;
+  letter-spacing: 0.45px;
 }
 
 .hand10 {
   font-family: 'Monotype Corsiva', 'Lucida Handwriting', cursive;
+  font-size: 1.06em;
 }
 
 .inline-toolbar .hand-action {

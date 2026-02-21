@@ -1909,7 +1909,7 @@ function FullPostView({
           aria-label="Like post"
           title="Like"
         >
-          <span className="icon">{postLiked ? 'Liked' : 'Like'}</span>
+          <span className="icon">{postLiked ? '\u2665' : '\u2661'}</span>
           <span>{post.likes.length}</span>
         </button>
         <button
@@ -1922,7 +1922,7 @@ function FullPostView({
           aria-label="Comment"
           title="Comment"
         >
-          <span className="icon">Cmt</span>
+          <span className="icon">{'\u{1F4AC}'}</span>
           <span>{post.comments.length}</span>
         </button>
         <button
@@ -1932,7 +1932,7 @@ function FullPostView({
           aria-label="Copy share link"
           title="Copy link"
         >
-          <span className="icon">Link</span>
+          <span className="icon">{'\u{1F517}'}</span>
         </button>
         <button
           className={`ghost icon-action ${saved ? 'saved-active' : ''}`}
@@ -1941,7 +1941,7 @@ function FullPostView({
           aria-label="Save post"
           title="Save"
         >
-          <span className="icon">{saved ? 'Saved' : 'Save'}</span>
+          <span className="icon">{saved ? '\u2605' : '\u2606'}</span>
         </button>
         <button
           className={`ghost icon-action ${speaking ? 'saved-active' : ''}`}
@@ -1950,7 +1950,7 @@ function FullPostView({
           aria-label="Listen to post"
           title="Listen"
         >
-          <span className="icon">{speaking ? 'Stop' : 'Play'}</span>
+          <span className="icon">{speaking ? '\u23F9' : '\u25B6'}</span>
           <span>{speaking ? 'Stop' : 'Listen'}</span>
         </button>
       </div>
