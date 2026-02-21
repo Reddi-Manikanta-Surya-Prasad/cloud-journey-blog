@@ -1203,12 +1203,61 @@ body::-webkit-scrollbar {
 
 .list-tool {
   min-width: 86px;
+  gap: 6px;
 }
 
 .list-preview {
   font-size: 0.96rem;
   font-weight: 700;
   letter-spacing: 0.4px;
+}
+
+.list-menu-wrap {
+  position: relative;
+}
+
+.list-menu-wrap .chev {
+  font-size: 0.75rem;
+  color: #4a6b92;
+}
+
+.list-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 252px;
+  border: 1px solid #c9def9;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(15, 40, 73, 0.2);
+  padding: 10px;
+  z-index: 30;
+}
+
+.list-menu-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #2f5786;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.list-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.list-menu-grid.numbers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.list-choice {
+  min-height: 40px;
+  border: 1px solid #d4e5fb;
+  border-radius: 10px;
+  font-weight: 700;
+  color: #1f4a7a;
 }
 
 .color-icon-tool .color-a {

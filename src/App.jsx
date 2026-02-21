@@ -5,6 +5,7 @@ import {
   fetchUserAttributes,
   fetchAuthSession,
   getCurrentUser,
+  resetPassword,
   signIn,
   signInWithRedirect,
   signOut,
@@ -847,17 +848,32 @@ function App() {
 
   const adminUsers = useMemo(() => {
     const map = new Map()
+    const upsert = (sub, name, email = '') => {
+      if (!sub) return
+      const prev = map.get(sub) || { sub, name: sub, email: '' }
+      map.set(sub, {
+        sub,
+        name: name || prev.name || sub,
+        email: email || prev.email || '',
+      })
+    }
     posts.forEach((p) => {
-      if (p.authorSub) map.set(p.authorSub, p.authorName || p.authorSub)
+      upsert(p.authorSub, p.authorName || p.authorSub)
     })
     comments.forEach((c) => {
-      if (c.authorSub && !map.has(c.authorSub)) map.set(c.authorSub, c.authorName || c.authorSub)
+      upsert(c.authorSub, c.authorName || c.authorSub)
     })
     postLikes.forEach((l) => {
-      if (l.likerSub && !map.has(l.likerSub)) map.set(l.likerSub, l.likerName || l.likerSub)
+      upsert(l.likerSub, l.likerName || l.likerSub)
     })
-    return Array.from(map.entries()).map(([sub, name]) => ({ sub, name }))
-  }, [posts, comments, postLikes])
+    if (currentUser?.userId) {
+      const fallbackEmail = String(currentUser?.username || '').includes('@')
+        ? currentUser.username
+        : ''
+      upsert(currentUser.userId, displayName || currentUser.userId, userAttrs.email || fallbackEmail)
+    }
+    return Array.from(map.values())
+  }, [posts, comments, postLikes, currentUser, displayName, userAttrs.email])
 
   const activeUsersByDay = useMemo(() => {
     const dayMap = new Map()
@@ -1360,6 +1376,61 @@ function App() {
     }
   }
 
+  const adminTriggerPasswordReset = async (user) => {
+    if (!ensureAuth() || !isAdmin) return
+    const defaultEmail = (user?.email || '').trim()
+    const input = window.prompt('Enter user email for password reset', defaultEmail)
+    if (!input) return
+    const email = input.trim().toLowerCase()
+    if (!email.includes('@')) {
+      alert('Valid email is required.')
+      return
+    }
+    try {
+      await resetPassword({ username: email })
+      alert(`Password reset code sent to ${email}.`)
+    } catch (err) {
+      console.error(err)
+      alert('Could not trigger password reset. Check email and Cognito setup.')
+    }
+  }
+
+  const adminResetAccount = async (user) => {
+    if (!ensureAuth() || !isAdmin || !user?.sub) return
+    const ok = window.confirm(
+      'Soft reset this account? This blocks user and anonymizes their display names on posts/comments.',
+    )
+    if (!ok) return
+    try {
+      await setUserBlocked(user.sub, true, 'Account reset by admin')
+
+      const ownedPosts = posts.filter((p) => p.authorSub === user.sub)
+      const ownedComments = comments.filter((c) => c.authorSub === user.sub)
+
+      await Promise.allSettled(
+        ownedPosts.map((p) =>
+          client.models.Post.update({
+            id: p.id,
+            authorName: 'Reset User',
+          }),
+        ),
+      )
+      await Promise.allSettled(
+        ownedComments.map((c) =>
+          client.models.Comment.update({
+            id: c.id,
+            authorName: 'Reset User',
+          }),
+        ),
+      )
+      await refreshData(false)
+      alert('Account reset completed.')
+    } catch (err) {
+      console.error(err)
+      alert('Could not reset account.')
+    }
+  }
+
   const togglePostLike = async (postId) => {
     if (!ensureAuth()) return
 
@@ -1736,6 +1807,7 @@ function App() {
                 <thead>
                   <tr>
                     <th>User</th>
+                    <th>Email</th>
                     <th>Sub</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -1747,9 +1819,16 @@ function App() {
                     return (
                       <tr key={u.sub}>
                         <td>{u.name || 'User'}</td>
+                        <td>{u.email || '-'}</td>
                         <td>{u.sub}</td>
                         <td>{blocked ? 'Blocked' : 'Active'}</td>
-                        <td>
+                        <td className="admin-actions">
+                          <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>
+                            Reset Password
+                          </button>
+                          <button className="ghost" onClick={() => adminResetAccount(u)}>
+                            Reset Account
+                          </button>
                           {blocked ? (
                             <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>
                               Unblock

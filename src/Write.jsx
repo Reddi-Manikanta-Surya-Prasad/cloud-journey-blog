@@ -288,6 +288,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [bgColor, setBgColor] = useState('#fff59d')
   const [handStyle, setHandStyle] = useState('hand1')
   const [showFormatMenu, setShowFormatMenu] = useState(true)
+  const [showNumberMenu, setShowNumberMenu] = useState(false)
+  const [showBulletMenu, setShowBulletMenu] = useState(false)
   const [showPainter, setShowPainter] = useState(false)
   const [showDiagram, setShowDiagram] = useState(false)
   const [activeTarget, setActiveTarget] = useState('content')
@@ -299,6 +301,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const titleEditorRef = useRef(null)
   const editorRef = useRef(null)
   const attachInputRef = useRef(null)
+  const numberMenuRef = useRef(null)
+  const bulletMenuRef = useRef(null)
   const painterCanvasRef = useRef(null)
   const painterWrapRef = useRef(null)
   const painterDrawingRef = useRef(false)
@@ -375,6 +379,21 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         if (styleType === 'star') node.style.listStyleType = '"✶ "'
         else if (styleType === 'dash') node.style.listStyleType = '"- "'
         else node.style.listStyleType = styleType
+        break
+      }
+      node = node.parentNode
+    }
+    updateEditorHtmlState()
+  }
+
+  const applyOrderedStyle = (styleType) => {
+    runCommand('insertOrderedList', null, 'content')
+    const selection = window.getSelection()
+    if (!selection || !selection.anchorNode) return
+    let node = selection.anchorNode
+    while (node && node !== editorRef.current) {
+      if (node.nodeName?.toLowerCase() === 'ol') {
+        node.style.listStyleType = styleType
         break
       }
       node = node.parentNode
@@ -638,6 +657,19 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     void generateDiagram()
   }, [showDiagram])
 
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (showNumberMenu && numberMenuRef.current && !numberMenuRef.current.contains(e.target)) {
+        setShowNumberMenu(false)
+      }
+      if (showBulletMenu && bulletMenuRef.current && !bulletMenuRef.current.contains(e.target)) {
+        setShowBulletMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [showNumberMenu, showBulletMenu])
+
   const handleEditorKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
@@ -722,24 +754,60 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
               <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2" aria-label="Heading 2">
                 <span className="icon-glyph">H2</span>
               </button>
-              <button type="button" className="ghost icon-tool list-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bulleted list" aria-label="Bulleted list">
-                <span className="list-preview">{'\u2022'} {`\u2013`} {`\u2013`}</span>
-              </button>
-              <button type="button" className="ghost icon-tool list-tool" onMouseDown={preserveSelection} onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list" aria-label="Numbered list">
-                <span className="list-preview">1. {`\u2013`} {`\u2013`}</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet" aria-label="Circle bullet">
-                <span className="icon-glyph">{'\u25E6'}</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet" aria-label="Square bullet">
-                <span className="icon-glyph">{'\u25AA'}</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet" aria-label="Star bullet">
-                <span className="icon-glyph">*</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash bullet" aria-label="Dash bullet">
-                <span className="icon-glyph">{`\u2013`}</span>
-              </button>
+              <div className="list-menu-wrap" ref={bulletMenuRef}>
+                <button
+                  type="button"
+                  className="ghost icon-tool list-tool"
+                  onMouseDown={preserveSelection}
+                  onClick={() => setShowBulletMenu((v) => !v)}
+                  disabled={inlineBusy || busy}
+                  title="Bullets"
+                  aria-label="Bullets"
+                >
+                  <span className="list-preview">{'\u2022'} {`\u2013`} {`\u2013`}</span>
+                  <span className="chev">▾</span>
+                </button>
+                {showBulletMenu ? (
+                  <div className="list-menu-panel">
+                    <div className="list-menu-title">Bullet Library</div>
+                    <div className="list-menu-grid">
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { runCommand('insertUnorderedList', null, 'content'); setShowBulletMenu(false) }} title="Default bullet">•</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('disc'); setShowBulletMenu(false) }} title="Dot bullet">•</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('circle'); setShowBulletMenu(false) }} title="Circle bullet">◦</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('square'); setShowBulletMenu(false) }} title="Square bullet">▪</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('star'); setShowBulletMenu(false) }} title="Star bullet">*</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('dash'); setShowBulletMenu(false) }} title="Dash bullet">–</button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="list-menu-wrap" ref={numberMenuRef}>
+                <button
+                  type="button"
+                  className="ghost icon-tool list-tool"
+                  onMouseDown={preserveSelection}
+                  onClick={() => setShowNumberMenu((v) => !v)}
+                  disabled={inlineBusy || busy}
+                  title="Numbering"
+                  aria-label="Numbering"
+                >
+                  <span className="list-preview">1. {`\u2013`} {`\u2013`}</span>
+                  <span className="chev">▾</span>
+                </button>
+                {showNumberMenu ? (
+                  <div className="list-menu-panel">
+                    <div className="list-menu-title">Numbering Library</div>
+                    <div className="list-menu-grid numbers">
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('decimal'); setShowNumberMenu(false) }} title="1. 2. 3.">1.</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('decimal-leading-zero'); setShowNumberMenu(false) }} title="01. 02. 03.">01.</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('upper-alpha'); setShowNumberMenu(false) }} title="A. B. C.">A.</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('lower-alpha'); setShowNumberMenu(false) }} title="a. b. c.">a.</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('upper-roman'); setShowNumberMenu(false) }} title="I. II. III.">I.</button>
+                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('lower-roman'); setShowNumberMenu(false) }} title="i. ii. iii.">i.</button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <label className="mini-field mini-field-icon" title="Text color">
                 <span className="swatch-label">A</span>
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
