@@ -2524,7 +2524,10 @@ function FullPostView({
       return
     }
     const text = contentToSpeechText(post.content)
-    if (!text) return
+    if (!text) {
+      alert('No readable text found for audio mode.')
+      return
+    }
 
     const speakNow = () => {
       const utterance = new SpeechSynthesisUtterance(`${post.title}. ${text}`)
