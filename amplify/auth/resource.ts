@@ -11,11 +11,17 @@ export const auth = defineAuth({
       },
       callbackUrls: [
         'http://localhost:5173/',
+        'https://main.d14oin3rflwldw.amplifyapp.com/',
+        'https://cloudjourney.suryareddi.in/',
         'https://clouddjourney.suryareddi.in/',
+        'https://djourney.suryareddi.in/',
       ],
       logoutUrls: [
         'http://localhost:5173/',
+        'https://main.d14oin3rflwldw.amplifyapp.com/',
+        'https://cloudjourney.suryareddi.in/',
         'https://clouddjourney.suryareddi.in/',
+        'https://djourney.suryareddi.in/',
       ],
     },
   },
