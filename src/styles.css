@@ -774,6 +774,59 @@ body::-webkit-scrollbar {
   overflow: auto;
 }
 
+.painter-modal,
+.diagram-modal {
+  width: min(980px, 94vw);
+  max-height: 88vh;
+  overflow: auto;
+}
+
+.painter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.painter-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: #2a4f7d;
+}
+
+.painter-canvas-wrap {
+  border: 1px solid #d4e5fb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+}
+
+.painter-canvas {
+  width: 100%;
+  min-height: 360px;
+  border-radius: 8px;
+  touch-action: none;
+  background: #fff;
+  cursor: crosshair;
+}
+
+.diagram-preview {
+  margin-top: 10px;
+  border: 1px solid #d4e5fb;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  overflow: auto;
+}
+
+.diagram-preview svg {
+  width: 100%;
+  height: auto;
+}
+
 .draft-pill {
   margin: 0 0 8px;
   border-radius: 10px;

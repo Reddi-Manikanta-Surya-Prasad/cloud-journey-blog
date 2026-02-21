@@ -1,24 +1,216 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 function sanitizeEditorHtml(html) {
   const raw = String(html || '')
   if (!raw.trim()) return ''
-  let next = raw
+  return raw
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
     .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
     .replace(/javascript:/gi, '')
-  return next.trim()
+    .trim()
+}
+
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function stripLegacyInlineTags(text) {
+  return String(text || '')
+    .replace(/\[color=[^\]]+]/gi, '')
+    .replace(/\[\/color]/gi, '')
+    .replace(/\[bg=[^\]]+]/gi, '')
+    .replace(/\[\/bg]/gi, '')
+    .replace(/\[(?:\/)?hand(?:10|[1-9])?]/gi, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .trim()
+}
+
+function convertLegacyInlineToHtml(text) {
+  let html = escapeHtml(text || '')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>')
+  html = html.replace(
+    /\[color=([#a-zA-Z0-9(),.\s%-]+)\]([\s\S]*?)\[\/color]/gi,
+    '<span style="color:$1">$2</span>',
+  )
+  html = html.replace(
+    /\[bg=([#a-zA-Z0-9(),.\s%-]+)\]([\s\S]*?)\[\/bg]/gi,
+    '<span style="background:$1;padding:0 2px;border-radius:4px;">$2</span>',
+  )
+  html = html.replace(/\[(hand(?:10|[1-9])?)\]([\s\S]*?)\[\/\1]/gi, '<span class="$1">$2</span>')
+  html = html.replace(/\[(?:\/)?hand(?:10|[1-9])?]/gi, '')
+  return html
+}
+
+function legacyTextToHtml(text) {
+  const source = String(text || '').replace(/\r\n/g, '\n')
+  if (!source.trim()) return ''
+
+  const lines = source.split('\n')
+  let html = ''
+  let i = 0
+  let inUl = false
+  let inOl = false
+
+  const closeLists = () => {
+    if (inUl) {
+      html += '</ul>'
+      inUl = false
+    }
+    if (inOl) {
+      html += '</ol>'
+      inOl = false
+    }
+  }
+
+  while (i < lines.length) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      closeLists()
+      html += '<p><br></p>'
+      i += 1
+      continue
+    }
+
+    if (/^codestart\b/i.test(trimmed)) {
+      closeLists()
+      const codeLines = []
+      i += 1
+      while (i < lines.length && !/^codeend\b/i.test(lines[i].trim())) {
+        codeLines.push(lines[i])
+        i += 1
+      }
+      html += `<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`
+      i += 1
+      continue
+    }
+
+    if (trimmed.startsWith('```')) {
+      closeLists()
+      const codeLines = []
+      i += 1
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i])
+        i += 1
+      }
+      html += `<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`
+      i += 1
+      continue
+    }
+
+    const media = trimmed.match(/^\[\[(img|vid):(.+)\]\]$/i)
+    if (media) {
+      closeLists()
+      const src = media[2].trim()
+      html +=
+        media[1].toLowerCase() === 'vid'
+          ? `<p><video data-inline-media="1" controls playsinline preload="metadata" src="${src}"></video></p>`
+          : `<p><img data-inline-media="1" src="${src}" alt="Inline media" loading="lazy" decoding="async" /></p>`
+      i += 1
+      continue
+    }
+
+    const h1 = trimmed.match(/^#\s+(.+)/)
+    const h2 = trimmed.match(/^##\s+(.+)/)
+    const h3 = trimmed.match(/^###\s+(.+)/)
+    if (h1 || h2 || h3) {
+      closeLists()
+      if (h1) html += `<h1>${convertLegacyInlineToHtml(h1[1])}</h1>`
+      else if (h2) html += `<h2>${convertLegacyInlineToHtml(h2[1])}</h2>`
+      else html += `<h3>${convertLegacyInlineToHtml(h3[1])}</h3>`
+      i += 1
+      continue
+    }
+
+    const ordered = trimmed.match(/^(\d+)[.)]\s+(.+)$/)
+    const unordered = trimmed.match(/^([-*•●◦○])\s+(.+)$/)
+    if (ordered) {
+      if (inUl) {
+        html += '</ul>'
+        inUl = false
+      }
+      if (!inOl) {
+        html += '<ol>'
+        inOl = true
+      }
+      html += `<li>${convertLegacyInlineToHtml(ordered[2])}</li>`
+      i += 1
+      continue
+    }
+    if (unordered) {
+      if (inOl) {
+        html += '</ol>'
+        inOl = false
+      }
+      if (!inUl) {
+        html += '<ul>'
+        inUl = true
+      }
+      html += `<li>${convertLegacyInlineToHtml(unordered[2])}</li>`
+      i += 1
+      continue
+    }
+
+    closeLists()
+    html += `<p>${convertLegacyInlineToHtml(line)}</p>`
+    i += 1
+  }
+
+  closeLists()
+  return html
+}
+
+function normalizeEditorContent(value) {
+  const raw = String(value || '')
+  if (!raw.trim()) return ''
+  const looksHtml = /<(p|div|span|strong|em|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(raw)
+  return sanitizeEditorHtml(looksHtml ? raw : legacyTextToHtml(raw))
 }
 
 function stripHtmlForStats(html) {
   return String(html || '')
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, '\n')
+    .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6|pre|code|ul|ol)>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+async function dataUrlToFile(dataUrl, filename) {
+  const res = await fetch(dataUrl)
+  const blob = await res.blob()
+  return new File([blob], filename, { type: 'image/png' })
+}
+
+async function svgToPngDataUrl(svg, width = 1600, height = 900) {
+  const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(svgBlob)
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = reject
+      i.src = url
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, width, height)
+    ctx.drawImage(img, 0, 0, width, height)
+    return canvas.toDataURL('image/png')
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUpload, draftKey }) {
@@ -35,8 +227,19 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     { value: 'hand10', label: 'Hand 10' },
   ]
 
+  const normalizedInitial = useMemo(
+    () =>
+      initialValue
+        ? {
+            title: stripLegacyInlineTags(initialValue.title || ''),
+            content: normalizeEditorContent(initialValue.content || ''),
+          }
+        : null,
+    [initialValue],
+  )
+
   const [form, setForm] = useState(
-    initialValue || {
+    normalizedInitial || {
       title: '',
       content: '',
     },
@@ -47,9 +250,23 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [bgColor, setBgColor] = useState('#fff59d')
   const [handStyle, setHandStyle] = useState('hand1')
   const [showFormatMenu, setShowFormatMenu] = useState(true)
+  const [showPainter, setShowPainter] = useState(false)
+  const [showDiagram, setShowDiagram] = useState(false)
+  const [diagramCode, setDiagramCode] = useState(
+    'flowchart TD\n  A[User] --> B[Amplify Hosting]\n  B --> C[App]\n  C --> D[Cognito]\n  C --> E[Data]\n  C --> F[Storage]',
+  )
+  const [diagramSvg, setDiagramSvg] = useState('')
+  const [diagramErr, setDiagramErr] = useState('')
   const titleRef = useRef(null)
   const editorRef = useRef(null)
   const attachInputRef = useRef(null)
+  const painterCanvasRef = useRef(null)
+  const painterWrapRef = useRef(null)
+  const painterDrawingRef = useRef(false)
+  const painterLastRef = useRef({ x: 0, y: 0 })
+  const [paintColor, setPaintColor] = useState('#143a66')
+  const [paintSize, setPaintSize] = useState(3)
+  const [paintEraser, setPaintEraser] = useState(false)
 
   const updateEditorHtmlState = () => {
     const html = editorRef.current?.innerHTML || ''
@@ -72,7 +289,6 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if (!selection || !selection.rangeCount) return
     const range = selection.getRangeAt(0)
 
-    // If nothing selected, apply style to all editor content.
     if (selection.isCollapsed) {
       const current = editor.innerHTML || ''
       if (!current.trim()) return
@@ -110,17 +326,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   }
 
   const insertCodeTemplate = () => {
-    runCommand(
-      'insertHTML',
-      '<pre><code>// Write code here</code></pre><p><br></p>',
-    )
+    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>')
   }
 
   const insertCodeMarkerTemplate = () => {
-    runCommand(
-      'insertHTML',
-      '<pre><code>// Write code here</code></pre><p><br></p>',
-    )
+    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>')
   }
 
   const removeLastMediaNode = () => {
@@ -152,6 +362,29 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       alert('Could not upload file for inline insertion.')
     } finally {
       setInlineBusy(false)
+    }
+  }
+
+  const autoAttachPainterImage = async () => {
+    const canvas = painterCanvasRef.current
+    if (!canvas) return
+    try {
+      const dataUrl = canvas.toDataURL('image/png')
+      const file = await dataUrlToFile(dataUrl, `paint-${Date.now()}.png`)
+      await insertUploadedFile(file, 'img')
+    } catch {
+      alert('Could not attach painter image.')
+    }
+  }
+
+  const autoAttachDiagramImage = async () => {
+    if (!diagramSvg) return
+    try {
+      const dataUrl = await svgToPngDataUrl(diagramSvg)
+      const file = await dataUrlToFile(dataUrl, `diagram-${Date.now()}.png`)
+      await insertUploadedFile(file, 'img')
+    } catch {
+      alert('Could not attach diagram image.')
     }
   }
 
@@ -188,9 +421,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     e.preventDefault()
     const cleanedContent = sanitizeEditorHtml(form.content)
     if (!form.title.trim() || !cleanedContent.trim() || busy || inlineBusy) return
-
     onSubmit({
-      title: form.title.trim(),
+      title: stripLegacyInlineTags(form.title.trim()),
       content: cleanedContent,
     })
 
@@ -210,6 +442,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   }, [form.content])
 
   useEffect(() => {
+    if (normalizedInitial) {
+      setForm(normalizedInitial)
+    }
+  }, [normalizedInitial])
+
+  useEffect(() => {
     if (initialValue || !draftKey) return
     const saved = localStorage.getItem(draftKey)
     if (!saved) return
@@ -217,25 +455,104 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const parsed = JSON.parse(saved)
       if (parsed?.title || parsed?.content) {
         setForm({
-          title: parsed.title || '',
-          content: sanitizeEditorHtml(parsed.content || ''),
+          title: stripLegacyInlineTags(parsed.title || ''),
+          content: normalizeEditorContent(parsed.content || ''),
         })
         setDraftRestored(true)
       }
     } catch {
-      // Ignore corrupted draft payload.
+      // ignore broken draft
     }
   }, [initialValue, draftKey])
 
   useEffect(() => {
     if (initialValue || !draftKey) return
     const payload = JSON.stringify({
-      title: form.title,
+      title: stripLegacyInlineTags(form.title),
       content: sanitizeEditorHtml(form.content),
       updatedAt: Date.now(),
     })
     localStorage.setItem(draftKey, payload)
   }, [form, draftKey, initialValue])
+
+  useEffect(() => {
+    if (!showPainter) return
+    const canvas = painterCanvasRef.current
+    const wrap = painterWrapRef.current
+    if (!canvas || !wrap) return
+    const dpr = Math.max(window.devicePixelRatio || 1, 1)
+    const width = Math.max(wrap.clientWidth, 600)
+    const height = 360
+    canvas.width = Math.floor(width * dpr)
+    canvas.height = Math.floor(height * dpr)
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    const ctx = canvas.getContext('2d')
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, width, height)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+  }, [showPainter])
+
+  const paintPointerDown = (e) => {
+    const canvas = painterCanvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    painterDrawingRef.current = true
+    painterLastRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    }
+  }
+
+  const paintPointerMove = (e) => {
+    if (!painterDrawingRef.current) return
+    const canvas = painterCanvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const ctx = canvas.getContext('2d')
+    ctx.strokeStyle = paintEraser ? '#ffffff' : paintColor
+    ctx.lineWidth = paintSize
+    ctx.beginPath()
+    ctx.moveTo(painterLastRef.current.x, painterLastRef.current.y)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    painterLastRef.current = { x, y }
+  }
+
+  const paintPointerUp = () => {
+    painterDrawingRef.current = false
+  }
+
+  const clearPainter = () => {
+    const canvas = painterCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight)
+  }
+
+  const generateDiagram = async () => {
+    setDiagramErr('')
+    try {
+      const mermaidModule = await import('mermaid')
+      const mermaid = mermaidModule.default
+      mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' })
+      const id = `diag-${Math.random().toString(36).slice(2, 10)}`
+      const out = await mermaid.render(id, diagramCode || 'graph TD\nA-->B')
+      setDiagramSvg(out.svg)
+    } catch {
+      setDiagramErr('Diagram render failed. Please check Mermaid syntax.')
+    }
+  }
+
+  useEffect(() => {
+    if (!showDiagram) return
+    void generateDiagram()
+  }, [showDiagram])
 
   const handleEditorKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -243,7 +560,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const cleanedContent = sanitizeEditorHtml(form.content)
       if (!form.title.trim() || !cleanedContent.trim() || busy || inlineBusy) return
       onSubmit({
-        title: form.title.trim(),
+        title: stripLegacyInlineTags(form.title.trim()),
         content: cleanedContent,
       })
       if (!initialValue && draftKey) localStorage.removeItem(draftKey)
@@ -279,7 +596,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       <input
         ref={titleRef}
         value={form.title}
-        onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+        onChange={(e) => setForm((prev) => ({ ...prev, title: stripLegacyInlineTags(e.target.value) }))}
         placeholder="Write a strong title"
       />
 
@@ -299,62 +616,26 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         {showFormatMenu ? (
           <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
             <div className="ribbon-group">
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold">
-                B
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic">
-                I
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1">
-                H1
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2">
-                H2
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list">
-                1.
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bullet list">
-                •
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet list">
-                ◦
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet list">
-                ▪
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet list">
-                *
-              </button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash list">
-                -
-              </button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold">B</button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic">I</button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1">H1</button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2">H2</button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list">1.</button>
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bullet list">•</button>
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet list">◦</button>
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet list">▪</button>
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet list">*</button>
+              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash list">-</button>
               <label className="mini-field mini-field-icon" title="Text color">
                 <span className="swatch-label">A</span>
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
               </label>
-              <button
-                type="button"
-                className="ghost icon-tool"
-                onClick={() => runCommand('foreColor', textColor)}
-                disabled={inlineBusy || busy}
-                title="Apply text color"
-              >
-                Color
-              </button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color">Color</button>
               <label className="mini-field mini-field-icon" title="Highlight color">
                 <span className="swatch-label">Bg</span>
                 <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
               </label>
-              <button
-                type="button"
-                className="ghost icon-tool"
-                onClick={() => runCommand('hiliteColor', bgColor)}
-                disabled={inlineBusy || busy}
-                title="Apply highlight"
-              >
-                Highlight
-              </button>
+              <button type="button" className="ghost icon-tool" onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight">Highlight</button>
               <span className="ribbon-caption">Text</span>
             </div>
 
@@ -371,60 +652,18 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                className={`ghost hand-sample ${handStyle}`}
-                onClick={() => wrapSelectionWithClass(handStyle)}
-                disabled={inlineBusy || busy}
-                title="Apply selected handwriting to selected text"
-              >
-                Sample
-              </button>
-              <button
-                type="button"
-                className="ghost hand-action icon-tool"
-                onClick={() => wrapSelectionWithClass(handStyle)}
-                disabled={inlineBusy || busy}
-                title="Apply selected handwriting"
-              >
-                Pen
-              </button>
+              <button type="button" className={`ghost hand-sample ${handStyle}`} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Sample</button>
+              <button type="button" className="ghost hand-action icon-tool" onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Pen</button>
               <span className="ribbon-caption">Styles</span>
             </div>
 
             <div className="ribbon-group">
-              <button
-                type="button"
-                className="ghost"
-                onClick={insertCodeTemplate}
-                disabled={inlineBusy || busy}
-              >
-                Insert Code
-              </button>
-              <button
-                type="button"
-                className="ghost"
-                onClick={insertCodeMarkerTemplate}
-                disabled={inlineBusy || busy}
-              >
-                Insert codestart/codeend
-              </button>
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => attachInputRef.current?.click()}
-                disabled={inlineBusy || busy}
-              >
-                Attach Image/Video
-              </button>
-              <button
-                type="button"
-                className="ghost"
-                onClick={removeLastMediaNode}
-                disabled={inlineBusy || busy}
-              >
-                Remove Last Image/Video
-              </button>
+              <button type="button" className="ghost" onClick={insertCodeTemplate} disabled={inlineBusy || busy}>Insert Code</button>
+              <button type="button" className="ghost" onClick={insertCodeMarkerTemplate} disabled={inlineBusy || busy}>Insert codestart/codeend</button>
+              <button type="button" className="ghost" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy}>Attach Image/Video</button>
+              <button type="button" className="ghost" onClick={removeLastMediaNode} disabled={inlineBusy || busy}>Remove Last Image/Video</button>
+              <button type="button" className="ghost" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy}>Painter</button>
+              <button type="button" className="ghost" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy}>Architecture Diagram</button>
               <input
                 ref={attachInputRef}
                 type="file"
@@ -432,7 +671,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                 className="hidden-input"
                 onChange={handleAttachPick}
               />
-              <span className="ribbon-caption">Media & Code</span>
+              <span className="ribbon-caption">Media & Diagrams</span>
             </div>
           </div>
         ) : null}
@@ -452,7 +691,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <small>
-        Tip: Rich editor mode enabled. You can style selected text directly, like Word/Google Docs. Ctrl+Enter to publish.
+        Tip: WYSIWYG mode is on. No raw [color]/[hand] handlers shown in edit mode. Painter/Diagram exports auto-attach as images.
       </small>
 
       <div className="writer-stats">
@@ -470,6 +709,94 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           </button>
         ) : null}
       </div>
+
+      {showPainter ? (
+        <div className="modal" onClick={() => setShowPainter(false)}>
+          <div className="card painter-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Painter Tool</h3>
+            <div className="painter-controls">
+              <label>
+                Color
+                <input type="color" value={paintColor} onChange={(e) => setPaintColor(e.target.value)} disabled={paintEraser} />
+              </label>
+              <label>
+                Brush
+                <input type="range" min="1" max="24" value={paintSize} onChange={(e) => setPaintSize(Number(e.target.value))} />
+              </label>
+              <button type="button" className={`ghost ${paintEraser ? 'active-like' : ''}`} onClick={() => setPaintEraser((v) => !v)}>
+                Eraser
+              </button>
+              <button type="button" className="ghost" onClick={clearPainter}>
+                Clear
+              </button>
+            </div>
+            <div ref={painterWrapRef} className="painter-canvas-wrap">
+              <canvas
+                ref={painterCanvasRef}
+                className="painter-canvas"
+                onPointerDown={paintPointerDown}
+                onPointerMove={paintPointerMove}
+                onPointerUp={paintPointerUp}
+                onPointerLeave={paintPointerUp}
+              />
+            </div>
+            <div className="button-row">
+              <button
+                type="button"
+                onClick={async () => {
+                  await autoAttachPainterImage()
+                  setShowPainter(false)
+                }}
+              >
+                Save & Auto Attach
+              </button>
+              <button type="button" className="ghost" onClick={() => setShowPainter(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showDiagram ? (
+        <div className="modal" onClick={() => setShowDiagram(false)}>
+          <div className="card diagram-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Architecture Diagram Builder</h3>
+            <label>Mermaid Definition</label>
+            <textarea
+              rows={8}
+              value={diagramCode}
+              onChange={(e) => setDiagramCode(e.target.value)}
+              placeholder="flowchart TD
+A[User] --> B[App]"
+            />
+            <div className="button-row">
+              <button type="button" onClick={() => void generateDiagram()}>
+                Generate Preview
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await autoAttachDiagramImage()
+                  setShowDiagram(false)
+                }}
+                disabled={!diagramSvg}
+              >
+                Save & Auto Attach
+              </button>
+              <button type="button" className="ghost" onClick={() => setShowDiagram(false)}>
+                Close
+              </button>
+            </div>
+            {diagramErr ? <p className="error">{diagramErr}</p> : null}
+            {diagramSvg ? (
+              <div className="diagram-preview" dangerouslySetInnerHTML={{ __html: diagramSvg }} />
+            ) : (
+              <p>Generate preview to attach diagram.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
     </form>
   )
 }
