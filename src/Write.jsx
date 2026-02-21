@@ -3,13 +3,36 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 function sanitizeEditorHtml(html) {
   const raw = String(html || '')
   if (!raw.trim()) return ''
-  return raw
+  let next = raw
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
     .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
     .replace(/javascript:/gi, '')
-    .trim()
+
+  // Remove editor-only controls before persisting.
+  if (typeof document !== 'undefined') {
+    const root = document.createElement('div')
+    root.innerHTML = next
+    root.querySelectorAll('.inline-media-delete').forEach((btn) => btn.remove())
+    root.querySelectorAll('.inline-media-block').forEach((wrap) => {
+      const media = wrap.querySelector('img,video')
+      if (!media) {
+        wrap.remove()
+        return
+      }
+      const p = document.createElement('p')
+      p.innerHTML = media.outerHTML
+      wrap.replaceWith(p)
+    })
+    next = root.innerHTML
+  } else {
+    next = next
+      .replace(/<button[^>]*class="[^"]*inline-media-delete[^"]*"[^>]*>[\s\S]*?<\/button>/gi, '')
+      .replace(/<\/?div[^>]*class="[^"]*inline-media-block[^"]*"[^>]*>/gi, '')
+  }
+
+  return next.trim()
 }
 
 function escapeHtml(text) {
@@ -384,13 +407,13 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       if (kind === 'vid') {
         runCommand(
           'insertHTML',
-          `<p><video data-inline-media="1" controls playsinline preload="metadata" src="${source}"></video></p><p><br></p>`,
+          `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${source}"></video></div><p><br></p>`,
           'content',
         )
       } else {
         runCommand(
           'insertHTML',
-          `<p><img data-inline-media="1" src="${source}" alt="Inline media" loading="lazy" decoding="async" /></p><p><br></p>`,
+          `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><img data-inline-media="1" src="${source}" alt="Inline media" loading="lazy" decoding="async" /></div><p><br></p>`,
           'content',
         )
       }
@@ -456,6 +479,16 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if (!isImageOrVideo) return
     const kind = file.type.startsWith('video/') ? 'vid' : 'img'
     void insertUploadedFile(file, kind)
+  }
+
+  const handleEditorClick = (e) => {
+    const del = e.target.closest('.inline-media-delete')
+    if (!del) return
+    e.preventDefault()
+    const block = del.closest('.inline-media-block')
+    if (!block) return
+    block.remove()
+    updateEditorHtmlState()
   }
 
   const handleSubmit = (e) => {
@@ -745,12 +778,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
             </div>
 
             <div className="ribbon-group">
-              <button type="button" className="ghost" onClick={insertCodeTemplate} disabled={inlineBusy || busy}>Insert Code</button>
-              <button type="button" className="ghost" onClick={insertCodeMarkerTemplate} disabled={inlineBusy || busy}>Insert codestart/codeend</button>
-              <button type="button" className="ghost" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy}>Attach Image/Video</button>
-              <button type="button" className="ghost" onClick={removeLastMediaNode} disabled={inlineBusy || busy}>Remove Last Image/Video</button>
-              <button type="button" className="ghost" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy}>Painter</button>
-              <button type="button" className="ghost" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy}>Architecture Diagram</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeTemplate} disabled={inlineBusy || busy} title="Insert code block" aria-label="Insert code block">{'</>'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeMarkerTemplate} disabled={inlineBusy || busy} title="Insert IDE code template" aria-label="Insert IDE code template">{'{ }'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video" aria-label="Attach image or video">{'\u{1F5BC}\u{FE0F}'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={removeLastMediaNode} disabled={inlineBusy || busy} title="Remove last media" aria-label="Remove last media">{'\u{1F5D1}\u{FE0F}'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy} title="Open painter tool" aria-label="Open painter tool">{'\u{1F3A8}'}</button>
+              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy} title="Open architecture diagram tool" aria-label="Open architecture diagram tool">{'\u{1F3D7}\u{FE0F}'}</button>
               <input
                 ref={attachInputRef}
                 type="file"
@@ -772,6 +805,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         onInput={updateEditorHtmlState}
         onFocus={() => setActiveTarget('content')}
         onKeyDown={handleEditorKeyDown}
+        onClick={handleEditorClick}
         onPaste={handlePaste}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
