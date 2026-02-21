@@ -5,6 +5,7 @@ import {
   fetchUserAttributes,
   getCurrentUser,
   signIn,
+  signInWithRedirect,
   signOut,
   signUp,
   updateUserAttributes,
@@ -776,6 +777,15 @@ function App() {
     setShowNotifications(false)
   }
 
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithRedirect({ provider: 'Google' })
+    } catch (err) {
+      console.error(err)
+      setAuthError('Could not start Google login.')
+    }
+  }
+
   const saveProfile = async (e) => {
     e.preventDefault()
     if (!ensureAuth()) return
@@ -1433,6 +1443,13 @@ function App() {
                 </button>
               )}
             </div>
+            {authMode !== 'confirm' ? (
+              <div className="button-row">
+                <button type="button" className="ghost" onClick={handleGoogleLogin}>
+                  Continue with Google
+                </button>
+              </div>
+            ) : null}
           </form>
         </div>
       ) : null}
