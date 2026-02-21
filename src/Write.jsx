@@ -77,6 +77,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     })
   }
 
+  const applyHandStyle = (style) => {
+    setHandStyle(style)
+    const ta = textareaRef.current
+    const value = form.content || ''
+    const start = ta?.selectionStart ?? value.length
+    const end = ta?.selectionEnd ?? value.length
+    if (start !== end) {
+      wrapSelection(`[${style}]`, `[/${style}]`, 'handwritten text')
+    }
+  }
+
   const insertUploadedFile = async (file, kind) => {
     if (!file || !onInlineUpload) return
     setInlineBusy(true)
@@ -259,18 +270,39 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         >
           Apply Highlight
         </button>
-        <select value={handStyle} onChange={(e) => setHandStyle(e.target.value)} disabled={inlineBusy || busy}>
-          <option value="hand1">Handwritten 1</option>
-          <option value="hand2">Handwritten 2</option>
-          <option value="hand3">Handwritten 3</option>
-        </select>
+        <div className="handwriting-picker" role="group" aria-label="Pick handwriting style">
+          <button
+            type="button"
+            className={`ghost hand-preview hand1 ${handStyle === 'hand1' ? 'active' : ''}`}
+            onClick={() => applyHandStyle('hand1')}
+            disabled={inlineBusy || busy}
+          >
+            Note Style 1
+          </button>
+          <button
+            type="button"
+            className={`ghost hand-preview hand2 ${handStyle === 'hand2' ? 'active' : ''}`}
+            onClick={() => applyHandStyle('hand2')}
+            disabled={inlineBusy || busy}
+          >
+            Note Style 2
+          </button>
+          <button
+            type="button"
+            className={`ghost hand-preview hand3 ${handStyle === 'hand3' ? 'active' : ''}`}
+            onClick={() => applyHandStyle('hand3')}
+            disabled={inlineBusy || busy}
+          >
+            Note Style 3
+          </button>
+        </div>
         <button
           type="button"
-          className="ghost"
+          className="ghost hand-action"
           onClick={() => wrapSelection(`[${handStyle}]`, `[/${handStyle}]`, 'handwritten text')}
           disabled={inlineBusy || busy}
         >
-          Apply Handwriting
+          ✍ Apply Handwriting
         </button>
       </div>
       <div className="button-row">
