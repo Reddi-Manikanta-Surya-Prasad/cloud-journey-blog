@@ -11,11 +11,11 @@ export const auth = defineAuth({
       },
       callbackUrls: [
         'http://localhost:5173/',
-        'https://djourney.suryareddi.in/',
+        'https://clouddjourney.suryareddi.in/',
       ],
       logoutUrls: [
         'http://localhost:5173/',
-        'https://djourney.suryareddi.in/',
+        'https://clouddjourney.suryareddi.in/',
       ],
     },
   },
