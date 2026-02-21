@@ -726,6 +726,73 @@ body::-webkit-scrollbar {
   padding: 4px 8px;
 }
 
+.admin-panel h3,
+.admin-panel h4 {
+  margin: 0 0 10px;
+}
+
+.admin-panel h4 {
+  margin-top: 16px;
+  color: #234b78;
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.admin-metric {
+  border: 1px solid #dce9fb;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f8fbff;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-metric small {
+  color: #5a7ea8;
+}
+
+.admin-metric strong {
+  font-size: 1.2rem;
+  color: #163f6a;
+}
+
+.admin-table-wrap {
+  overflow: auto;
+  border: 1px solid #dce9fb;
+  border-radius: 10px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e9f1ff;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  background: #f0f7ff;
+  color: #204b79;
+  position: sticky;
+  top: 0;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .inline-toolbar {
   display: flex;
   flex-wrap: wrap;

@@ -1,6 +1,7 @@
 import { defineAuth, secret } from '@aws-amplify/backend'
 
 export const auth = defineAuth({
+  groups: ['ADMINS'],
   loginWith: {
     email: true,
     externalProviders: {

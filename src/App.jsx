@@ -3,6 +3,7 @@ import { Amplify } from 'aws-amplify'
 import {
   confirmSignUp,
   fetchUserAttributes,
+  fetchAuthSession,
   getCurrentUser,
   signIn,
   signInWithRedirect,
@@ -18,6 +19,7 @@ import cloudTechIcon from './assets/cloud-tech.svg'
 
 Amplify.configure(outputs)
 const client = generateClient()
+const ADMIN_EMAILS = ['reddimani14@gmail.com']
 
 function toStorageSafeName(name) {
   return name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '')
@@ -452,6 +454,8 @@ function App() {
   const [editingPostId, setEditingPostId] = useState(null)
   const [savingPost, setSavingPost] = useState(false)
   const [activePostId, setActivePostId] = useState(null)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [headerScrolled, setHeaderScrolled] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [readNotificationIds, setReadNotificationIds] = useState([])
@@ -459,6 +463,7 @@ function App() {
   const [savedPostIds, setSavedPostIds] = useState([])
   const [followedAuthorSubs, setFollowedAuthorSubs] = useState([])
   const [mediaUrlCache, setMediaUrlCache] = useState({})
+  const [moderations, setModerations] = useState([])
   const mediaUrlCacheRef = useRef({})
   const notificationWrapRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -584,8 +589,18 @@ function App() {
     [posts, commentsByPost, commentLikeMap, postLikeMap],
   )
 
+  const blockedUserSubs = useMemo(
+    () => new Set(moderations.filter((m) => m.blocked).map((m) => m.userSub)),
+    [moderations],
+  )
+
+  const visiblePosts = useMemo(
+    () => allDisplayPosts.filter((post) => isAdmin || !post.hidden),
+    [allDisplayPosts, isAdmin],
+  )
+
   const displayPosts = useMemo(() => {
-    const ordered = [...allDisplayPosts]
+    const ordered = [...visiblePosts]
     if (sortMode === 'mostLiked') {
       ordered.sort((a, b) => b.likes.length - a.likes.length)
     } else if (sortMode === 'mostCommented') {
@@ -600,7 +615,7 @@ function App() {
       const haystack = `${post.title} ${post.content} ${post.authorName}`.toLowerCase()
       return haystack.includes(query)
     })
-  }, [allDisplayPosts, sortMode, searchQuery])
+  }, [visiblePosts, sortMode, searchQuery])
 
   const editingPost = useMemo(
     () => allDisplayPosts.find((post) => post.id === editingPostId) || null,
@@ -608,8 +623,8 @@ function App() {
   )
 
   const activePost = useMemo(
-    () => allDisplayPosts.find((post) => post.id === activePostId) || null,
-    [allDisplayPosts, activePostId],
+    () => visiblePosts.find((post) => post.id === activePostId) || null,
+    [visiblePosts, activePostId],
   )
 
   const displayName =
@@ -674,11 +689,50 @@ function App() {
     return visibleNotifications.filter((n) => !readNotificationIds.includes(n.id)).length
   }, [visibleNotifications, readNotificationIds])
 
+  const adminUsers = useMemo(() => {
+    const map = new Map()
+    posts.forEach((p) => {
+      if (p.authorSub) map.set(p.authorSub, p.authorName || p.authorSub)
+    })
+    comments.forEach((c) => {
+      if (c.authorSub && !map.has(c.authorSub)) map.set(c.authorSub, c.authorName || c.authorSub)
+    })
+    postLikes.forEach((l) => {
+      if (l.likerSub && !map.has(l.likerSub)) map.set(l.likerSub, l.likerName || l.likerSub)
+    })
+    return Array.from(map.entries()).map(([sub, name]) => ({ sub, name }))
+  }, [posts, comments, postLikes])
+
+  const activeUsersByDay = useMemo(() => {
+    const dayMap = new Map()
+    const collect = (sub, createdAt) => {
+      if (!sub || !createdAt) return
+      const day = String(createdAt).slice(0, 10)
+      if (!dayMap.has(day)) dayMap.set(day, new Set())
+      dayMap.get(day).add(sub)
+    }
+    posts.forEach((p) => collect(p.authorSub, p.createdAt))
+    comments.forEach((c) => collect(c.authorSub, c.createdAt))
+    postLikes.forEach((l) => collect(l.likerSub, l.createdAt))
+    return [...dayMap.entries()]
+      .map(([day, users]) => ({ day, users: users.size }))
+      .sort((a, b) => (a.day < b.day ? 1 : -1))
+      .slice(0, 14)
+  }, [posts, comments, postLikes])
+
   async function bootstrap() {
     setLoading(true)
     try {
       const user = await getCurrentUser()
       const attrs = await fetchUserAttributes()
+      const session = await fetchAuthSession()
+      const groups = Array.isArray(session?.tokens?.idToken?.payload?.['cognito:groups'])
+        ? session.tokens.idToken.payload['cognito:groups']
+        : []
+      const email = String(attrs?.email || '').toLowerCase()
+      const adminByGroup = groups.includes('ADMINS')
+      const adminByEmail = ADMIN_EMAILS.includes(email)
+      setIsAdmin(adminByGroup || adminByEmail)
       const friendlyName = deriveFriendlyUserName(user, attrs)
       setCurrentUser(user)
       setUserAttrs({
@@ -689,6 +743,8 @@ function App() {
     } catch {
       setCurrentUser(null)
       setUserAttrs({ email: '', name: '' })
+      setIsAdmin(false)
+      setModerations([])
       await refreshData(false, 'apiKey')
     } finally {
       setLoading(false)
@@ -721,6 +777,17 @@ function App() {
       setComments(commentRes.data)
       setCommentLikes(commentLikeRes.data)
       setPostLikes(postLikeRes.data)
+
+      if (readAuthMode === 'userPool' && isAdmin) {
+        try {
+          const moderationRes = await client.models.UserModeration.list({ authMode: 'userPool' })
+          if (!moderationRes.errors?.length) setModerations(moderationRes.data)
+        } catch {
+          setModerations([])
+        }
+      } else if (!isAdmin) {
+        setModerations([])
+      }
 
       const missingPaths = new Set()
       hydratedPosts.forEach((post) => {
@@ -780,6 +847,10 @@ function App() {
   function ensureAuth() {
     if (!currentUser) {
       setShowAuth(true)
+      return false
+    }
+    if (blockedUserSubs.has(currentUser.userId)) {
+      alert('Your account is blocked. Please contact admin.')
       return false
     }
     return true
@@ -843,6 +914,7 @@ function App() {
   function goHomeView() {
     setActivePostId(null)
     setPostQueryParam('')
+    setShowAdminPanel(false)
     setShowComposer(false)
     setEditingPostId(null)
     setShowProfile(false)
@@ -911,6 +983,8 @@ function App() {
   const handleLogout = async () => {
     await signOut()
     setCurrentUser(null)
+    setIsAdmin(false)
+    setModerations([])
     setUserAttrs({ email: '', name: '' })
     setPosts([])
     setComments([])
@@ -920,6 +994,7 @@ function App() {
     setPostQueryParam('')
     setShowProfile(false)
     setShowComposer(false)
+    setShowAdminPanel(false)
     setEditingPostId(null)
     setShowNotifications(false)
   }
@@ -1082,6 +1157,53 @@ function App() {
     }
   }
 
+  const togglePostHidden = async (postId, hidden) => {
+    if (!ensureAuth() || !isAdmin) return
+    try {
+      await client.models.Post.update({
+        id: postId,
+        hidden,
+        hiddenReason: hidden ? 'Hidden by admin' : null,
+      })
+      if (!hidden && activePostId === postId) {
+        // keep active if already open; visibility restored
+      }
+      await refreshData(false)
+    } catch (err) {
+      console.error(err)
+      alert('Could not update post visibility.')
+    }
+  }
+
+  const setUserBlocked = async (userSub, blocked, reason = '') => {
+    if (!ensureAuth() || !isAdmin || !userSub) return
+    try {
+      const existing = moderations.find((m) => m.userSub === userSub || m.id === userSub)
+      if (existing) {
+        await client.models.UserModeration.update({
+          id: existing.id,
+          blocked,
+          reason,
+          updatedBySub: currentUser.userId,
+          updatedByName: displayName,
+        })
+      } else {
+        await client.models.UserModeration.create({
+          id: userSub,
+          userSub,
+          blocked,
+          reason,
+          updatedBySub: currentUser.userId,
+          updatedByName: displayName,
+        })
+      }
+      await refreshData(false)
+    } catch (err) {
+      console.error(err)
+      alert('Could not update user block status.')
+    }
+  }
+
   const togglePostLike = async (postId) => {
     if (!ensureAuth()) return
 
@@ -1168,8 +1290,8 @@ function App() {
 
     try {
       const target = comments.find((comment) => comment.id === commentId)
-      if (!isOwnedByCurrentUser(currentUser, target)) {
-        alert('Only the comment owner can delete this comment.')
+      if (!isAdmin && !isOwnedByCurrentUser(currentUser, target)) {
+        alert('Only the comment owner or admin can delete this comment.')
         return
       }
       const out = await client.graphql({
@@ -1335,6 +1457,21 @@ function App() {
               <button className="ghost" onClick={handleLogout} aria-label="Logout">
                 Logout
               </button>
+              {isAdmin ? (
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setShowAdminPanel((v) => !v)
+                    setShowComposer(false)
+                    setShowProfile(false)
+                    setActivePostId(null)
+                    setPostQueryParam('')
+                  }}
+                  aria-label="Admin dashboard"
+                >
+                  Admin
+                </button>
+              ) : null}
             </>
           ) : (
             <button className="ghost" onClick={() => setShowAuth(true)} aria-label="Login">
@@ -1395,7 +1532,147 @@ function App() {
           </div>
         </section>
 
-        {(showComposer || editingPostId) && currentUser ? (
+        {showAdminPanel && isAdmin ? (
+          <section className="card admin-panel">
+            <h3>Admin Dashboard</h3>
+            <div className="admin-metrics">
+              <div className="admin-metric">
+                <small>Total Users (known)</small>
+                <strong>{adminUsers.length}</strong>
+              </div>
+              <div className="admin-metric">
+                <small>Total Posts</small>
+                <strong>{posts.length}</strong>
+              </div>
+              <div className="admin-metric">
+                <small>Total Comments</small>
+                <strong>{comments.length}</strong>
+              </div>
+              <div className="admin-metric">
+                <small>Blocked Users</small>
+                <strong>{blockedUserSubs.size}</strong>
+              </div>
+            </div>
+
+            <h4>Active Users Per Day (last 14 days)</h4>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Active Users</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeUsersByDay.map((item) => (
+                    <tr key={item.day}>
+                      <td>{item.day}</td>
+                      <td>{item.users}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h4>Users</h4>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Sub</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminUsers.map((u) => {
+                    const blocked = blockedUserSubs.has(u.sub)
+                    return (
+                      <tr key={u.sub}>
+                        <td>{u.name || 'User'}</td>
+                        <td>{u.sub}</td>
+                        <td>{blocked ? 'Blocked' : 'Active'}</td>
+                        <td>
+                          {blocked ? (
+                            <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>
+                              Unblock
+                            </button>
+                          ) : (
+                            <button className="danger" onClick={() => setUserBlocked(u.sub, true, 'Blocked by admin')}>
+                              Block
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <h4>Posts Moderation</h4>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {posts.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.title}</td>
+                      <td>{p.authorName}</td>
+                      <td>{p.hidden ? 'Hidden' : 'Visible'}</td>
+                      <td className="admin-actions">
+                        <button className="ghost" onClick={() => togglePostHidden(p.id, !p.hidden)}>
+                          {p.hidden ? 'Unhide' : 'Hide'}
+                        </button>
+                        <button className="danger" onClick={() => deletePost(p.id)}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h4>Comments Moderation</h4>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Post</th>
+                    <th>Comment</th>
+                    <th>Author</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comments.map((c) => (
+                    <tr key={c.id}>
+                      <td>{posts.find((p) => p.id === c.postId)?.title || 'Post'}</td>
+                      <td>{c.text}</td>
+                      <td>{c.authorName}</td>
+                      <td>
+                        <button className="danger" onClick={() => deleteComment(c.postId, c.id)}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {!showAdminPanel && (showComposer || editingPostId) && currentUser ? (
           <section className="writer-shell">
             <Write
               key={editingPostId || 'new'}
@@ -1413,7 +1690,7 @@ function App() {
           </section>
         ) : null}
 
-        {!activePost ? (
+        {!showAdminPanel && !activePost ? (
           <section className="posts-section">
             <div className="preview-grid">
               {displayPosts.map((post, index) => (
@@ -1442,7 +1719,8 @@ function App() {
               </div>
             ) : null}
           </section>
-        ) : (
+        ) : null}
+        {!showAdminPanel && activePost ? (
           <FullPostView
             post={activePost}
             currentUser={currentUser}
@@ -1469,7 +1747,7 @@ function App() {
             onDeleteComment={deleteComment}
             onToggleCommentLike={toggleCommentLike}
           />
-        )}
+        ) : null}
       </main>
 
       <footer className="site-footer">

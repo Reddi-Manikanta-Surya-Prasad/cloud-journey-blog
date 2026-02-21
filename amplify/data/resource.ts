@@ -9,6 +9,8 @@ const schema = a
         mediaType: a.string(),
         mediaUrl: a.string(),
         mediaPath: a.string(),
+        hidden: a.boolean(),
+        hiddenReason: a.string(),
         authorSub: a.string().required(),
         authorName: a.string().required(),
         likes: a.hasMany('PostLike', 'postId'),
@@ -18,6 +20,7 @@ const schema = a
         allow.publicApiKey().to(['read']),
         allow.authenticated().to(['read']),
         allow.owner().to(['create', 'update', 'delete', 'read']),
+        allow.groups(['ADMINS']).to(['read', 'update', 'delete']),
       ]),
 
     Comment: a
@@ -32,6 +35,7 @@ const schema = a
       .authorization((allow) => [
         allow.publicApiKey().to(['read']),
         allow.authenticated().to(['read', 'create', 'update', 'delete']),
+        allow.groups(['ADMINS']).to(['read', 'update', 'delete']),
       ]),
 
     CommentLike: a
@@ -55,6 +59,20 @@ const schema = a
       .authorization((allow) => [
         allow.publicApiKey().to(['read']),
         allow.authenticated().to(['read', 'create', 'delete']),
+      ]),
+
+    UserModeration: a
+      .model({
+        // Use userSub as id so one moderation record exists per user.
+        id: a.id().required(),
+        userSub: a.string().required(),
+        blocked: a.boolean().required(),
+        reason: a.string(),
+        updatedBySub: a.string(),
+        updatedByName: a.string(),
+      })
+      .authorization((allow) => [
+        allow.groups(['ADMINS']).to(['create', 'read', 'update', 'delete']),
       ]),
   })
   .authorization((allow) => [allow.authenticated()])
