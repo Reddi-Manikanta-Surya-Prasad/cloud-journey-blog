@@ -120,9 +120,22 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       start = selectionRef.current.start
       end = selectionRef.current.end
     }
-    if (start !== end) {
-      wrapSelection(`[${style}]`, `[/${style}]`, 'handwritten text')
-    }
+    if (start === end) return
+
+    const selected = value.slice(start, end)
+    const cleaned = selected
+      .replace(/\[hand(?:10|[1-9])\]/g, '')
+      .replace(/\[\/hand(?:10|[1-9])\]/g, '')
+    const replacement = `[${style}]${cleaned}[/${style}]`
+    const next = `${value.slice(0, start)}${replacement}${value.slice(end)}`
+    setForm((prev) => ({ ...prev, content: next }))
+
+    requestAnimationFrame(() => {
+      if (!ta) return
+      ta.focus()
+      ta.setSelectionRange(start, start + replacement.length)
+      captureSelection()
+    })
   }
 
   const insertUploadedFile = async (file, kind) => {
