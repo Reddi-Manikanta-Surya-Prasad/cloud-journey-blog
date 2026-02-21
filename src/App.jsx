@@ -815,7 +815,7 @@ function App() {
   }
 
   const uploadInlineMediaSource = async (file) => {
-    const path = `media/${currentUser.userId}/${Date.now()}-${toStorageSafeName(file.name)}`
+    const path = `media/${currentUser.userId}-${Date.now()}-${toStorageSafeName(file.name)}`
 
     await uploadData({
       path,
