@@ -536,24 +536,67 @@ function estimateReadMinutes(content) {
 function skillMeta(level) {
   const normalized = String(level || '').toLowerCase()
   if (normalized === 'advanced') {
-    return { label: 'Advanced', icon: '🔴', cls: 'skill-advanced' }
+    return { label: 'Advanced', icon: '\u{1F534}', cls: 'skill-advanced' }
   }
   if (normalized === 'intermediate') {
-    return { label: 'Intermediate', icon: '🟡', cls: 'skill-intermediate' }
+    return { label: 'Intermediate', icon: '\u{1F7E1}', cls: 'skill-intermediate' }
   }
-  return { label: 'Beginner friendly', icon: '🟢', cls: 'skill-beginner' }
+  return { label: 'Beginner friendly', icon: '\u{1F7E2}', cls: 'skill-beginner' }
+}
+
+function progressMeta(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'mastered') return { label: 'Mastered', icon: '\u2B50', cls: 'progress-mastered' }
+  if (normalized === 'revisit') return { label: 'Revisit', icon: '\u{1F516}', cls: 'progress-revisit' }
+  return { label: 'Read', icon: '\u2705', cls: 'progress-read' }
+}
+
+function detectCodeRuntimeHint(lang, code) {
+  const lower = String(lang || '').toLowerCase()
+  const sample = String(code || '').trim()
+  if (lower.includes('bash') || lower.includes('shell') || lower.includes('sh')) {
+    return {
+      windows: 'PowerShell: .\\script.ps1 or bash script.sh',
+      linux: 'bash script.sh',
+      mac: 'bash script.sh',
+    }
+  }
+  if (lower.includes('python') || /^def\s+\w+\(/m.test(sample)) {
+    return {
+      windows: 'python main.py',
+      linux: 'python3 main.py',
+      mac: 'python3 main.py',
+    }
+  }
+  if (lower.includes('javascript') || lower.includes('js') || /console\.log\(/.test(sample)) {
+    return {
+      windows: 'node app.js',
+      linux: 'node app.js',
+      mac: 'node app.js',
+    }
+  }
+  if (lower.includes('typescript') || /\.ts\b/m.test(sample)) {
+    return {
+      windows: 'npx tsx app.ts',
+      linux: 'npx tsx app.ts',
+      mac: 'npx tsx app.ts',
+    }
+  }
+  if (lower.includes('terraform') || /^provider\s+"/m.test(sample) || /^resource\s+"/m.test(sample)) {
+    return {
+      windows: 'terraform init && terraform plan',
+      linux: 'terraform init && terraform plan',
+      mac: 'terraform init && terraform plan',
+    }
+  }
+  return null
 }
 
 function contentToSpeechText(content) {
-  const blocks = parseContentBlocks(content || '')
-  const chunks = blocks
-    .map((block) => {
-      if (block.type === 'text') return block.value
-      if (block.type === 'code' || block.type === 'mermaid') return 'Code snippet.'
-      return ''
-    })
-    .filter(Boolean)
-  return chunks.join('\n\n').trim()
+  const plain = stripReadableText(content || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return plain
 }
 
 function isOwnedByCurrentUser(currentUser, record) {
@@ -630,6 +673,8 @@ function App() {
   const [deletedNotificationIds, setDeletedNotificationIds] = useState([])
   const [savedPostIds, setSavedPostIds] = useState([])
   const [followedAuthorSubs, setFollowedAuthorSubs] = useState([])
+  const [postProgressMap, setPostProgressMap] = useState({})
+  const [postReactionMap, setPostReactionMap] = useState({})
   const [mediaUrlCache, setMediaUrlCache] = useState({})
   const [moderations, setModerations] = useState([])
   const mediaUrlCacheRef = useRef({})
@@ -668,6 +713,8 @@ function App() {
       setDeletedNotificationIds([])
       setSavedPostIds([])
       setFollowedAuthorSubs([])
+      setPostProgressMap({})
+      setPostReactionMap({})
       return
     }
     setReadNotificationIds(
@@ -681,6 +728,12 @@ function App() {
     )
     setFollowedAuthorSubs(
       JSON.parse(localStorage.getItem(`blog_followed_authors_${currentUser.userId}`) || '[]'),
+    )
+    setPostProgressMap(
+      JSON.parse(localStorage.getItem(`blog_progress_${currentUser.userId}`) || '{}'),
+    )
+    setPostReactionMap(
+      JSON.parse(localStorage.getItem(`blog_reactions_${currentUser.userId}`) || '{}'),
     )
   }, [currentUser])
 
@@ -785,6 +838,14 @@ function App() {
     })
   }, [visiblePosts, sortMode, searchQuery])
 
+  const progressStats = useMemo(() => {
+    const total = visiblePosts.length
+    const read = visiblePosts.filter((p) => postProgressMap[p.id] === 'read').length
+    const revisit = visiblePosts.filter((p) => postProgressMap[p.id] === 'revisit').length
+    const mastered = visiblePosts.filter((p) => postProgressMap[p.id] === 'mastered').length
+    return { total, read, revisit, mastered }
+  }, [visiblePosts, postProgressMap])
+
   const editingPost = useMemo(
     () => allDisplayPosts.find((post) => post.id === editingPostId) || null,
     [allDisplayPosts, editingPostId],
@@ -815,8 +876,36 @@ function App() {
         id: like.id,
         createdAt: like.createdAt || '',
         text: `${like.likerName || 'Someone'} liked your post "${postById[like.postId]?.title || 'Untitled'}"`,
+        postId: like.postId,
+        targetType: 'post-like',
       }))
   }, [currentUser, posts, postLikes])
+
+  const commentLikeNotifications = useMemo(() => {
+    if (!currentUser) return []
+    const myCommentIds = new Set(
+      comments
+        .filter((comment) => comment.authorSub === currentUser.userId)
+        .map((comment) => comment.id),
+    )
+    if (!myCommentIds.size) return []
+    const commentById = Object.fromEntries(comments.map((comment) => [comment.id, comment]))
+    const postById = Object.fromEntries(posts.map((post) => [post.id, post]))
+    return commentLikes
+      .filter((like) => myCommentIds.has(like.commentId) && like.likerSub !== currentUser.userId)
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .map((like) => {
+        const comment = commentById[like.commentId]
+        return {
+          id: `comment-like-${like.id}`,
+          createdAt: like.createdAt || '',
+          text: `${like.likerSub || 'Someone'} reacted to your comment on "${postById[comment?.postId]?.title || 'Untitled'}"`,
+          postId: comment?.postId || '',
+          commentId: like.commentId,
+          targetType: 'comment-like',
+        }
+      })
+  }, [currentUser, comments, posts, commentLikes])
 
   const commentNotifications = useMemo(() => {
     if (!currentUser) return []
@@ -837,15 +926,38 @@ function App() {
         id: `comment-${comment.id}`,
         createdAt: comment.createdAt || '',
         text: `${comment.authorName || 'Someone'} commented on "${postById[comment.postId]?.title || 'Untitled'}"`,
+        postId: comment.postId,
+        commentId: comment.id,
+        targetType: 'comment',
       }))
   }, [currentUser, posts, comments])
 
+  const followedAuthorNotifications = useMemo(() => {
+    if (!currentUser || !followedAuthorSubs.length) return []
+    const followed = new Set(followedAuthorSubs)
+    return posts
+      .filter(
+        (post) =>
+          followed.has(post.authorSub) &&
+          post.authorSub !== currentUser.userId,
+      )
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .slice(0, 25)
+      .map((post) => ({
+        id: `follow-post-${post.id}`,
+        createdAt: post.createdAt || '',
+        text: `${post.authorName || 'Author'} published "${post.title || 'Untitled'}"`,
+        postId: post.id,
+        targetType: 'followed-author-post',
+      }))
+  }, [currentUser, followedAuthorSubs, posts])
+
   const notifications = useMemo(
     () =>
-      [...postLikeNotifications, ...commentNotifications].sort(
+      [...postLikeNotifications, ...commentLikeNotifications, ...commentNotifications, ...followedAuthorNotifications].sort(
         (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
       ),
-    [postLikeNotifications, commentNotifications],
+    [postLikeNotifications, commentLikeNotifications, commentNotifications, followedAuthorNotifications],
   )
 
   const visibleNotifications = useMemo(
@@ -1074,6 +1186,25 @@ function App() {
     localStorage.setItem(`blog_saved_posts_${currentUser.userId}`, JSON.stringify(next))
   }
 
+  function setPostProgress(postId, status) {
+    if (!ensureAuth()) return
+    const normalized = String(status || '').toLowerCase()
+    if (!['read', 'revisit', 'mastered'].includes(normalized)) return
+    const next = { ...postProgressMap, [postId]: normalized }
+    setPostProgressMap(next)
+    localStorage.setItem(`blog_progress_${currentUser.userId}`, JSON.stringify(next))
+  }
+
+  function setPostReaction(postId, reaction) {
+    if (!ensureAuth()) return
+    const normalized = String(reaction || '').toLowerCase()
+    if (!['confusing', 'aha', 'useful'].includes(normalized)) return
+    const existing = postReactionMap[postId]
+    const next = { ...postReactionMap, [postId]: existing === normalized ? '' : normalized }
+    setPostReactionMap(next)
+    localStorage.setItem(`blog_reactions_${currentUser.userId}`, JSON.stringify(next))
+  }
+
   function toggleFollowAuthor(authorSub) {
     if (!ensureAuth() || !authorSub || authorSub === currentUser?.userId) return
     const exists = followedAuthorSubs.includes(authorSub)
@@ -1092,6 +1223,27 @@ function App() {
       url.searchParams.delete('post')
     }
     window.history.replaceState({}, '', url.toString())
+  }
+
+  function openNotificationTarget(notification) {
+    if (!notification) return
+    if (notification.postId) {
+      setActivePostId(notification.postId)
+      setPostQueryParam(notification.postId)
+      setShowComposer(false)
+      setEditingPostId(null)
+      setShowProfile(false)
+      setShowAdminPanel(false)
+      setShowNotifications(false)
+      if (notification.commentId) {
+        setTimeout(() => {
+          const el = document.getElementById(`comment-${notification.commentId}`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 120)
+      }
+      return
+    }
+    goHomeView()
   }
 
   function goHomeView() {
@@ -1681,11 +1833,20 @@ function App() {
                           </button>
                         </div>
                         <ul>
-                        {visibleNotifications.slice(0, 15).map((item) => (
+                        {visibleNotifications.slice(0, 20).map((item) => (
                           <li key={item.id}>
                             <p>{item.text}</p>
                             <small>{new Date(item.createdAt).toLocaleString()}</small>
                             <div className="notification-item-actions">
+                              {item.postId ? (
+                                <button
+                                  type="button"
+                                  className="ghost"
+                                  onClick={() => openNotificationTarget(item)}
+                                >
+                                  Open
+                                </button>
+                              ) : null}
                               {!readNotificationIds.includes(item.id) ? (
                                 <button
                                   type="button"
@@ -1772,6 +1933,15 @@ function App() {
               </button>
             )}
           </div>
+
+          {currentUser ? (
+            <div className="learning-progress-strip">
+              <span>Completed: {progressStats.mastered}/{progressStats.total || 0}</span>
+              <span>Read: {progressStats.read}</span>
+              <span>Revisit: {progressStats.revisit}</span>
+              <span>Mastered: {progressStats.mastered}</span>
+            </div>
+          ) : null}
 
           <div className="button-row">
             {refreshing ? <span>Syncing...</span> : null}
@@ -1965,6 +2135,7 @@ function App() {
                 <PostPreviewCard
                   key={post.id}
                   post={post}
+                  progressStatus={postProgressMap[post.id] || ''}
                   featured={index === 0 && !searchQuery.trim()}
                   saved={savedPostIds.includes(post.id)}
                   currentUser={currentUser}
@@ -2014,6 +2185,10 @@ function App() {
             onUpdateComment={updateComment}
             onDeleteComment={deleteComment}
             onToggleCommentLike={toggleCommentLike}
+            progressStatus={postProgressMap[activePost.id] || ''}
+            onSetProgress={setPostProgress}
+            readerReaction={postReactionMap[activePost.id] || ''}
+            onSetReaction={setPostReaction}
           />
         ) : null}
       </main>
@@ -2184,6 +2359,7 @@ function App() {
 function PostPreviewCard({
   post,
   onOpen,
+  progressStatus = '',
   featured = false,
   saved = false,
   currentUser,
@@ -2194,6 +2370,7 @@ function PostPreviewCard({
   const readMinutes = estimateReadMinutes(post.content)
   const practiceMins = Number(post.timeToPracticeMins || 0)
   const skill = skillMeta(post.skillLevel)
+  const progress = progressStatus ? progressMeta(progressStatus) : null
   const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
   const coverSource = post.mediaPath || post.mediaUrl || ''
   const coverType = post.mediaType === 'video' ? 'video' : 'image'
@@ -2220,6 +2397,7 @@ function PostPreviewCard({
       )}
       <h4>{renderRichTitle(post.title, `card-title-${post.id}`)}</h4>
       <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
+      {progress ? <div className={`progress-pill ${progress.cls}`}>{progress.icon} {progress.label}</div> : null}
       <div className="by-follow-row">
         <small>By {post.authorName}</small>
         {canFollowAuthor ? (
@@ -2263,6 +2441,10 @@ function FullPostView({
   onUpdateComment,
   onDeleteComment,
   onToggleCommentLike,
+  progressStatus = '',
+  onSetProgress,
+  readerReaction = '',
+  onSetReaction,
 }) {
   const [commentText, setCommentText] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
@@ -2283,6 +2465,7 @@ function FullPostView({
   const readMinutes = useMemo(() => estimateReadMinutes(post.content), [post.content])
   const practiceMins = Number(post.timeToPracticeMins || 0)
   const skill = skillMeta(post.skillLevel)
+  const progress = progressMeta(progressStatus || 'read')
   const depthSummary =
     depthMode === 'pro' ? (post.proSummary || post.beginnerSummary || '') : (post.beginnerSummary || post.proSummary || '')
   const hasInlineMedia = useMemo(
@@ -2388,6 +2571,7 @@ function FullPostView({
       </div>
       <div className="full-post-top">
         <button className="ghost" onClick={onBack}>Back</button>
+        <div className={`progress-pill ${progress.cls}`}>{progress.icon} {progress.label}</div>
       </div>
 
       <div className="post-head">
@@ -2584,6 +2768,41 @@ function FullPostView({
           <span>{speaking ? 'Stop' : 'Listen'}</span>
         </button>
       </div>
+      {canInteract ? (
+        <div className="phase2-row">
+          <div className="phase2-block">
+            <small>Progress tracker</small>
+            <div className="button-row">
+              <button className="ghost" onClick={() => onSetProgress?.(post.id, 'read')}>{'\u2705'} Read</button>
+              <button className="ghost" onClick={() => onSetProgress?.(post.id, 'revisit')}>{'\u{1F516}'} Revisit</button>
+              <button className="ghost" onClick={() => onSetProgress?.(post.id, 'mastered')}>{'\u2B50'} Mastered</button>
+            </div>
+          </div>
+          <div className="phase2-block">
+            <small>How was this post?</small>
+            <div className="button-row">
+              <button
+                className={`ghost ${readerReaction === 'confusing' ? 'saved-active' : ''}`}
+                onClick={() => onSetReaction?.(post.id, 'confusing')}
+              >
+                {'\u{1F92F}'} Confusing
+              </button>
+              <button
+                className={`ghost ${readerReaction === 'aha' ? 'saved-active' : ''}`}
+                onClick={() => onSetReaction?.(post.id, 'aha')}
+              >
+                {'\u{1F4A1}'} Aha!
+              </button>
+              <button
+                className={`ghost ${readerReaction === 'useful' ? 'saved-active' : ''}`}
+                onClick={() => onSetReaction?.(post.id, 'useful')}
+              >
+                {'\u{1F525}'} Useful
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {!canInteract ? (
         <p className="guest-action-hint">Login to like, comment, and save posts.</p>
       ) : null}
@@ -2751,6 +2970,8 @@ function InlineMedia({ type, source, alt, resolveMediaSource }) {
 
 function CodeBlock({ code, lang }) {
   const [html, setHtml] = useState('')
+  const [copied, setCopied] = useState(false)
+  const runHint = useMemo(() => detectCodeRuntimeHint(lang, code), [lang, code])
 
   useEffect(() => {
     let cancelled = false
@@ -2780,10 +3001,32 @@ function CodeBlock({ code, lang }) {
         <span className="dot yellow" />
         <span className="dot green" />
         <small>{lang || 'code'}</small>
+        <button
+          type="button"
+          className="ghost code-copy-btn"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(code)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1200)
+            } catch {
+              // no-op
+            }
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
       </div>
       <pre className="code-block">
         <code className="hljs" dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
+      {runHint ? (
+        <div className="code-run-hints">
+          <span>Windows: <code>{runHint.windows}</code></span>
+          <span>Linux: <code>{runHint.linux}</code></span>
+          <span>Mac: <code>{runHint.mac}</code></span>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -2821,3 +3064,4 @@ function MermaidBlock({ code }) {
 }
 
 export default App
+
