@@ -23,6 +23,36 @@ function toStorageSafeName(name) {
   return name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '')
 }
 
+function toTitleCaseName(text) {
+  return String(text || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function deriveFriendlyUserName(user, attrs) {
+  const explicitName = toTitleCaseName(attrs?.name)
+  if (explicitName) return explicitName
+
+  const given = toTitleCaseName(attrs?.given_name)
+  const family = toTitleCaseName(attrs?.family_name)
+  const full = `${given} ${family}`.trim()
+  if (full) return full
+
+  const email = String(attrs?.email || '')
+  if (email.includes('@')) {
+    const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim()
+    const fromEmail = toTitleCaseName(localPart)
+    if (fromEmail) return fromEmail
+  }
+
+  const username = String(user?.username || '')
+  if (/^google[_-]/i.test(username)) return 'Google User'
+  return toTitleCaseName(username) || 'User'
+}
+
 function buildReadableParagraphs(rawText) {
   const text = (rawText || '').replace(/\r\n/g, '\n').trim()
   if (!text) return []
@@ -475,7 +505,11 @@ function App() {
     [allDisplayPosts, activePostId],
   )
 
-  const displayName = userAttrs.name || currentUser?.username || userAttrs.email || 'User'
+  const displayName =
+    userAttrs.name ||
+    (userAttrs.email ? toTitleCaseName(userAttrs.email.split('@')[0].replace(/[._-]+/g, ' ')) : '') ||
+    (currentUser?.username && !/^google[_-]/i.test(currentUser.username) ? currentUser.username : '') ||
+    'User'
   const postLikeNotifications = useMemo(() => {
     if (!currentUser) return []
     const myPostIds = new Set(
@@ -538,10 +572,11 @@ function App() {
     try {
       const user = await getCurrentUser()
       const attrs = await fetchUserAttributes()
+      const friendlyName = deriveFriendlyUserName(user, attrs)
       setCurrentUser(user)
       setUserAttrs({
         email: attrs.email || '',
-        name: attrs.name || '',
+        name: friendlyName,
       })
       await refreshData(false, 'userPool')
     } catch {
