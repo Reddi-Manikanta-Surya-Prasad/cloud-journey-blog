@@ -171,18 +171,25 @@ function renderInlineRichText(text, keyPrefix = 'rt') {
 }
 
 function sanitizePublishedHtml(html) {
-  return String(html || '')
+  let next = String(html || '')
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
     .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
     .replace(/javascript:/gi, '')
+
+  // Normalize legacy <font color="..."> to <span style="color:...">.
+  next = next.replace(
+    /<font\s+[^>]*color\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/font>/gi,
+    '<span style="color:$1">$2</span>',
+  )
+  return next
 }
 
 function isLikelyHtmlContent(content) {
   const source = String(content || '').trim()
   if (!source) return false
-  return /<(p|div|span|strong|em|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(source)
+  return /<(p|div|span|strong|em|b|i|u|mark|font|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(source)
 }
 
 function renderRichTitle(title, keyPrefix = 'title') {
