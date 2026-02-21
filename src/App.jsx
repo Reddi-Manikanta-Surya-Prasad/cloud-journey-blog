@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Amplify } from 'aws-amplify'
 import {
   confirmSignUp,
@@ -100,7 +100,7 @@ function renderInlineRichText(text, keyPrefix = 'rt') {
       ),
     },
     {
-      re: /\[(hand1|hand2|hand3)\]([\s\S]*?)\[\/\1\]/,
+      re: /\[(hand(?:10|[1-9]))\]([\s\S]*?)\[\/\1\]/,
       render: (match, children, key) => (
         <span key={key} className={match[1]}>
           {children}
@@ -143,14 +143,10 @@ function renderStyledTextBlock(text, keyPrefix = 'txt') {
 
   const flushParagraph = (suffix) => {
     if (!paraLines.length) return
+    const paragraphText = paraLines.join('\n')
     blocks.push(
-      <p key={`${keyPrefix}-p-${suffix}`}>
-        {paraLines.map((line, idx) => (
-          <span key={`${keyPrefix}-p-${suffix}-${idx}`}>
-            {renderInlineRichText(line, `${keyPrefix}-pi-${suffix}-${idx}`)}
-            {idx < paraLines.length - 1 ? <br /> : null}
-          </span>
-        ))}
+      <p key={`${keyPrefix}-p-${suffix}`} style={{ whiteSpace: 'pre-wrap' }}>
+        {renderInlineRichText(paragraphText, `${keyPrefix}-p-${suffix}`)}
       </p>,
     )
     paraLines = []
@@ -463,6 +459,7 @@ function App() {
   const [savedPostIds, setSavedPostIds] = useState([])
   const [followedAuthorSubs, setFollowedAuthorSubs] = useState([])
   const [mediaUrlCache, setMediaUrlCache] = useState({})
+  const mediaUrlCacheRef = useRef({})
   const notificationWrapRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
@@ -530,6 +527,9 @@ function App() {
     }
   }, [showNotifications])
 
+  useEffect(() => {
+    mediaUrlCacheRef.current = mediaUrlCache
+  }, [mediaUrlCache])
 
   const passwordScore = useMemo(() => {
     const p = authForm.password || ''
@@ -710,53 +710,53 @@ function App() {
         throw new Error('Failed to fetch backend records.')
       }
 
-      const nextCache = { ...mediaUrlCache }
-      const resolvedPosts = await Promise.all(
-        postRes.data.map(async (post) => {
-          if (!post.mediaPath) return post
-          if (nextCache[post.mediaPath]) {
-            return { ...post, mediaUrl: nextCache[post.mediaPath] }
-          }
-          try {
-            const urlOut = await getUrl({ path: post.mediaPath })
-            const mediaUrl = urlOut.url.toString()
-            nextCache[post.mediaPath] = mediaUrl
-            return { ...post, mediaUrl }
-          } catch {
-            return post
-          }
-        }),
-      )
+      const cacheSnapshot = mediaUrlCacheRef.current
+      const hydratedPosts = postRes.data.map((post) => {
+        const cachedUrl = post.mediaPath ? cacheSnapshot[post.mediaPath] : ''
+        return cachedUrl ? { ...post, mediaUrl: cachedUrl } : post
+      })
+
+      // Render text and metadata immediately, then resolve media in background.
+      setPosts(hydratedPosts)
+      setComments(commentRes.data)
+      setCommentLikes(commentLikeRes.data)
+      setPostLikes(postLikeRes.data)
+
+      const missingPaths = new Set()
+      hydratedPosts.forEach((post) => {
+        if (post.mediaPath && !cacheSnapshot[post.mediaPath]) missingPaths.add(post.mediaPath)
+      })
 
       const inlinePaths = new Set()
-      resolvedPosts.forEach((post) => {
+      hydratedPosts.forEach((post) => {
         parseContentBlocks(post.content).forEach((block) => {
           if (
             (block.type === 'image' || block.type === 'video') &&
             block.value.startsWith('media/') &&
-            !nextCache[block.value]
+            !cacheSnapshot[block.value]
           ) {
             inlinePaths.add(block.value)
           }
         })
       })
 
-      await Promise.all(
-        [...inlinePaths].map(async (path) => {
-          try {
-            const urlOut = await getUrl({ path })
-            nextCache[path] = urlOut.url.toString()
-          } catch {
-            // Keep unresolved paths empty until valid/readable.
-          }
-        }),
-      )
-
-      setMediaUrlCache(nextCache)
-      setPosts(resolvedPosts)
-      setComments(commentRes.data)
-      setCommentLikes(commentLikeRes.data)
-      setPostLikes(postLikeRes.data)
+      const allMissing = [...missingPaths, ...inlinePaths]
+      if (allMissing.length) {
+        const resolved = await Promise.all(
+          allMissing.map(async (path) => {
+            try {
+              const urlOut = await getUrl({ path })
+              return [path, urlOut.url.toString()]
+            } catch {
+              return null
+            }
+          }),
+        )
+        const additions = Object.fromEntries(resolved.filter(Boolean))
+        if (Object.keys(additions).length) {
+          setMediaUrlCache((prev) => ({ ...prev, ...additions }))
+        }
+      }
     } catch (err) {
       console.error(err)
       if (readAuthMode === 'apiKey') {
@@ -771,6 +771,11 @@ function App() {
       if (withSpinner) setRefreshing(false)
     }
   }
+
+  const resolveMediaSource = useCallback(
+    (source) => (source?.startsWith('media/') ? mediaUrlCache[source] || '' : source || ''),
+    [mediaUrlCache],
+  )
 
   function ensureAuth() {
     if (!currentUser) {
@@ -1420,9 +1425,7 @@ function App() {
                   currentUser={currentUser}
                   isFollowing={followedAuthorSubs.includes(post.authorSub)}
                   onToggleFollow={toggleFollowAuthor}
-                  resolveMediaSource={(source) =>
-                    source.startsWith('media/') ? mediaUrlCache[source] || '' : source
-                  }
+                  resolveMediaSource={resolveMediaSource}
                   onOpen={() => {
                     setActivePostId(post.id)
                     setPostQueryParam(post.id)
@@ -1443,9 +1446,7 @@ function App() {
           <FullPostView
             post={activePost}
             currentUser={currentUser}
-            resolveMediaSource={(source) =>
-              source.startsWith('media/') ? mediaUrlCache[source] || '' : source
-            }
+            resolveMediaSource={resolveMediaSource}
             onBack={() => {
               setActivePostId(null)
               setPostQueryParam('')
@@ -1908,7 +1909,7 @@ function FullPostView({
           aria-label="Like post"
           title="Like"
         >
-          <span className="icon">{postLiked ? '♥' : '♡'}</span>
+          <span className="icon">{postLiked ? 'Liked' : 'Like'}</span>
           <span>{post.likes.length}</span>
         </button>
         <button
@@ -1921,7 +1922,7 @@ function FullPostView({
           aria-label="Comment"
           title="Comment"
         >
-          <span className="icon">💬</span>
+          <span className="icon">Cmt</span>
           <span>{post.comments.length}</span>
         </button>
         <button
@@ -1931,7 +1932,7 @@ function FullPostView({
           aria-label="Copy share link"
           title="Copy link"
         >
-          <span className="icon">🔗</span>
+          <span className="icon">Link</span>
         </button>
         <button
           className={`ghost icon-action ${saved ? 'saved-active' : ''}`}
@@ -1940,7 +1941,7 @@ function FullPostView({
           aria-label="Save post"
           title="Save"
         >
-          <span className="icon">{saved ? '★' : '☆'}</span>
+          <span className="icon">{saved ? 'Saved' : 'Save'}</span>
         </button>
         <button
           className={`ghost icon-action ${speaking ? 'saved-active' : ''}`}
@@ -1949,7 +1950,7 @@ function FullPostView({
           aria-label="Listen to post"
           title="Listen"
         >
-          <span className="icon">{speaking ? '⏹' : '▶'}</span>
+          <span className="icon">{speaking ? 'Stop' : 'Play'}</span>
           <span>{speaking ? 'Stop' : 'Listen'}</span>
         </button>
       </div>
@@ -1980,7 +1981,7 @@ function FullPostView({
                       )
                     }
                   >
-                    ⋯
+                    ...
                   </button>
                   {openCommentMenuId === comment.id ? (
                     <div className="comment-menu">
@@ -2001,7 +2002,7 @@ function FullPostView({
                           setOpenCommentMenuId(null)
                         }}
                       >
-                        🔗 Copy link to comment
+                        Copy link to comment
                       </button>
                       <button
                         type="button"
@@ -2014,7 +2015,7 @@ function FullPostView({
                           setOpenCommentMenuId(null)
                         }}
                       >
-                        ✏️ Edit
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -2026,7 +2027,7 @@ function FullPostView({
                           setOpenCommentMenuId(null)
                         }}
                       >
-                        🗑️ Delete
+                        Delete
                       </button>
                     </div>
                   ) : null}
@@ -2096,35 +2097,19 @@ function InlineMedia({ type, source, alt, resolveMediaSource }) {
   const [src, setSrc] = useState(() => resolveMediaSource(source))
 
   useEffect(() => {
-    let cancelled = false
     const resolved = resolveMediaSource(source)
     if (resolved) {
       setSrc(resolved)
-      return () => {
-        cancelled = true
-      }
+      return
     }
 
     if (!source?.startsWith('media/')) {
       setSrc(source || '')
-      return () => {
-        cancelled = true
-      }
+      return
     }
 
-    const load = async () => {
-      try {
-        const urlOut = await getUrl({ path: source })
-        if (!cancelled) setSrc(urlOut.url.toString())
-      } catch {
-        if (!cancelled) setSrc('')
-      }
-    }
-    load()
-
-    return () => {
-      cancelled = true
-    }
+    // For signed storage paths, wait for cache hydration from refreshData().
+    setSrc('')
   }, [source, resolveMediaSource])
 
   if (!src) return null

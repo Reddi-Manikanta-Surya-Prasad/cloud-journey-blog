@@ -735,10 +735,26 @@ body::-webkit-scrollbar {
   background: rgba(255, 255, 255, 0.64);
 }
 
+.format-toolbar-shell {
+  display: flex;
+  justify-content: flex-start;
+  margin: 6px 0 8px;
+}
+
+.format-toggle {
+  min-height: 42px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #b7d2f7 !important;
+  background: #f8fcff !important;
+  color: #1f4a7a !important;
+}
+
 .inline-toolbar .ghost {
-  min-height: 38px;
+  min-height: 42px;
+  height: 42px;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 0 12px;
   font-size: 0.9rem;
   font-weight: 700;
   border: 1px solid #d3e4ff;
@@ -762,7 +778,9 @@ body::-webkit-scrollbar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
+  min-height: 42px;
+  height: 42px;
+  padding: 0 10px;
   border-radius: 10px;
   border: 1px solid #d3e4ff;
   background: #fff;
@@ -771,9 +789,14 @@ body::-webkit-scrollbar {
   font-weight: 700;
 }
 
+.mini-field-icon {
+  min-width: 92px;
+  justify-content: space-between;
+}
+
 .mini-field input[type='color'] {
   width: 34px;
-  height: 28px;
+  height: 30px;
   border: 1px solid #8db3df;
   padding: 0;
   background: #fff;
@@ -797,9 +820,9 @@ body::-webkit-scrollbar {
 }
 
 .inline-toolbar .icon-tool {
-  min-width: 42px;
-  height: 40px;
-  padding: 0 11px;
+  min-width: 66px;
+  height: 42px;
+  padding: 0 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -839,30 +862,75 @@ body::-webkit-scrollbar {
   font-family: 'Comic Sans MS', 'Bradley Hand', cursive;
 }
 
+.hand4 {
+  font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+}
+
+.hand5 {
+  font-family: 'Lucida Handwriting', 'Brush Script MT', cursive;
+}
+
+.hand6 {
+  font-family: 'Bradley Hand', 'Segoe Script', cursive;
+}
+
+.hand7 {
+  font-family: 'Brush Script MT', 'Snell Roundhand', cursive;
+}
+
+.hand8 {
+  font-family: 'Chalkboard SE', 'Comic Sans MS', cursive;
+}
+
+.hand9 {
+  font-family: 'Papyrus', 'Segoe Print', cursive;
+}
+
+.hand10 {
+  font-family: 'Monotype Corsiva', 'Lucida Handwriting', cursive;
+}
+
 .inline-toolbar .hand-action {
   font-family: 'Segoe Script', 'Lucida Handwriting', cursive;
   letter-spacing: 0.2px;
-  min-width: 72px;
+  min-width: 78px;
 }
 
-.handwriting-picker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.style-select {
+  min-height: 42px;
+  height: 42px;
+  min-width: 120px;
+  width: auto;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #b7d2f7;
+  background: #fff;
+  color: #1f4a7a;
 }
 
-.inline-toolbar .hand-preview {
-  min-width: 96px;
+.hand-sample {
+  min-width: 94px;
   font-size: 1rem;
   background: #fff;
   border: 1px solid #d3e4ff;
 }
 
-.inline-toolbar .hand-preview.active {
+.hand-sample:hover {
   background: #eef7ff;
   border-color: #48a6ff;
-  box-shadow: 0 0 0 2px rgba(72, 166, 255, 0.16);
+}
+
+.style-select.hand1,
+.style-select.hand2,
+.style-select.hand3,
+.style-select.hand4,
+.style-select.hand5,
+.style-select.hand6,
+.style-select.hand7,
+.style-select.hand8,
+.style-select.hand9,
+.style-select.hand10 {
+  font-size: 1rem;
 }
 
 .hidden-input {

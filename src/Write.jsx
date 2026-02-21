@@ -1,6 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 
 function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUpload, draftKey }) {
+  const handStyles = [
+    { value: 'hand1', label: 'Hand 1' },
+    { value: 'hand2', label: 'Hand 2' },
+    { value: 'hand3', label: 'Hand 3' },
+    { value: 'hand4', label: 'Hand 4' },
+    { value: 'hand5', label: 'Hand 5' },
+    { value: 'hand6', label: 'Hand 6' },
+    { value: 'hand7', label: 'Hand 7' },
+    { value: 'hand8', label: 'Hand 8' },
+    { value: 'hand9', label: 'Hand 9' },
+    { value: 'hand10', label: 'Hand 10' },
+  ]
+
   const [form, setForm] = useState(
     initialValue || {
       title: '',
@@ -12,6 +25,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [textColor, setTextColor] = useState('#0f4c81')
   const [bgColor, setBgColor] = useState('#fff59d')
   const [handStyle, setHandStyle] = useState('hand1')
+  const [showFormatMenu, setShowFormatMenu] = useState(true)
   const textareaRef = useRef(null)
   const attachInputRef = useRef(null)
   const selectionRef = useRef({ start: 0, end: 0 })
@@ -252,84 +266,93 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <label>Content</label>
-      <div className="inline-toolbar">
-        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy}>
-          B
-        </button>
-        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy}>
-          I
-        </button>
-        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy}>
-          H1
-        </button>
-        <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy}>
-          H2
-        </button>
-        <label className="mini-field">
-          A
-          <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
-        </label>
+      <div className="format-toolbar-shell">
         <button
           type="button"
-          className="ghost icon-tool"
-          onMouseDown={preserveSelection}
-          onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
-          disabled={inlineBusy || busy}
+          className="ghost format-toggle"
+          onClick={() => setShowFormatMenu((prev) => !prev)}
+          aria-expanded={showFormatMenu}
+          aria-controls="writer-style-menu"
         >
-          Color
-        </button>
-        <label className="mini-field">
-          Bg
-          <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
-        </label>
-        <button
-          type="button"
-          className="ghost icon-tool"
-          onMouseDown={preserveSelection}
-          onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
-          disabled={inlineBusy || busy}
-        >
-          Highlight
-        </button>
-        <div className="handwriting-picker" role="group" aria-label="Pick handwriting style">
-          <button
-            type="button"
-            className={`ghost hand-preview hand1 ${handStyle === 'hand1' ? 'active' : ''}`}
-            onMouseDown={preserveSelection}
-            onClick={() => applyHandStyle('hand1')}
-            disabled={inlineBusy || busy}
-          >
-            Note 1
-          </button>
-          <button
-            type="button"
-            className={`ghost hand-preview hand2 ${handStyle === 'hand2' ? 'active' : ''}`}
-            onMouseDown={preserveSelection}
-            onClick={() => applyHandStyle('hand2')}
-            disabled={inlineBusy || busy}
-          >
-            Note 2
-          </button>
-          <button
-            type="button"
-            className={`ghost hand-preview hand3 ${handStyle === 'hand3' ? 'active' : ''}`}
-            onMouseDown={preserveSelection}
-            onClick={() => applyHandStyle('hand3')}
-            disabled={inlineBusy || busy}
-          >
-            Note 3
-          </button>
-        </div>
-        <button
-          type="button"
-          className="ghost hand-action icon-tool"
-          onMouseDown={preserveSelection}
-          onClick={() => wrapSelection(`[${handStyle}]`, `[/${handStyle}]`, 'handwritten text')}
-          disabled={inlineBusy || busy}
-        >
-          Pen
+          Format {showFormatMenu ? '▲' : '▼'}
         </button>
       </div>
+      {showFormatMenu ? (
+        <div id="writer-style-menu" className="inline-toolbar">
+          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('**', '**', 'bold text')} disabled={inlineBusy || busy} title="Bold">
+            B
+          </button>
+          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('_', '_', 'italic text')} disabled={inlineBusy || busy} title="Italic">
+            I
+          </button>
+          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n# ', '', 'Heading 1')} disabled={inlineBusy || busy} title="Heading 1">
+            H1
+          </button>
+          <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelection('\n## ', '', 'Heading 2')} disabled={inlineBusy || busy} title="Heading 2">
+            H2
+          </button>
+          <label className="mini-field mini-field-icon" title="Text color">
+            A
+            <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="ghost icon-tool"
+            onMouseDown={preserveSelection}
+            onClick={() => wrapSelection(`[color=${textColor}]`, '[/color]', 'colored text')}
+            disabled={inlineBusy || busy}
+            title="Apply text color"
+          >
+            Color
+          </button>
+          <label className="mini-field mini-field-icon" title="Highlight color">
+            Bg
+            <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+          </label>
+          <button
+            type="button"
+            className="ghost icon-tool"
+            onMouseDown={preserveSelection}
+            onClick={() => wrapSelection(`[bg=${bgColor}]`, '[/bg]', 'highlighted text')}
+            disabled={inlineBusy || busy}
+            title="Apply highlight"
+          >
+            Highlight
+          </button>
+          <select
+            className={`style-select ${handStyle}`}
+            value={handStyle}
+            onChange={(e) => setHandStyle(e.target.value)}
+            title="Select handwriting style"
+          >
+            {handStyles.map((style) => (
+              <option key={style.value} value={style.value}>
+                {style.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={`ghost hand-sample ${handStyle}`}
+            onMouseDown={preserveSelection}
+            onClick={() => applyHandStyle(handStyle)}
+            disabled={inlineBusy || busy}
+            title="Apply selected handwriting to selected text"
+          >
+            Sample
+          </button>
+          <button
+            type="button"
+            className="ghost hand-action icon-tool"
+            onMouseDown={preserveSelection}
+            onClick={() => wrapSelection(`[${handStyle}]`, `[/${handStyle}]`, 'handwritten text')}
+            disabled={inlineBusy || busy}
+            title="Wrap selected text with handwriting style"
+          >
+            Pen
+          </button>
+        </div>
+      ) : null}
       <div className="button-row">
         <button
           type="button"
@@ -388,7 +411,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       />
 
       <small>
-        Tip: Use **bold**, _italic_, # headings, [color=#hex]text[/color], [bg=#hex]text[/bg], [hand1|hand2|hand3]text[/...]. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
+        Tip: Use **bold**, _italic_, # headings, [color=#hex]text[/color], [bg=#hex]text[/bg], [hand1..hand10]text[/...]. Ctrl+Enter to publish. Ctrl+V for screenshot/image.
       </small>
 
       <div className="writer-stats">
