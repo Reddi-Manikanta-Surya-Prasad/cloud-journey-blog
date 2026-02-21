@@ -175,6 +175,16 @@ function normalizeEditorContent(value) {
   return sanitizeEditorHtml(looksHtml ? raw : legacyTextToHtml(raw))
 }
 
+function normalizeTitleContent(value) {
+  const raw = String(value || '')
+  if (!raw.trim()) return ''
+  const looksHtml = /<(span|strong|em|b|i|u|mark|font|p|div|h1|h2|h3|br)\b/i.test(raw)
+  const normalized = looksHtml ? sanitizeEditorHtml(raw) : convertLegacyInlineToHtml(raw)
+  return normalized
+    .replace(/^<p>([\s\S]*)<\/p>$/i, '$1')
+    .replace(/^<div>([\s\S]*)<\/div>$/i, '$1')
+}
+
 function stripHtmlForStats(html) {
   return String(html || '')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -213,6 +223,11 @@ async function svgToPngDataUrl(svg, width = 1600, height = 900) {
   }
 }
 
+async function svgToFile(svg, filename) {
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+  return new File([blob], filename, { type: 'image/svg+xml' })
+}
+
 function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUpload, draftKey }) {
   const handStyles = [
     { value: 'hand1', label: 'Hand 1' },
@@ -231,7 +246,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     () =>
       initialValue
         ? {
-            title: stripLegacyInlineTags(initialValue.title || ''),
+            title: normalizeTitleContent(initialValue.title || ''),
             content: normalizeEditorContent(initialValue.content || ''),
           }
         : null,
@@ -252,12 +267,13 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [showFormatMenu, setShowFormatMenu] = useState(true)
   const [showPainter, setShowPainter] = useState(false)
   const [showDiagram, setShowDiagram] = useState(false)
+  const [activeTarget, setActiveTarget] = useState('content')
   const [diagramCode, setDiagramCode] = useState(
     'flowchart TD\n  A[User] --> B[Amplify Hosting]\n  B --> C[App]\n  C --> D[Cognito]\n  C --> E[Data]\n  C --> F[Storage]',
   )
   const [diagramSvg, setDiagramSvg] = useState('')
   const [diagramErr, setDiagramErr] = useState('')
-  const titleRef = useRef(null)
+  const titleEditorRef = useRef(null)
   const editorRef = useRef(null)
   const attachInputRef = useRef(null)
   const painterCanvasRef = useRef(null)
@@ -273,16 +289,32 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     setForm((prev) => ({ ...prev, content: sanitizeEditorHtml(html) }))
   }
 
-  const runCommand = (command, value = null) => {
-    const editor = editorRef.current
+  const updateTitleHtmlState = () => {
+    const html = titleEditorRef.current?.innerHTML || ''
+    setForm((prev) => ({ ...prev, title: normalizeTitleContent(html) }))
+  }
+
+  const preserveSelection = (e) => {
+    e.preventDefault()
+  }
+
+  const runCommand = (command, value = null, target = 'active') => {
+    const isTitleTarget = target === 'title' || (target === 'active' && activeTarget === 'title')
+    const editor =
+      isTitleTarget
+        ? titleEditorRef.current
+        : target === 'content'
+          ? editorRef.current
+          : editorRef.current
     if (!editor) return
     editor.focus()
     document.execCommand(command, false, value)
-    updateEditorHtmlState()
+    if (isTitleTarget) updateTitleHtmlState()
+    else updateEditorHtmlState()
   }
 
   const wrapSelectionWithClass = (className) => {
-    const editor = editorRef.current
+    const editor = activeTarget === 'title' ? titleEditorRef.current : editorRef.current
     if (!editor) return
     editor.focus()
     const selection = window.getSelection()
@@ -293,7 +325,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const current = editor.innerHTML || ''
       if (!current.trim()) return
       editor.innerHTML = `<span class="${className}">${current}</span>`
-      updateEditorHtmlState()
+      if (activeTarget === 'title') updateTitleHtmlState()
+      else updateEditorHtmlState()
       return
     }
 
@@ -305,11 +338,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     range.deleteContents()
     range.insertNode(fragment)
     selection.removeAllRanges()
-    updateEditorHtmlState()
+    if (activeTarget === 'title') updateTitleHtmlState()
+    else updateEditorHtmlState()
   }
 
   const applyUnorderedStyle = (styleType) => {
-    runCommand('insertUnorderedList')
+    runCommand('insertUnorderedList', null, 'content')
     const selection = window.getSelection()
     if (!selection || !selection.anchorNode) return
     let node = selection.anchorNode
@@ -326,11 +360,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   }
 
   const insertCodeTemplate = () => {
-    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>')
+    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>', 'content')
   }
 
   const insertCodeMarkerTemplate = () => {
-    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>')
+    runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>', 'content')
   }
 
   const removeLastMediaNode = () => {
@@ -351,11 +385,13 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         runCommand(
           'insertHTML',
           `<p><video data-inline-media="1" controls playsinline preload="metadata" src="${source}"></video></p><p><br></p>`,
+          'content',
         )
       } else {
         runCommand(
           'insertHTML',
           `<p><img data-inline-media="1" src="${source}" alt="Inline media" loading="lazy" decoding="async" /></p><p><br></p>`,
+          'content',
         )
       }
     } catch {
@@ -384,7 +420,12 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const file = await dataUrlToFile(dataUrl, `diagram-${Date.now()}.png`)
       await insertUploadedFile(file, 'img')
     } catch {
-      alert('Could not attach diagram image.')
+      try {
+        const svgFile = await svgToFile(diagramSvg, `diagram-${Date.now()}.svg`)
+        await insertUploadedFile(svgFile, 'img')
+      } catch {
+        alert('Could not attach diagram image.')
+      }
     }
   }
 
@@ -420,15 +461,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const handleSubmit = (e) => {
     e.preventDefault()
     const cleanedContent = sanitizeEditorHtml(form.content)
-    if (!form.title.trim() || !cleanedContent.trim() || busy || inlineBusy) return
+    const cleanedTitle = normalizeTitleContent(form.title)
+    if (!stripHtmlForStats(cleanedTitle).trim() || !cleanedContent.trim() || busy || inlineBusy) return
     onSubmit({
-      title: stripLegacyInlineTags(form.title.trim()),
+      title: cleanedTitle,
       content: cleanedContent,
     })
 
     if (!initialValue) {
       setForm({ title: '', content: '' })
       if (editorRef.current) editorRef.current.innerHTML = ''
+      if (titleEditorRef.current) titleEditorRef.current.innerHTML = ''
       if (draftKey) localStorage.removeItem(draftKey)
     }
   }
@@ -440,6 +483,14 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       editorRef.current.innerHTML = next
     }
   }, [form.content])
+
+  useEffect(() => {
+    if (!titleEditorRef.current) return
+    const next = normalizeTitleContent(form.title)
+    if (titleEditorRef.current.innerHTML !== next) {
+      titleEditorRef.current.innerHTML = next
+    }
+  }, [form.title])
 
   useEffect(() => {
     if (normalizedInitial) {
@@ -455,7 +506,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const parsed = JSON.parse(saved)
       if (parsed?.title || parsed?.content) {
         setForm({
-          title: stripLegacyInlineTags(parsed.title || ''),
+          title: normalizeTitleContent(parsed.title || ''),
           content: normalizeEditorContent(parsed.content || ''),
         })
         setDraftRestored(true)
@@ -468,7 +519,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   useEffect(() => {
     if (initialValue || !draftKey) return
     const payload = JSON.stringify({
-      title: stripLegacyInlineTags(form.title),
+      title: normalizeTitleContent(form.title),
       content: sanitizeEditorHtml(form.content),
       updatedAt: Date.now(),
     })
@@ -558,9 +609,10 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       const cleanedContent = sanitizeEditorHtml(form.content)
-      if (!form.title.trim() || !cleanedContent.trim() || busy || inlineBusy) return
+      const cleanedTitle = normalizeTitleContent(form.title)
+      if (!stripHtmlForStats(cleanedTitle).trim() || !cleanedContent.trim() || busy || inlineBusy) return
       onSubmit({
-        title: stripLegacyInlineTags(form.title.trim()),
+        title: cleanedTitle,
         content: cleanedContent,
       })
       if (!initialValue && draftKey) localStorage.removeItem(draftKey)
@@ -593,11 +645,14 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       ) : null}
 
       <label>Title</label>
-      <input
-        ref={titleRef}
-        value={form.title}
-        onChange={(e) => setForm((prev) => ({ ...prev, title: stripLegacyInlineTags(e.target.value) }))}
-        placeholder="Write a strong title"
+      <div
+        ref={titleEditorRef}
+        className="rich-title-editor"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={updateTitleHtmlState}
+        onFocus={() => setActiveTarget('title')}
+        data-placeholder="Write a strong title"
       />
 
       <label>Content</label>
@@ -616,26 +671,26 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         {showFormatMenu ? (
           <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
             <div className="ribbon-group">
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold">B</button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic">I</button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1">H1</button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2">H2</button>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list">1.</button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bullet list">•</button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet list">◦</button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet list">▪</button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet list">*</button>
-              <button type="button" className="ghost icon-tool" onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash list">-</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold">B</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic">I</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1">H1</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2">H2</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('insertOrderedList')} disabled={inlineBusy || busy} title="Numbered list">1.</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('disc')} disabled={inlineBusy || busy} title="Bullet list">•</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('circle')} disabled={inlineBusy || busy} title="Circle bullet list">◦</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('square')} disabled={inlineBusy || busy} title="Square bullet list">▪</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('star')} disabled={inlineBusy || busy} title="Star bullet list">*</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => applyUnorderedStyle('dash')} disabled={inlineBusy || busy} title="Dash list">-</button>
               <label className="mini-field mini-field-icon" title="Text color">
                 <span className="swatch-label">A</span>
                 <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
               </label>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color">Color</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color">Color</button>
               <label className="mini-field mini-field-icon" title="Highlight color">
                 <span className="swatch-label">Bg</span>
                 <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
               </label>
-              <button type="button" className="ghost icon-tool" onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight">Highlight</button>
+              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight">Highlight</button>
               <span className="ribbon-caption">Text</span>
             </div>
 
@@ -652,8 +707,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                   </option>
                 ))}
               </select>
-              <button type="button" className={`ghost hand-sample ${handStyle}`} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Sample</button>
-              <button type="button" className="ghost hand-action icon-tool" onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Pen</button>
+              <button type="button" className={`ghost hand-sample ${handStyle}`} onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Sample</button>
+              <button type="button" className="ghost hand-action icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply selected handwriting">Pen</button>
               <span className="ribbon-caption">Styles</span>
             </div>
 
@@ -683,6 +738,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         contentEditable
         suppressContentEditableWarning
         onInput={updateEditorHtmlState}
+        onFocus={() => setActiveTarget('content')}
         onKeyDown={handleEditorKeyDown}
         onPaste={handlePaste}
         onDragOver={(e) => e.preventDefault()}
@@ -700,7 +756,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       </div>
 
       <div className="button-row">
-        <button type="submit" disabled={!form.title.trim() || !stripHtmlForStats(form.content).trim() || busy || inlineBusy}>
+        <button type="submit" disabled={!stripHtmlForStats(form.title).trim() || !stripHtmlForStats(form.content).trim() || busy || inlineBusy}>
           {busy ? 'Saving...' : submitLabel}
         </button>
         {onCancel ? (

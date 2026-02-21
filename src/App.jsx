@@ -185,6 +185,20 @@ function isLikelyHtmlContent(content) {
   return /<(p|div|span|strong|em|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(source)
 }
 
+function renderRichTitle(title, keyPrefix = 'title') {
+  const source = String(title || '')
+  if (!source.trim()) return null
+  if (isLikelyHtmlContent(source)) {
+    return (
+      <span
+        className="rich-title"
+        dangerouslySetInnerHTML={{ __html: sanitizePublishedHtml(source) }}
+      />
+    )
+  }
+  return renderInlineRichText(source, keyPrefix)
+}
+
 function renderStyledTextBlock(text, keyPrefix = 'txt') {
   const lines = String(text || '').split('\n')
   const blocks = []
@@ -2062,6 +2076,7 @@ function PostPreviewCard({
   const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
   const coverSource = post.mediaPath || post.mediaUrl || ''
   const coverType = post.mediaType === 'video' ? 'video' : 'image'
+  const previewSnippet = stripReadableText(post.content).replace(/\s+/g, ' ').trim().slice(0, 160)
   return (
     <article
       className={`card preview-card ${featured ? 'featured' : ''}`}
@@ -2077,9 +2092,12 @@ function PostPreviewCard({
           resolveMediaSource={resolveMediaSource}
         />
       ) : (
-        <div className="preview-placeholder">No cover media</div>
+        <div className="preview-placeholder preview-text-cover">
+          <strong>{stripReadableText(post.title).replace(/\s+/g, ' ').trim().slice(0, 72) || 'Untitled'}</strong>
+          <span>{previewSnippet || 'Open post to read details.'}</span>
+        </div>
       )}
-      <h4>{renderInlineRichText(post.title, `card-title-${post.id}`)}</h4>
+      <h4>{renderRichTitle(post.title, `card-title-${post.id}`)}</h4>
       <div className="by-follow-row">
         <small>By {post.authorName}</small>
         {canFollowAuthor ? (
@@ -2246,7 +2264,7 @@ function FullPostView({
 
       <div className="post-head">
         <div>
-          <h2>{renderInlineRichText(post.title, `full-title-${post.id}`)}</h2>
+          <h2>{renderRichTitle(post.title, `full-title-${post.id}`)}</h2>
           <small>
             Owner: {post.authorName} | Created: {new Date(post.createdAt).toLocaleString()} | Updated: {new Date(post.updatedAt).toLocaleString()}
           </small>

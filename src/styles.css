@@ -433,6 +433,27 @@ body::-webkit-scrollbar {
   background: #ecf4ff;
 }
 
+.preview-text-cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+}
+
+.preview-text-cover strong {
+  color: #163b67;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.preview-text-cover span {
+  color: #375b86;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .post-head {
   display: flex;
   justify-content: space-between;
@@ -731,6 +752,33 @@ body::-webkit-scrollbar {
   line-height: 1.7;
   color: #163660;
   overflow-wrap: anywhere;
+}
+
+.rich-title-editor {
+  min-height: 52px;
+  border: 1px solid #c7defa;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  line-height: 1.45;
+  font-size: 1.08rem;
+  color: #163660;
+  margin-bottom: 8px;
+}
+
+.rich-title-editor:focus {
+  outline: none;
+  border-color: #79b7ff;
+  box-shadow: 0 0 0 4px rgba(89, 168, 255, 0.2);
+}
+
+.rich-title-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #8ca7c7;
+}
+
+.rich-title {
+  display: inline;
 }
 
 .rich-editor:focus {
