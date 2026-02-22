@@ -740,6 +740,7 @@ function App() {
             name: getAttr('name') || getAttr('preferred_username') || cUser.Username,
             email: getAttr('email'),
             status: cUser.UserStatus,
+            createdAt: cUser.UserCreateDate || new Date().toISOString()
           }
         })
         setCognitoUsers(mapped)
@@ -1665,6 +1666,17 @@ function App() {
     }
   }
 
+  const adminEditUser = async (user) => {
+    alert(`Editing ${user.email || user.sub} requires the AdminUpdateUserAttributes IAM policy backend which is not yet deployed.`)
+  }
+
+  const adminDeleteUser = async (user) => {
+    if (!isAdmin || !user?.sub) return
+    const ok = window.confirm(`Are you sure you want to delete ${user.email}? This will SOFT delete the user by blocking them and anonymizing their posts.`)
+    if (!ok) return
+    adminResetAccount(user)
+  }
+
   const adminTriggerPasswordReset = async (user) => {
     if (!ensureAuth() || !isAdmin) return
     const defaultEmail = (user?.email || '').trim()
@@ -2128,29 +2140,46 @@ function App() {
                         <th>Name</th>
                         <th>Email</th>
                         <th>Profile ID</th>
+                        <th>Registration (IST)</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {cognitoUsers.length === 0 ? <tr><td colSpan="5">No registered users found.</td></tr> : null}
+                      {cognitoUsers.length === 0 ? <tr><td colSpan="7">No registered users found.</td></tr> : null}
                       {cognitoUsers.map((u) => {
                         const blocked = blockedUserSubs.has(u.sub)
+                        let formattedIST = '-'
+                        if (u.createdAt) {
+                          try {
+                            const d = new Date(u.createdAt)
+                            formattedIST = d.toLocaleString('en-IN', {
+                              timeZone: 'Asia/Kolkata',
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: false
+                            })
+                          } catch (_) { }
+                        }
                         return (
                           <tr key={`reg-${u.sub}`}>
                             <td>{u.name || 'User'}</td>
                             <td>{u.email || '-'}</td>
                             <td>{u.sub}</td>
+                            <td>{formattedIST}</td>
                             <td>
                               {blocked ? 'Blocked' : u.status === 'UNCONFIRMED' ? 'Unconfirmed' : u.status === 'EXTERNAL_PROVIDER' ? 'Google SSO' : 'Active'}
                             </td>
                             <td className="admin-actions">
-                              <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>Reset Password</button>
-                              <button className="ghost" onClick={() => adminResetAccount(u)}>Reset Account</button>
+                              <button className="ghost" onClick={() => adminEditUser(u)}>Edit</button>
+                              <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>Password Reset</button>
                               {blocked ? (
                                 <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>Unblock</button>
                               ) : (
-                                <button className="danger" onClick={() => setUserBlocked(u.sub, true, 'Blocked by admin')}>Block</button>
+                                <button className="danger" onClick={() => adminDeleteUser(u)}>Delete</button>
                               )}
                             </td>
                           </tr>
