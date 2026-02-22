@@ -95,13 +95,12 @@ const schema = a
         updatedBySub: a.string(),
         updatedByName: a.string(),
       })
-  })
-  .authorization((allow) => [
-    allow.groups(['ADMINS']).to(['create', 'read', 'update', 'delete']),
-  ]),
+      .authorization((allow) => [
+        allow.groups(['ADMINS']).to(['create', 'read', 'update', 'delete']),
+      ]),
 
-  listCognitoUsers: a
-    .query()
+    listCognitoUsers: a
+      .query()
       .arguments({
         limit: a.integer(),
         nextToken: a.string(),
