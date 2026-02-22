@@ -54,7 +54,7 @@
      ]
     },
     "DefinitionS3Location": {
-     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/6d8e59f12690c9cac0d863134d5a92c57c96151ef2638b9ad1a5f64b35e1e23b.graphql"
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/a6150581df2f5b8771057e1de4d1672e3237cd558cdc3e67a63ee1d995e9d79d.graphql"
     }
    },
    "UpdateReplacePolicy": "Delete",
@@ -72,7 +72,7 @@
       "ApiId"
      ]
     },
-    "Expires": 1774245381
+    "Expires": 1774327939
    },
    "UpdateReplacePolicy": "Delete",
    "DeletionPolicy": "Delete",
@@ -230,7 +230,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/8d4ff816e40c6c38cd031dbfde6e9b1f60b1bdd0e175fe10c75d266fdaa84817.json"
+       "/6ff5cd8acf01eedfbe9f1faf8d54f5c417547470f22fd48132246e9235bba13e.json"
       ]
      ]
     }
@@ -323,7 +323,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/0f0a0814e89524e8f986f4930cb8a288fa7db515cd05c80417b3097454914441.json"
+       "/2203e2ffa7a3e4810f813a99835bbefdfdc0f984a52f0d7130642463c9fb135a.json"
       ]
      ]
     }
@@ -525,6 +525,192 @@
     "aws:asset:property": "TemplateURL"
    }
   },
+  "amplifyDataUserProfileNestedStackUserProfileNestedStackResource1B3713C5": {
+   "Type": "AWS::CloudFormation::Stack",
+   "Properties": {
+    "Parameters": {
+     "DynamoDBModelTableReadIOPS": {
+      "Ref": "DynamoDBModelTableReadIOPS"
+     },
+     "DynamoDBModelTableWriteIOPS": {
+      "Ref": "DynamoDBModelTableWriteIOPS"
+     },
+     "DynamoDBBillingMode": {
+      "Ref": "DynamoDBBillingMode"
+     },
+     "DynamoDBEnablePointInTimeRecovery": {
+      "Ref": "DynamoDBEnablePointInTimeRecovery"
+     },
+     "DynamoDBEnableServerSideEncryption": {
+      "Ref": "DynamoDBEnableServerSideEncryption"
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResourceCC03AAF2OutputsamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataAmplifyTableManagerTableManagerCustomProvi575C69F0": {
+      "Fn::GetAtt": [
+       "amplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource86290833",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataAmplifyTableManagerTableManagerCustomProviderframeworkonEvent22770A6CArn"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataGraphQLAPI7269AAD1ApiId": {
+      "Fn::GetAtt": [
+       "amplifyDataGraphQLAPI42A6FA33",
+       "ApiId"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataGraphQLAPINONEDS4516A222Name": {
+      "Fn::GetAtt": [
+       "amplifyDataGraphQLAPINONEDS684BF699",
+       "Name"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref": {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref"
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef": {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef"
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref": {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref"
+     }
+    },
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "amplify:friendly-name",
+      "Value": "amplifyData"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ],
+    "TemplateURL": {
+     "Fn::Join": [
+      "",
+      [
+       "https://s3.",
+       {
+        "Ref": "AWS::Region"
+       },
+       ".",
+       {
+        "Ref": "AWS::URLSuffix"
+       },
+       "/",
+       {
+        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+       },
+       "/45b83c7d0de3e21f4f38f70408c3eaee1c67e9c17e52162fe0b6635cf34430c5.json"
+      ]
+     ]
+    }
+   },
+   "DependsOn": [
+    "amplifyDataGraphQLAPITransformerSchemaFF50A789"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/UserProfile.NestedStack/UserProfile.NestedStackResource",
+    "aws:asset:path": "amplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataUserProfileF4E21B03.nested.template.json",
+    "aws:asset:property": "TemplateURL"
+   }
+  },
+  "amplifyDataUserModerationNestedStackUserModerationNestedStackResource6D52815B": {
+   "Type": "AWS::CloudFormation::Stack",
+   "Properties": {
+    "Parameters": {
+     "DynamoDBModelTableReadIOPS": {
+      "Ref": "DynamoDBModelTableReadIOPS"
+     },
+     "DynamoDBModelTableWriteIOPS": {
+      "Ref": "DynamoDBModelTableWriteIOPS"
+     },
+     "DynamoDBBillingMode": {
+      "Ref": "DynamoDBBillingMode"
+     },
+     "DynamoDBEnablePointInTimeRecovery": {
+      "Ref": "DynamoDBEnablePointInTimeRecovery"
+     },
+     "DynamoDBEnableServerSideEncryption": {
+      "Ref": "DynamoDBEnableServerSideEncryption"
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResourceCC03AAF2OutputsamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataAmplifyTableManagerTableManagerCustomProvi575C69F0": {
+      "Fn::GetAtt": [
+       "amplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource86290833",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataAmplifyTableManagerTableManagerCustomProviderframeworkonEvent22770A6CArn"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataGraphQLAPI7269AAD1ApiId": {
+      "Fn::GetAtt": [
+       "amplifyDataGraphQLAPI42A6FA33",
+       "ApiId"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataGraphQLAPINONEDS4516A222Name": {
+      "Fn::GetAtt": [
+       "amplifyDataGraphQLAPINONEDS684BF699",
+       "Name"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref": {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref"
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef": {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef"
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref": {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref"
+     }
+    },
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "amplify:friendly-name",
+      "Value": "amplifyData"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ],
+    "TemplateURL": {
+     "Fn::Join": [
+      "",
+      [
+       "https://s3.",
+       {
+        "Ref": "AWS::Region"
+       },
+       ".",
+       {
+        "Ref": "AWS::URLSuffix"
+       },
+       "/",
+       {
+        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+       },
+       "/68f2faf23d156fdf2a9f53a4c53726ecdd66ab291564c03b7d8701bd712f2638.json"
+      ]
+     ]
+    }
+   },
+   "DependsOn": [
+    "amplifyDataGraphQLAPITransformerSchemaFF50A789"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/UserModeration.NestedStack/UserModeration.NestedStackResource",
+    "aws:asset:path": "amplifyblogappPiratesandbox6e2bfb59f0dataamplifyDataUserModeration53ECB7DC.nested.template.json",
+    "aws:asset:property": "TemplateURL"
+   }
+  },
   "amplifyDataConnectionStackNestedStackConnectionStackNestedStackResourceAB0F312B": {
    "Type": "AWS::CloudFormation::Stack",
    "Properties": {
@@ -629,7 +815,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/5638bd4c7b58a942c7c5c9a312ffa21ba2387223f00ead7d21f8bcd10d203f47.json"
+       "/3b120aa32bf630997eab802959e7f8ca73023ec6424b66c1edc503a9d904114e.json"
       ]
      ]
     }
@@ -822,7 +1008,7 @@
      }
     ],
     "SourceObjectKeys": [
-     "ddeef3ffd3ddeb2299a393056e02e04e8dae95676252a9822ac9280f5f79d5d0.zip"
+     "b62f27fe1647fefe8ce381cf3a15f6b65e95a441a1d9d079972c947dee05af1b.zip"
     ],
     "SourceMarkers": [
      {}
@@ -1327,7 +1513,7 @@
      }
     ],
     "SourceObjectKeys": [
-     "b0c85e8582aa3620f6fe8ad346b2f421c729123482e20b938aa2acda5129f5ed.zip"
+     "ce427008a700f1cee04fb0eb664c3a2963b59d660c5f650d4ed65cc71fe254c7.zip"
     ],
     "SourceMarkers": [
      {}

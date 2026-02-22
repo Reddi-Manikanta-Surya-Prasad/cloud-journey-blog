@@ -121,19 +121,36 @@
    "Value": ""
   },
   "socialProviders": {
-   "Value": ""
+   "Value": "[\"GOOGLE\"]"
   },
   "oauthCognitoDomain": {
-   "Value": ""
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      {
+       "Fn::GetAtt": [
+        "auth179371D7",
+        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPoolUserPoolDomain161BADAFRef"
+       ]
+      },
+      ".auth.",
+      {
+       "Ref": "AWS::Region"
+      },
+      ".amazoncognito.com"
+     ]
+    ]
+   }
   },
   "oauthScope": {
-   "Value": "[\"profile\",\"phone\",\"email\",\"openid\",\"aws.cognito.signin.user.admin\"]"
+   "Value": "[\"phone\",\"email\",\"openid\",\"profile\",\"aws.cognito.signin.user.admin\"]"
   },
   "oauthRedirectSignIn": {
-   "Value": "https://example.com"
+   "Value": "http://localhost:5173/,https://main.d14oin3rflwldw.amplifyapp.com/,https://cloudjourney.suryareddi.in/,https://clouddjourney.suryareddi.in/,https://djourney.suryareddi.in/"
   },
   "oauthRedirectSignOut": {
-   "Value": ""
+   "Value": "http://localhost:5173/,https://main.d14oin3rflwldw.amplifyapp.com/,https://cloudjourney.suryareddi.in/,https://clouddjourney.suryareddi.in/,https://djourney.suryareddi.in/"
   },
   "oauthResponseType": {
    "Value": "code"
@@ -147,7 +164,7 @@
    }
   },
   "groups": {
-   "Value": "[]"
+   "Value": "[{\"ADMINS\":{\"precedence\":0}}]"
   },
   "awsAppsyncApiId": {
    "Value": {
@@ -250,7 +267,7 @@
       {
        "Ref": "AWS::Region"
       },
-      "\\\",\\\"paths\\\":{\\\"media/*\\\":{\\\"authenticated\\\":[\\\"get\\\",\\\"list\\\",\\\"write\\\",\\\"delete\\\"]}}}\"]"
+      "\\\",\\\"paths\\\":{\\\"media/*\\\":{\\\"guest\\\":[\\\"get\\\",\\\"list\\\"],\\\"authenticated\\\":[\\\"get\\\",\\\"list\\\",\\\"write\\\",\\\"delete\\\"]}}}\"]"
      ]
     ]
    }
@@ -286,7 +303,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/17e4fa139072ed75daa04a31cd39e07fe4070dee890ea55f9109e5e407b66507.json"
+       "/e31ea5b6aeca1be95bcabecfaa59ac09c6e903bf66e8cdcea07b7dd09e16fd46.json"
       ]
      ]
     }
@@ -354,7 +371,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/57ed5c46dcf807ab48e3249ba459fa07dd6b043d7dda9f5a9615fb4450f5fbd3.json"
+       "/e460ae689beaafeeca47ee0feb017c75a777cb83f7c2a2e3d23c7241fab21647.json"
       ]
      ]
     }
@@ -371,6 +388,12 @@
    "Type": "AWS::CloudFormation::Stack",
    "Properties": {
     "Parameters": {
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef": {
+      "Fn::GetAtt": [
+       "auth179371D7",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef"
+      ]
+     },
      "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref": {
       "Fn::GetAtt": [
        "auth179371D7",
@@ -404,7 +427,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/290ae2d9ba014d531b091f10dafa92e2f93d6bf96090287cd79d7bbd574a0bc2.json"
+       "/9a8826e7d6f98ec6c4da26e6573377bb7e1ec8acbdf5d9a8ab652fa98269622c.json"
       ]
      ]
     }

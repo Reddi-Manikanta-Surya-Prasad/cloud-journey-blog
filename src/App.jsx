@@ -706,11 +706,11 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
   const [toasts, setToasts] = useState([])
-  const [theme, setTheme] = useState(() => localStorage.getItem('blog_theme') || 'light')
+  const [theme, setTheme] = useState(() => localStorage.getItem('blog_theme_v2') || 'zen')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('blog_theme', theme)
+    localStorage.setItem('blog_theme_v2', theme)
   }, [theme])
 
   useEffect(() => {
@@ -1930,9 +1930,9 @@ function App() {
             onChange={(e) => setTheme(e.target.value)}
             style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
           >
-            <option value="light">☀️ Light</option>
-            <option value="dark">🌙 Dark</option>
-            <option value="crazy">🦄 Crazy</option>
+            <option value="zen">⚪ Zen</option>
+            <option value="midnight">⚫ Midnight</option>
+            <option value="arcade">👾 Arcade</option>
           </select>
           {currentUser ? (
             <>

@@ -1,57 +1,91 @@
-﻿:root,
-[data-theme='light'] {
-  --bg-page: #eff4fa;
-  --bg-card: #ffffff;
-  --text-main: #14335a;
-  --text-muted: #5e7d9e;
-  --border-card: #dceaf9;
-  --brand-a: #297cdd;
-  --brand-b: #009dff;
+﻿/* =========================================================================
+   WAVE 7: BRAND NEW DESIGN SYSTEMS (ZEN, MIDNIGHT, ARCADE)
+   ========================================================================= */
+
+:root,
+[data-theme='zen'] {
+  --bg-page: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --text-main: #334155;
+  --text-muted: #64748b;
+  --border-card: rgba(255, 255, 255, 0.4);
+  --brand-a: #3b82f6;
+  --brand-b: #8b5cf6;
   --danger-a: #ef4444;
   --danger-b: #f87171;
-  --focus-ring: rgba(41, 124, 221, 0.2);
-  --header-bg: rgba(255, 255, 255, 0.85);
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --focus-ring: rgba(59, 130, 246, 0.3);
+  --header-bg: rgba(248, 250, 252, 0.8);
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text-main);
   background: var(--bg-page);
+
+  /* Zen-specific tweaks */
+  --card-blur: blur(12px);
+  --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  --card-border-radius: 16px;
+  --transition-speed: 0.4s;
 }
 
-[data-theme='dark'] {
-  --bg-page: #111111;
-  --bg-card: #1c1c1c;
-  --text-main: #ffffff;
-  --text-muted: #a1a1aa;
-  --border-card: #ffffff;
-  --brand-a: #00e5ff;
-  --brand-b: #ff3366;
-  --danger-a: #ff0044;
-  --danger-b: #ff5588;
-  --focus-ring: rgba(255, 255, 255, 1);
-  --header-bg: #ff3366;
+[data-theme='midnight'] {
+  --bg-page: #09090b;
+  --bg-card: #18181b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-card: rgba(255, 255, 255, 0.08);
+  --brand-a: #22d3ee;
+  /* Electric Cyan */
+  --brand-b: #d946ef;
+  /* Neon Magenta */
+  --danger-a: #f43f5e;
+  --danger-b: #fb7185;
+  --focus-ring: rgba(34, 211, 238, 0.4);
+  --header-bg: rgba(9, 9, 11, 0.9);
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text-main);
   background: var(--bg-page);
-  font-family: 'Space Mono', 'Courier New', monospace;
-  background-image: radial-gradient(#333333 1px, transparent 1px);
-  background-size: 20px 20px;
+
+  /* Midnight-specific tweaks */
+  --card-blur: none;
+  --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  --card-border-radius: 12px;
+  --transition-speed: 0.4s;
 }
 
-[data-theme='crazy'] {
-  --bg-page: #ffdeeb;
-  --bg-card: #ffffff;
-  --text-main: #111111;
-  --text-muted: #555555;
-  --border-card: #000000;
-  --brand-a: #ff3366;
-  --brand-b: #00e5ff;
-  --danger-a: #ff0000;
-  --danger-b: #ff5555;
-  --focus-ring: rgba(0, 0, 0, 1);
-  --header-bg: #ffe600;
+[data-theme='arcade'] {
+  --bg-page: #1a0b2e;
+  /* Deep purple */
+  --bg-card: #140121;
+  --text-main: #facc15;
+  --text-muted: #c4b5fd;
+  --border-card: #06b6d4;
+  /* Neon cyan borders */
+  --brand-a: #ec4899;
+  /* Hot Pink */
+  --brand-b: #06b6d4;
+  /* Cyan */
+  --danger-a: #ef4444;
+  --danger-b: #f87171;
+  --focus-ring: rgba(236, 72, 153, 0.5);
+  --header-bg: #140121;
+
+  font-family: 'Space Mono', 'Courier New', monospace;
   color: var(--text-main);
   background: var(--bg-page);
-  font-family: 'Space Mono', 'Courier New', monospace;
-  background-image: radial-gradient(#000000 1px, transparent 1px);
-  background-size: 20px 20px;
+
+  /* Arcade Cyberpunk tweaks */
+  --card-blur: none;
+  --card-shadow: 4px 4px 0 var(--border-card);
+  --card-border-radius: 0px;
+  --transition-speed: 0.1s;
+  /* Snappier like a game */
+
+  /* Dark Grid */
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
 }
 
 body {
@@ -122,12 +156,9 @@ body {
 
 body {
   margin: 0;
-  color: var(--ink);
-  background:
-    radial-gradient(circle at 15% 12%, rgba(39, 171, 255, 0.24), transparent 34%),
-    radial-gradient(circle at 82% 10%, rgba(93, 184, 255, 0.22), transparent 31%),
-    linear-gradient(145deg, var(--bg-1), var(--bg-2), var(--bg-3));
-  background-attachment: fixed;
+  color: var(--text-main);
+  background-color: var(--bg-page);
+  font-family: inherit;
 }
 
 html,
@@ -142,11 +173,18 @@ body::-webkit-scrollbar {
   height: 0;
 }
 
-/* Neo-Brutalism Theme Specifics (Crazy & Dark) */
-:is([data-theme='crazy'], [data-theme='dark']) .app-header {
-  border-bottom: 4px solid var(--border-card) !important;
-  box-shadow: 0 8px 0 var(--border-card) !important;
-  background: var(--header-bg) !important;
+/* Theme Standard Overrides */
+.app-header {
+  border-bottom: 1px solid var(--border-card);
+  background: var(--header-bg);
+  backdrop-filter: var(--card-blur, blur(0px));
+  -webkit-backdrop-filter: var(--card-blur, blur(0px));
+  transition: all var(--transition-speed, 0.4s) ease;
+}
+
+:is([data-theme='arcade']) .app-header {
+  border-bottom: 2px solid var(--border-card) !important;
+  box-shadow: 0 4px 0 var(--border-card) !important;
   border-radius: 0;
 }
 

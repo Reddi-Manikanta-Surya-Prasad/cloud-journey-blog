@@ -297,6 +297,63 @@
          "Arn"
         ]
        }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "amplifyblogappPiratesandbox6e2bfb59f0storageAccess3F067EA67",
+    "Roles": [
+     {
+      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/storage/amplify-blogapp-Pirate-sandbox-6e2bfb59f0--storageAccess3/Resource"
+   }
+  },
+  "amplifyblogappPiratesandbox6e2bfb59f0storageAccess4BCD9B327": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:GetObject",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "blogMediaBucket98E1D019",
+            "Arn"
+           ]
+          },
+          "/media/*"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": "s3:ListBucket",
+       "Condition": {
+        "StringLike": {
+         "s3:prefix": [
+          "media/*",
+          "media/"
+         ]
+        }
+       },
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "blogMediaBucket98E1D019",
+         "Arn"
+        ]
+       }
       },
       {
        "Action": "s3:PutObject",
@@ -337,7 +394,7 @@
      ],
      "Version": "2012-10-17"
     },
-    "PolicyName": "amplifyblogappPiratesandbox6e2bfb59f0storageAccess3F067EA67",
+    "PolicyName": "amplifyblogappPiratesandbox6e2bfb59f0storageAccess4BCD9B327",
     "Roles": [
      {
       "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref"
@@ -347,7 +404,7 @@
    "UpdateReplacePolicy": "Delete",
    "DeletionPolicy": "Delete",
    "Metadata": {
-    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/storage/amplify-blogapp-Pirate-sandbox-6e2bfb59f0--storageAccess3/Resource"
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/storage/amplify-blogapp-Pirate-sandbox-6e2bfb59f0--storageAccess4/Resource"
    }
   },
   "CDKMetadata": {
@@ -628,6 +685,9 @@
   }
  },
  "Parameters": {
+  "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef": {
+   "Type": "String"
+  },
   "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref": {
    "Type": "String"
   }

@@ -155,7 +155,7 @@
     "FunctionVersion": "2018-05-29",
     "Name": "Postcommentsauth0Function",
     "RequestMappingTemplateS3Location": {
-     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e25e9c86ec3c2af0f86da0b3bf06aea8b52d52e66a3638c443c6f05a0b276173.vtl"
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/d01b51f96eae98d2d892d00dbc23890874bbeb0a1342431145ff8547dc915c11.vtl"
     },
     "ResponseMappingTemplate": "$util.toJson({})"
    },
@@ -441,7 +441,7 @@
     "FunctionVersion": "2018-05-29",
     "Name": "Commentpostauth0Function",
     "RequestMappingTemplateS3Location": {
-     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/a62f63b1bc91f4f42cc6137566231125cd39d3df95e41c3c15a8822f3520fef9.vtl"
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/7e7c7a9e721a6b2f6066e7c985989ca2444f92b975c70f7e801ae31d4de19bd3.vtl"
     },
     "ResponseMappingTemplate": "$util.toJson({})"
    },
@@ -584,7 +584,7 @@
     "FunctionVersion": "2018-05-29",
     "Name": "CommentLikecommentauth0Function",
     "RequestMappingTemplateS3Location": {
-     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e25e9c86ec3c2af0f86da0b3bf06aea8b52d52e66a3638c443c6f05a0b276173.vtl"
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/d01b51f96eae98d2d892d00dbc23890874bbeb0a1342431145ff8547dc915c11.vtl"
     },
     "ResponseMappingTemplate": "$util.toJson({})"
    },
@@ -727,7 +727,7 @@
     "FunctionVersion": "2018-05-29",
     "Name": "PostLikepostauth0Function",
     "RequestMappingTemplateS3Location": {
-     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/a62f63b1bc91f4f42cc6137566231125cd39d3df95e41c3c15a8822f3520fef9.vtl"
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/7e7c7a9e721a6b2f6066e7c985989ca2444f92b975c70f7e801ae31d4de19bd3.vtl"
     },
     "ResponseMappingTemplate": "$util.toJson({})"
    },

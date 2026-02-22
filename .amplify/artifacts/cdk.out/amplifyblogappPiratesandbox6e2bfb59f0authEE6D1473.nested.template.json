@@ -1,6 +1,307 @@
 {
  "Description": "{\"createdOn\":\"Windows\",\"createdBy\":\"AmplifySandbox\",\"createdWith\":\"1.11.1\",\"stackType\":\"auth-Cognito\",\"metadata\":{}}",
  "Resources": {
+  "AmplifySecretFetcherResourceProviderLambdaServiceRole3F02FB0D": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProviderLambda/ServiceRole/Resource"
+   }
+  },
+  "AmplifySecretFetcherResourceProviderLambdaServiceRoleDefaultPolicy080657DD": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "ssm:GetParameter",
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:ssm:*:*:parameter/amplify/blogapp/Pirate-sandbox-6e2bfb59f0/*",
+        "arn:aws:ssm:*:*:parameter/amplify/shared/blog_app/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AmplifySecretFetcherResourceProviderLambdaServiceRoleDefaultPolicy080657DD",
+    "Roles": [
+     {
+      "Ref": "AmplifySecretFetcherResourceProviderLambdaServiceRole3F02FB0D"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProviderLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "AmplifySecretFetcherResourceProviderLambda27823B35": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+     },
+     "S3Key": "ccf64cbdb67e3a32a36595abd25555d11f783390668f5bdd6737a8c7a0005770.zip"
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "AmplifySecretFetcherResourceProviderLambdaServiceRole3F02FB0D",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ],
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "AmplifySecretFetcherResourceProviderLambdaServiceRoleDefaultPolicy080657DD",
+    "AmplifySecretFetcherResourceProviderLambdaServiceRole3F02FB0D"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProviderLambda/Resource",
+    "aws:asset:path": "asset.ccf64cbdb67e3a32a36595abd25555d11f783390668f5bdd6737a8c7a0005770",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "AmplifySecretFetcherResourceProviderframeworkonEventServiceRole0941C6B4": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProvider/framework-onEvent/ServiceRole/Resource"
+   }
+  },
+  "AmplifySecretFetcherResourceProviderframeworkonEventServiceRoleDefaultPolicy749EBE05": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "lambda:InvokeFunction",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AmplifySecretFetcherResourceProviderLambda27823B35",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AmplifySecretFetcherResourceProviderLambda27823B35",
+             "Arn"
+            ]
+           },
+           ":*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "lambda:GetFunction",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "AmplifySecretFetcherResourceProviderLambda27823B35",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AmplifySecretFetcherResourceProviderframeworkonEventServiceRoleDefaultPolicy749EBE05",
+    "Roles": [
+     {
+      "Ref": "AmplifySecretFetcherResourceProviderframeworkonEventServiceRole0941C6B4"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "AmplifySecretFetcherResourceProviderframeworkonEventA62AE3A8": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": {
+      "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+     },
+     "S3Key": "07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57.zip"
+    },
+    "Description": "AWS CDK resource provider framework - onEvent (amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProvider)",
+    "Environment": {
+     "Variables": {
+      "USER_ON_EVENT_FUNCTION_ARN": {
+       "Fn::GetAtt": [
+        "AmplifySecretFetcherResourceProviderLambda27823B35",
+        "Arn"
+       ]
+      }
+     }
+    },
+    "Handler": "framework.onEvent",
+    "LoggingConfig": {
+     "ApplicationLogLevel": "FATAL",
+     "LogFormat": "JSON"
+    },
+    "Role": {
+     "Fn::GetAtt": [
+      "AmplifySecretFetcherResourceProviderframeworkonEventServiceRole0941C6B4",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ],
+    "Timeout": 900
+   },
+   "DependsOn": [
+    "AmplifySecretFetcherResourceProviderframeworkonEventServiceRoleDefaultPolicy749EBE05",
+    "AmplifySecretFetcherResourceProviderframeworkonEventServiceRole0941C6B4"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResourceProvider/framework-onEvent/Resource",
+    "aws:asset:path": "asset.07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "AmplifySecretFetcherResource": {
+   "Type": "Custom::AmplifySecretFetcherResource",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "AmplifySecretFetcherResourceProviderframeworkonEventA62AE3A8",
+      "Arn"
+     ]
+    },
+    "namespace": "blog_app",
+    "name": "Pirate",
+    "type": "sandbox",
+    "secretNames": [
+     "GOOGLE_CLIENT_ID",
+     "GOOGLE_CLIENT_SECRET"
+    ],
+    "secretLastUpdated": 1771687695071
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/AmplifySecretFetcherResource/Default"
+   }
+  },
   "amplifyAuthUserPool4BA7F805": {
    "Type": "AWS::Cognito::UserPool",
    "Properties": {
@@ -71,6 +372,53 @@
     "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/amplifyAuth/UserPool/Resource"
    }
   },
+  "amplifyAuthUserPoolUserPoolDomain1F688B5B": {
+   "Type": "AWS::Cognito::UserPoolDomain",
+   "Properties": {
+    "Domain": "806c10e7aff542e159b2",
+    "UserPoolId": {
+     "Ref": "amplifyAuthUserPool4BA7F805"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/amplifyAuth/UserPool/UserPoolDomain/Resource"
+   }
+  },
+  "amplifyAuthGoogleIdPA9736819": {
+   "Type": "AWS::Cognito::UserPoolIdentityProvider",
+   "Properties": {
+    "AttributeMapping": {
+     "email": "email"
+    },
+    "ProviderDetails": {
+     "client_id": {
+      "Fn::GetAtt": [
+       "AmplifySecretFetcherResource",
+       "GOOGLE_CLIENT_ID"
+      ]
+     },
+     "client_secret": {
+      "Fn::GetAtt": [
+       "AmplifySecretFetcherResource",
+       "GOOGLE_CLIENT_SECRET"
+      ]
+     },
+     "authorize_scopes": "openid email profile"
+    },
+    "ProviderName": "Google",
+    "ProviderType": "Google",
+    "UserPoolId": {
+     "Ref": "amplifyAuthUserPool4BA7F805"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/amplifyAuth/GoogleIdP/Resource"
+   }
+  },
   "amplifyAuthUserPoolAppClient2626C6F8": {
    "Type": "AWS::Cognito::UserPoolClient",
    "Properties": {
@@ -79,22 +427,36 @@
     ],
     "AllowedOAuthFlowsUserPoolClient": true,
     "AllowedOAuthScopes": [
-     "profile",
      "phone",
      "email",
      "openid",
+     "profile",
      "aws.cognito.signin.user.admin"
     ],
     "CallbackURLs": [
-     "https://example.com"
+     "http://localhost:5173/",
+     "https://main.d14oin3rflwldw.amplifyapp.com/",
+     "https://cloudjourney.suryareddi.in/",
+     "https://clouddjourney.suryareddi.in/",
+     "https://djourney.suryareddi.in/"
     ],
     "ExplicitAuthFlows": [
      "ALLOW_CUSTOM_AUTH",
      "ALLOW_USER_SRP_AUTH",
      "ALLOW_REFRESH_TOKEN_AUTH"
     ],
+    "LogoutURLs": [
+     "http://localhost:5173/",
+     "https://main.d14oin3rflwldw.amplifyapp.com/",
+     "https://cloudjourney.suryareddi.in/",
+     "https://clouddjourney.suryareddi.in/",
+     "https://djourney.suryareddi.in/"
+    ],
     "PreventUserExistenceErrors": "ENABLED",
     "SupportedIdentityProviders": [
+     {
+      "Ref": "amplifyAuthGoogleIdPA9736819"
+     },
      "COGNITO"
     ],
     "UserPoolId": {
@@ -147,7 +509,14 @@
       "Value": "amplify"
      }
     ],
-    "SupportedLoginProviders": {}
+    "SupportedLoginProviders": {
+     "accounts.google.com": {
+      "Fn::GetAtt": [
+       "AmplifySecretFetcherResource",
+       "GOOGLE_CLIENT_ID"
+      ]
+     }
+    }
    },
    "UpdateReplacePolicy": "Delete",
    "DeletionPolicy": "Delete",
@@ -303,10 +672,77 @@
     "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/amplifyAuth/IdentityPoolRoleAttachment"
    }
   },
+  "amplifyAuthADMINSGroupRole474FA206": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRoleWithWebIdentity",
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "Ref": "amplifyAuthIdentityPool3FDE84CC"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": "cognito-identity.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "amplify:friendly-name",
+      "Value": "amplifyAuth"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/amplifyAuth/ADMINSGroupRole/Resource"
+   }
+  },
+  "amplifyAuthADMINSGroup50EC39D2": {
+   "Type": "AWS::Cognito::UserPoolGroup",
+   "Properties": {
+    "GroupName": "ADMINS",
+    "Precedence": 0,
+    "RoleArn": {
+     "Fn::GetAtt": [
+      "amplifyAuthADMINSGroupRole474FA206",
+      "Arn"
+     ]
+    },
+    "UserPoolId": {
+     "Ref": "amplifyAuthUserPool4BA7F805"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/amplifyAuth/ADMINSGroup"
+   }
+  },
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/01OvQrCMBB+Fvf0rHVylE4uIi3OEpNTr00v0JwWCXl3CVLt9P3DV0G13UG50lMojO0LR1eIRwyCthVteqWncInG35nEQzwHHE/eO1Xf+MdnUjtClmX0dw4WWUje83ipG+9wL6LNY0CWpEgPELOZixlTSoq9RejC+lWVsMmPu0BUjE8WGhCaL34Ana7A084AAAA="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3VRy2rDQAz8lt7XapqcekxcGnoJwaFns1krrhx7VVZyQjD+9+JnTaGnmdFIg5DWsN68wurJ3iVy2TUq6QzNAUUxO6l1V2Pvkjalrc6ZTT1nWAgcenivvVNib8hW0CRcookvvscjl+QenRxYa2STWhFUgW0HRjawq90VdWcFzRAPTXzxc+pEWuM496QMzadgODKXXfDMJ/LGlSW/tMbKJD8y9Er6OAa+UYZhz5wPO//XMY/GJaHXZetvZR4aF1vq7hhbVeu+qj/z+8D1d9ua/hontTn53LhalKs0oHAdHArMi8S9k4xGf+eRt6Z7ChTyfFuv4KV7ZSFEUai9UoWQDPgDNJ9NJucBAAA="
    },
    "Metadata": {
     "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/auth/CDKMetadata/Default"
@@ -594,6 +1030,11 @@
   "amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref": {
    "Value": {
     "Ref": "amplifyAuthIdentityPool3FDE84CC"
+   }
+  },
+  "amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPoolUserPoolDomain161BADAFRef": {
+   "Value": {
+    "Ref": "amplifyAuthUserPoolUserPoolDomain1F688B5B"
    }
   },
   "amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref": {
