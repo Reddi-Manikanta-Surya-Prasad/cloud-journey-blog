@@ -731,7 +731,7 @@ function App() {
 
   const fetchCognitoUsers = async () => {
     try {
-      const res = await client.queries.listCognitoUsers({ limit: 100 })
+      const res = await client.queries.listCognitoUsers({ limit: 60 })
       console.log('RAW COGNITO RESPONSE:', res)
       const data = res.data
       if (data && (data.usersJson || data.listCognitoUsers?.usersJson)) {

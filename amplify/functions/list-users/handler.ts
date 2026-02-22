@@ -14,7 +14,7 @@ export const handler: Handler = async (event) => {
     try {
         const command = new ListUsersCommand({
             UserPoolId: userPoolId,
-            Limit: event.arguments?.limit || 60,
+            Limit: Math.min(event.arguments?.limit || 60, 60),
             PaginationToken: event.arguments?.nextToken || undefined,
         })
 
