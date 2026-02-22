@@ -1060,11 +1060,13 @@ function App() {
       })
 
       try {
-        const { data: profiles } = await client.models.UserProfile.list({ filter: { userSub: { eq: user.userId } } })
-        if (profiles && profiles.length > 0) {
-          await client.models.UserProfile.update({ id: profiles[0].id, name: friendlyName, email })
-        } else {
-          await client.models.UserProfile.create({ userSub: user.userId, name: friendlyName, email })
+        if (client.models.UserProfile) {
+          const { data: profiles } = await client.models.UserProfile.list({ filter: { userSub: { eq: user.userId } } })
+          if (profiles && profiles.length > 0) {
+            await client.models.UserProfile.update({ id: profiles[0].id, name: friendlyName, email })
+          } else {
+            await client.models.UserProfile.create({ userSub: user.userId, name: friendlyName, email })
+          }
         }
       } catch (err) {
         console.error('Failed to sync UserProfile', err)
@@ -1112,11 +1114,11 @@ function App() {
       if (readAuthMode === 'userPool' && isAdmin) {
         try {
           const [moderationRes, profilesRes] = await Promise.all([
-            client.models.UserModeration.list({ authMode: 'userPool' }),
-            client.models.UserProfile.list({ authMode: 'userPool' }),
+            client.models.UserModeration?.list({ authMode: 'userPool' }) || { data: [] },
+            client.models.UserProfile?.list({ authMode: 'userPool' }) || { data: [] },
           ])
-          if (!moderationRes.errors?.length) setModerations(moderationRes.data)
-          if (!profilesRes.errors?.length) setUserProfiles(profilesRes.data)
+          if (!moderationRes.errors?.length) setModerations(moderationRes.data || [])
+          if (!profilesRes.errors?.length) setUserProfiles(profilesRes.data || [])
         } catch {
           setModerations([])
           setUserProfiles([])
