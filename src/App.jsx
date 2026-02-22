@@ -180,11 +180,30 @@ function sanitizePublishedHtml(html) {
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
     .replace(/javascript:/gi, '')
 
-  // Normalize legacy <font color="..."> to <span style="color:...">.
-  next = next.replace(
-    /<font\s+[^>]*color\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/font>/gi,
-    '<span style="color:$1">$2</span>',
-  )
+  // Normalize legacy <font color="..."> tags safely using DOM if available
+  if (typeof document !== 'undefined') {
+    const root = document.createElement('div')
+    root.innerHTML = next
+    root.querySelectorAll('font').forEach((el) => {
+      const span = document.createElement('span')
+      span.innerHTML = el.innerHTML
+      if (el.color) span.style.color = el.color
+      if (el.getAttribute('style')) {
+        span.style.cssText += ';' + el.getAttribute('style')
+      }
+      if (el.size) span.style.fontSize = el.size
+      if (el.face) span.style.fontFamily = el.face
+      el.replaceWith(span)
+    })
+    next = root.innerHTML
+  } else {
+    // Basic fallback for SSR
+    next = next.replace(
+      /<font[^>]*color=(['"]?)([^"']+)\1[^>]*>([\s\S]*?)<\/font>/gi,
+      '<span style="color:$2">$3</span>',
+    )
+  }
+
   return next
 }
 
@@ -2036,7 +2055,7 @@ function App() {
             <div className="admin-metrics">
               <div className="admin-metric">
                 <small>Total Users (known)</small>
-                <strong>{adminUsers.length}</strong>
+                <strong>{registeredUsers.length}</strong>
               </div>
               <div className="admin-metric">
                 <small>Total Posts</small>

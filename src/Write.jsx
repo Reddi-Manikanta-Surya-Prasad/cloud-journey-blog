@@ -406,6 +406,22 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [paintColor, setPaintColor] = useState('#143a66')
   const [paintSize, setPaintSize] = useState(3)
   const [paintEraser, setPaintEraser] = useState(false)
+  const colorSelectionRef = useRef(null)
+
+  const saveColorSelection = () => {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      colorSelectionRef.current = sel.getRangeAt(0).cloneRange()
+    }
+  }
+
+  const restoreColorSelection = () => {
+    if (colorSelectionRef.current) {
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(colorSelectionRef.current)
+    }
+  }
 
   const updateEditorHtmlState = () => {
     const html = editorRef.current?.innerHTML || ''
@@ -1027,7 +1043,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                     <div style={{ height: '3px', background: textColor, width: '100%', marginTop: '-2px', borderRadius: '2px' }} />
                   </button>
                   <label className="swatch-picker-label" title="Pick text color">
-                    <input type="color" className="hidden-input" value={textColor} onChange={(e) => { setTextColor(e.target.value); runCommand('foreColor', e.target.value); }} />
+                    <input
+                      type="color"
+                      className="hidden-input"
+                      value={textColor}
+                      onMouseDown={saveColorSelection}
+                      onChange={(e) => {
+                        setTextColor(e.target.value)
+                        restoreColorSelection()
+                        runCommand('foreColor', e.target.value)
+                      }}
+                    />
                     <span className="swatch-caret">▾</span>
                   </label>
                 </div>
@@ -1038,7 +1064,17 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                     <div style={{ height: '4px', background: bgColor, width: '100%', marginTop: '-2px', borderRadius: '2px' }} />
                   </button>
                   <label className="swatch-picker-label" title="Pick highlight color">
-                    <input type="color" className="hidden-input" value={bgColor} onChange={(e) => { setBgColor(e.target.value); runCommand('hiliteColor', e.target.value); }} />
+                    <input
+                      type="color"
+                      className="hidden-input"
+                      value={bgColor}
+                      onMouseDown={saveColorSelection}
+                      onChange={(e) => {
+                        setBgColor(e.target.value)
+                        restoreColorSelection()
+                        runCommand('hiliteColor', e.target.value)
+                      }}
+                    />
                     <span className="swatch-caret">▾</span>
                   </label>
                 </div>
