@@ -37,7 +37,4 @@ export const auth = defineAuth({
       mutable: true,
     },
   },
-  access: (allow) => [
-    allow.guest(),
-  ]
 })
