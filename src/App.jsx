@@ -706,7 +706,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
   const [toasts, setToasts] = useState([])
-  const [theme, setTheme] = useState(() => localStorage.getItem('blog_theme_v2') || 'minimalist-canvas')
+  const [theme, setTheme] = useState(() => localStorage.getItem('blog_theme_v2') || 'interactive-canvas')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -1930,8 +1930,8 @@ function App() {
             onChange={(e) => setTheme(e.target.value)}
             style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
           >
-            <option value="minimalist-canvas">📝 Minimalist Canvas</option>
-            <option value="dark-professional">💼 Dark Professional</option>
+            <option value="interactive-canvas">🌞 Interactive Canvas</option>
+            <option value="focus-night-studio">🌙 Focus Night Studio</option>
           </select>
           {currentUser ? (
             <>

@@ -4,50 +4,50 @@
 
 :root,
 :root,
-[data-theme='minimalist-canvas'] {
-  --bg-page: #ffffff;
-  --bg-card: #ffffff;
-  --text-main: #111111;
-  --text-muted: #666666;
-  --border-card: #e5e5e5;
-  --brand-a: #000000;
-  --brand-b: #333333;
+[data-theme='interactive-canvas'] {
+  --bg-page: #FAFAFA;
+  --bg-card: #FFFFFF;
+  --text-main: #1F2937;
+  --text-muted: #6B7280;
+  --border-card: #E5E7EB;
+  --brand-a: #DBEAFE;
+  --brand-b: #2563EB;
   --danger-a: #ef4444;
   --danger-b: #f87171;
-  --focus-ring: rgba(0, 0, 0, 0.1);
-  --header-bg: rgba(255, 255, 255, 0.95);
+  --focus-ring: rgba(37, 99, 235, 0.2);
+  --header-bg: rgba(250, 250, 250, 0.95);
 
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: var(--text-main);
   background: var(--bg-page);
 
-  /* Minimalist Canvas tweaks */
+  /* Interactive Canvas tweaks */
   --card-blur: none;
-  --card-shadow: none;
-  --card-border-radius: 0px;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --card-border-radius: 8px;
   --transition-speed: 0.3s;
 }
 
-[data-theme='dark-professional'] {
-  --bg-page: #121212;
-  --bg-card: #1e1e1e;
-  --text-main: #e0e0e0;
-  --text-muted: #a0a0a0;
-  --border-card: #2c2c2c;
-  --brand-a: #ffffff;
-  --brand-b: #cccccc;
+[data-theme='focus-night-studio'] {
+  --bg-page: #0B1220;
+  --bg-card: #111827;
+  --text-main: #E5E7EB;
+  --text-muted: #9CA3AF;
+  --border-card: #1f2937;
+  --brand-a: #164E63;
+  --brand-b: #22D3EE;
   --danger-a: #ef4444;
   --danger-b: #f87171;
-  --focus-ring: rgba(255, 255, 255, 0.1);
-  --header-bg: rgba(18, 18, 18, 0.95);
+  --focus-ring: rgba(34, 211, 238, 0.2);
+  --header-bg: rgba(11, 18, 32, 0.95);
 
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text-main);
   background: var(--bg-page);
 
-  /* Dark Professional tweaks */
+  /* Focus Night Studio tweaks */
   --card-blur: none;
-  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
   --card-border-radius: 8px;
   --transition-speed: 0.3s;
 }
@@ -148,86 +148,86 @@ body::-webkit-scrollbar {
 
 
 
-/* Minimalist Canvas Overrides */
-:is([data-theme='minimalist-canvas']) .app-header {
+/* Interactive Canvas Overrides */
+:is([data-theme='interactive-canvas']) .app-header {
   border-bottom: 1px solid var(--border-card);
   background: var(--header-bg);
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-:is([data-theme='minimalist-canvas']) .card,
-:is([data-theme='minimalist-canvas']) .auth-modal,
-:is([data-theme='minimalist-canvas']) .admin-panel {
+:is([data-theme='interactive-canvas']) .card,
+:is([data-theme='interactive-canvas']) .auth-modal,
+:is([data-theme='interactive-canvas']) .admin-panel {
   border: 1px solid var(--border-card);
-  border-radius: 0;
-  box-shadow: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   background: var(--bg-card);
 }
 
-:is([data-theme='minimalist-canvas']) button:not(.ghost) {
+:is([data-theme='interactive-canvas']) button:not(.ghost) {
   background: var(--brand-b);
   color: #fff;
-  border-radius: 0;
+  border-radius: 6px;
   font-weight: 500;
   letter-spacing: 0.5px;
   box-shadow: none;
 }
 
-:is([data-theme='minimalist-canvas']) input,
-:is([data-theme='minimalist-canvas']) textarea,
-:is([data-theme='minimalist-canvas']) select,
-:is([data-theme='minimalist-canvas']) .rich-title-editor {
+:is([data-theme='interactive-canvas']) input,
+:is([data-theme='interactive-canvas']) textarea,
+:is([data-theme='interactive-canvas']) select,
+:is([data-theme='interactive-canvas']) .rich-title-editor {
   border: 1px solid var(--border-card) !important;
-  border-radius: 0 !important;
-  background: var(--bg-page) !important;
-  box-shadow: none !important;
+  border-radius: 6px !important;
+  background: var(--bg-card) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
-:is([data-theme='minimalist-canvas']) .preview-card.featured {
+:is([data-theme='interactive-canvas']) .preview-card.featured {
   background: var(--bg-page);
   border: 1px solid var(--border-card);
 }
 
-:is([data-theme='minimalist-canvas']) .reading-progress {
-  border-radius: 0;
+:is([data-theme='interactive-canvas']) .reading-progress {
+  border-radius: 6px;
   background: var(--border-card);
 }
 
-/* Dark Professional Overrides */
-:is([data-theme='dark-professional']) .app-header {
+/* Focus Night Studio Overrides */
+:is([data-theme='focus-night-studio']) .app-header {
   border-bottom: 1px solid var(--border-card);
   background: var(--header-bg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-:is([data-theme='dark-professional']) .card,
-:is([data-theme='dark-professional']) .auth-modal,
-:is([data-theme='dark-professional']) .admin-panel {
+:is([data-theme='focus-night-studio']) .card,
+:is([data-theme='focus-night-studio']) .auth-modal,
+:is([data-theme='focus-night-studio']) .admin-panel {
   border: 1px solid var(--border-card);
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   background: var(--bg-card);
 }
 
-:is([data-theme='dark-professional']) button:not(.ghost) {
+:is([data-theme='focus-night-studio']) button:not(.ghost) {
   background: var(--brand-b);
-  color: #000;
+  color: #0B1220;
   border-radius: 6px;
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-:is([data-theme='dark-professional']) input,
-:is([data-theme='dark-professional']) textarea,
-:is([data-theme='dark-professional']) select,
-:is([data-theme='dark-professional']) .rich-title-editor {
+:is([data-theme='focus-night-studio']) input,
+:is([data-theme='focus-night-studio']) textarea,
+:is([data-theme='focus-night-studio']) select,
+:is([data-theme='focus-night-studio']) .rich-title-editor {
   border: 1px solid var(--border-card) !important;
   border-radius: 6px !important;
   background: var(--bg-card) !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
-:is([data-theme='dark-professional']) .preview-card.featured {
+:is([data-theme='focus-night-studio']) .preview-card.featured {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
 }
