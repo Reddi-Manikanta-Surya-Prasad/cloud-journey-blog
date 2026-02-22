@@ -1902,9 +1902,9 @@ function App() {
           <button className="header-home" onClick={goHomeView} aria-label="Go to home">
             <img className="brand-icon-image" src={cloudTechIcon} alt="Cloud tech icon" loading="eager" decoding="async" />
           </button>
-          <div className="header-brand-text">
-            <h1>Cloud Journey</h1>
-            <p>Write. Share. Grow.</p>
+          <div className="header-brand-text" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <h1 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>Cloud Journey</h1>
+            <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.85, fontWeight: 500 }}>write.share.grow</p>
           </div>
         </div>
 
@@ -1925,13 +1925,13 @@ function App() {
           )}
 
           <select
-            className="ghost hidden-mobile"
+            className="theme-selector"
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
             style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
           >
-            <option value="interactive-canvas">🌞 Interactive Canvas</option>
-            <option value="focus-night-studio">🌙 Focus Night Studio</option>
+            <option value="interactive-canvas">🌞 Normal</option>
+            <option value="crazy">👾 Crazy</option>
           </select>
           {currentUser ? (
             <>
@@ -2559,6 +2559,42 @@ function App() {
   )
 }
 
+function RichHtml({ html, resolveMediaSource }) {
+  const [resolvedHtml, setResolvedHtml] = useState(html)
+
+  useEffect(() => {
+    let active = true
+    const resolveAll = async () => {
+      if (typeof DOMParser === 'undefined') return
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      const mediaElements = Array.from(doc.querySelectorAll('[src^="media/"]'))
+
+      if (mediaElements.length === 0) {
+        if (active) setResolvedHtml(html)
+        return
+      }
+
+      await Promise.all(
+        mediaElements.map(async (el) => {
+          const url = await resolveMediaSource(el.getAttribute('src'))
+          if (url) el.setAttribute('src', url)
+        })
+      )
+
+      if (active) setResolvedHtml(doc.body.innerHTML)
+    }
+    resolveAll()
+    return () => { active = false }
+  }, [html, resolveMediaSource])
+
+  return (
+    <div
+      className="rich-html"
+      dangerouslySetInnerHTML={{ __html: resolvedHtml }}
+    />
+  )
+}
+
 function PostPreviewCard({
   post,
   onOpen,
@@ -2897,10 +2933,10 @@ function FullPostView({
         {contentBlocks.map((block, index) => {
           if (block.type === 'html') {
             return (
-              <div
+              <RichHtml
                 key={`${post.id}-full-html-${index}`}
-                className="rich-html"
-                dangerouslySetInnerHTML={{ __html: block.value }}
+                html={block.value}
+                resolveMediaSource={resolveMediaSource}
               />
             )
           }
