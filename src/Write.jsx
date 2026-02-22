@@ -663,7 +663,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   useEffect(() => {
     if (!editorRef.current) return
     const next = sanitizeEditorHtml(form.content)
-    if (editorRef.current.innerHTML !== next) {
+    if (editorRef.current.innerHTML !== next && document.activeElement !== editorRef.current) {
       editorRef.current.innerHTML = next
     }
   }, [form.content])
@@ -671,7 +671,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   useEffect(() => {
     if (!titleEditorRef.current) return
     const next = sanitizeEditorHtml(form.title)
-    if (titleEditorRef.current.innerHTML !== next) {
+    if (titleEditorRef.current.innerHTML !== next && document.activeElement !== titleEditorRef.current) {
       titleEditorRef.current.innerHTML = next
     }
   }, [form.title])
@@ -938,6 +938,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
             <button
               type="button"
               className="ghost format-toggle"
+              onMouseDown={preserveSelection}
               onClick={() => setShowFormatMenu((prev) => !prev)}
               aria-expanded={showFormatMenu}
               aria-controls="writer-style-menu"

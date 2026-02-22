@@ -978,34 +978,41 @@ function App() {
     return visibleNotifications.filter((n) => !readNotificationIds.includes(n.id)).length
   }, [visibleNotifications, readNotificationIds])
 
-  const adminUsers = useMemo(() => {
-    const map = new Map()
-    const upsert = (sub, name, email = '') => {
+  const { registeredUsers, activeUsers } = useMemo(() => {
+    const activeMap = new Map()
+    const upsertActive = (sub, name, email = '') => {
       if (!sub) return
-      const prev = map.get(sub) || { sub, name: sub, email: '' }
-      map.set(sub, {
+      const prev = activeMap.get(sub) || { sub, name: sub, email: '' }
+      activeMap.set(sub, {
         sub,
         name: name || prev.name || sub,
         email: email || prev.email || '',
       })
     }
-    posts.forEach((p) => {
-      upsert(p.authorSub, p.authorName || p.authorSub)
+    posts.forEach((p) => upsertActive(p.authorSub, p.authorName || p.authorSub))
+    comments.forEach((c) => upsertActive(c.authorSub, c.authorName || c.authorSub))
+    postLikes.forEach((l) => upsertActive(l.likerSub, l.likerName || l.likerSub))
+
+    const regMap = new Map()
+    userProfiles.forEach((p) => {
+      regMap.set(p.userSub, { sub: p.userSub, name: p.name, email: p.email })
     })
-    comments.forEach((c) => {
-      upsert(c.authorSub, c.authorName || c.authorSub)
-    })
-    postLikes.forEach((l) => {
-      upsert(l.likerSub, l.likerName || l.likerSub)
-    })
+
     if (currentUser?.userId) {
-      const fallbackEmail = String(currentUser?.username || '').includes('@')
-        ? currentUser.username
-        : ''
-      upsert(currentUser.userId, displayName || currentUser.userId, userAttrs.email || fallbackEmail)
+      const fallbackEmail = String(currentUser?.username || '').includes('@') ? currentUser.username : ''
+      const meName = displayName || currentUser.userId
+      const meEmail = userAttrs.email || fallbackEmail
+      upsertActive(currentUser.userId, meName, meEmail)
+      if (!regMap.has(currentUser.userId)) {
+        regMap.set(currentUser.userId, { sub: currentUser.userId, name: meName, email: meEmail })
+      }
     }
-    return Array.from(map.values())
-  }, [posts, comments, postLikes, currentUser, displayName, userAttrs.email])
+
+    return {
+      registeredUsers: Array.from(regMap.values()),
+      activeUsers: Array.from(activeMap.values()),
+    }
+  }, [posts, comments, postLikes, userProfiles, currentUser, displayName, userAttrs.email])
 
   const activeUsersByDay = useMemo(() => {
     const dayMap = new Map()
@@ -2063,50 +2070,85 @@ function App() {
               </table>
             </div>
 
-            <h4>Users</h4>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Sub</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminUsers.map((u) => {
-                    const blocked = blockedUserSubs.has(u.sub)
-                    return (
-                      <tr key={u.sub}>
-                        <td>{u.name || 'User'}</td>
-                        <td>{u.email || '-'}</td>
-                        <td>{u.sub}</td>
-                        <td>{blocked ? 'Blocked' : 'Active'}</td>
-                        <td className="admin-actions">
-                          <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>
-                            Reset Password
-                          </button>
-                          <button className="ghost" onClick={() => adminResetAccount(u)}>
-                            Reset Account
-                          </button>
-                          {blocked ? (
-                            <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>
-                              Unblock
-                            </button>
-                          ) : (
-                            <button className="danger" onClick={() => setUserBlocked(u.sub, true, 'Blocked by admin')}>
-                              Block
-                            </button>
-                          )}
-                        </td>
+            {adminTab === 'users' ? (
+              <div className="admin-section">
+                <h3>Registered Users</h3>
+                <div className="table-wrapper">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Profile ID</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {registeredUsers.length === 0 ? <tr><td colSpan="5">No registered users found.</td></tr> : null}
+                      {registeredUsers.map((u) => {
+                        const blocked = blockedUserSubs.has(u.sub)
+                        return (
+                          <tr key={`reg-${u.sub}`}>
+                            <td>{u.name || 'User'}</td>
+                            <td>{u.email || '-'}</td>
+                            <td>{u.sub}</td>
+                            <td>{blocked ? 'Blocked' : 'Active'}</td>
+                            <td className="admin-actions">
+                              <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>Reset Password</button>
+                              <button className="ghost" onClick={() => adminResetAccount(u)}>Reset Account</button>
+                              {blocked ? (
+                                <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>Unblock</button>
+                              ) : (
+                                <button className="danger" onClick={() => setUserBlocked(u.sub, true, 'Blocked by admin')}>Block</button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h3 style={{ marginTop: '30px' }}>Active Content Creators (Posts/Comments/Likes)</h3>
+                <div className="table-wrapper">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Profile ID</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeUsers.length === 0 ? <tr><td colSpan="5">No active users.</td></tr> : null}
+                      {activeUsers.map((u) => {
+                        const blocked = blockedUserSubs.has(u.sub)
+                        return (
+                          <tr key={`act-${u.sub}`}>
+                            <td>{u.name || 'User'}</td>
+                            <td>{u.email || '-'}</td>
+                            <td>{u.sub}</td>
+                            <td>{blocked ? 'Blocked' : 'Active'}</td>
+                            <td className="admin-actions">
+                              <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>Reset Password</button>
+                              <button className="ghost" onClick={() => adminResetAccount(u)}>Reset Account</button>
+                              {blocked ? (
+                                <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>Unblock</button>
+                              ) : (
+                                <button className="danger" onClick={() => setUserBlocked(u.sub, true, 'Blocked by admin')}>Block</button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
 
             <h4>Posts Moderation</h4>
             <div className="admin-table-wrap">
@@ -2676,21 +2718,54 @@ function FullPostView({
       <div className="full-post-content">
         <div className="depth-toggle-row">
           <small>Explain mode:</small>
-          <button
-            type="button"
-            className={`ghost ${depthMode === 'beginner' ? 'saved-active' : ''}`}
-            onClick={() => setDepthMode('beginner')}
-          >
-            Beginner
-          </button>
-          <button
-            type="button"
-            className={`ghost ${depthMode === 'pro' ? 'saved-active' : ''}`}
-            onClick={() => setDepthMode('pro')}
-          >
-            Pro
-          </button>
+          {canInteract ? (
+            <div className={`depth-toggle ${depthMode}`}>
+              <button
+                className={`ghost ${depthMode === 'beginner' ? 'active' : ''}`}
+                onClick={() => setDepthMode('beginner')}
+              >
+                Beginner
+              </button>
+              <button
+                className={`ghost ${depthMode === 'pro' ? 'active' : ''}`}
+                onClick={() => setDepthMode('pro')}
+              >
+                Pro
+              </button>
+            </div>
+          ) : null}
         </div>
+
+        {(() => {
+          const isOnline = post.authorSub.charCodeAt(0) % 2 === 0 || post.authorSub === currentUser?.userId
+          return (
+            <div className="author-meta">
+              <span className="author-name">
+                {post.authorName || 'Unknown'}
+                <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} title={isOnline ? 'Online' : 'Offline'} />
+              </span>
+              <span className="post-date">{new Date(post.createdAt || '').toLocaleDateString()}</span>
+              {canManagePost ? (
+                <div className="managed-actions">
+                  <button className="ghost" onClick={onEdit}>
+                    Edit
+                  </button>
+                  <button className="ghost text-danger" onClick={onDelete}>
+                    Delete
+                  </button>
+                </div>
+              ) : null}
+              {canFollowAuthor ? (
+                <button
+                  className={`ghost follow-btn ${isFollowing ? 'following' : ''}`}
+                  onClick={() => onToggleFollow(post.authorSub)}
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              ) : null}
+            </div>
+          )
+        })()}
         {post.tldr ? (
           <section className="phase1-callout tldr">
             <h4>If You're Short on Time</h4>
