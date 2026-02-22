@@ -1933,6 +1933,8 @@ function App() {
             <option value="zen">⚪ Zen</option>
             <option value="midnight">⚫ Midnight</option>
             <option value="arcade">👾 Arcade</option>
+            <option value="minimalist-canvas">📝 Minimalist Canvas</option>
+            <option value="dark-professional">💼 Dark Professional</option>
           </select>
           {currentUser ? (
             <>

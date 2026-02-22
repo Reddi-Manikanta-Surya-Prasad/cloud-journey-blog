@@ -88,6 +88,54 @@
   background-size: 30px 30px;
 }
 
+[data-theme='minimalist-canvas'] {
+  --bg-page: #ffffff;
+  --bg-card: #ffffff;
+  --text-main: #111111;
+  --text-muted: #666666;
+  --border-card: #e5e5e5;
+  --brand-a: #000000;
+  --brand-b: #333333;
+  --danger-a: #ef4444;
+  --danger-b: #f87171;
+  --focus-ring: rgba(0, 0, 0, 0.1);
+  --header-bg: rgba(255, 255, 255, 0.95);
+
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: var(--text-main);
+  background: var(--bg-page);
+
+  /* Minimalist Canvas tweaks */
+  --card-blur: none;
+  --card-shadow: none;
+  --card-border-radius: 0px;
+  --transition-speed: 0.3s;
+}
+
+[data-theme='dark-professional'] {
+  --bg-page: #121212;
+  --bg-card: #1e1e1e;
+  --text-main: #e0e0e0;
+  --text-muted: #a0a0a0;
+  --border-card: #2c2c2c;
+  --brand-a: #ffffff;
+  --brand-b: #cccccc;
+  --danger-a: #ef4444;
+  --danger-b: #f87171;
+  --focus-ring: rgba(255, 255, 255, 0.1);
+  --header-bg: rgba(18, 18, 18, 0.95);
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-main);
+  background: var(--bg-page);
+
+  /* Dark Professional tweaks */
+  --card-blur: none;
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --card-border-radius: 8px;
+  --transition-speed: 0.3s;
+}
+
 body {
   margin: 0;
   font-family: inherit;
@@ -266,6 +314,90 @@ body::-webkit-scrollbar {
   :is([data-theme='crazy']) .card {
     box-shadow: 6px 6px 0 var(--border-card);
   }
+}
+
+/* Minimalist Canvas Overrides */
+:is([data-theme='minimalist-canvas']) .app-header {
+  border-bottom: 1px solid var(--border-card);
+  background: var(--header-bg);
+  box-shadow: none;
+}
+
+:is([data-theme='minimalist-canvas']) .card,
+:is([data-theme='minimalist-canvas']) .auth-modal,
+:is([data-theme='minimalist-canvas']) .admin-panel {
+  border: 1px solid var(--border-card);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--bg-card);
+}
+
+:is([data-theme='minimalist-canvas']) button:not(.ghost) {
+  background: var(--brand-b);
+  color: #fff;
+  border-radius: 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  box-shadow: none;
+}
+
+:is([data-theme='minimalist-canvas']) input,
+:is([data-theme='minimalist-canvas']) textarea,
+:is([data-theme='minimalist-canvas']) select,
+:is([data-theme='minimalist-canvas']) .rich-title-editor {
+  border: 1px solid var(--border-card) !important;
+  border-radius: 0 !important;
+  background: var(--bg-page) !important;
+  box-shadow: none !important;
+}
+
+:is([data-theme='minimalist-canvas']) .preview-card.featured {
+  background: var(--bg-page);
+  border: 1px solid var(--border-card);
+}
+
+:is([data-theme='minimalist-canvas']) .reading-progress {
+  border-radius: 0;
+  background: var(--border-card);
+}
+
+/* Dark Professional Overrides */
+:is([data-theme='dark-professional']) .app-header {
+  border-bottom: 1px solid var(--border-card);
+  background: var(--header-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+:is([data-theme='dark-professional']) .card,
+:is([data-theme='dark-professional']) .auth-modal,
+:is([data-theme='dark-professional']) .admin-panel {
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  background: var(--bg-card);
+}
+
+:is([data-theme='dark-professional']) button:not(.ghost) {
+  background: var(--brand-b);
+  color: #000;
+  border-radius: 6px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+:is([data-theme='dark-professional']) input,
+:is([data-theme='dark-professional']) textarea,
+:is([data-theme='dark-professional']) select,
+:is([data-theme='dark-professional']) .rich-title-editor {
+  border: 1px solid var(--border-card) !important;
+  border-radius: 6px !important;
+  background: var(--bg-card) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+:is([data-theme='dark-professional']) .preview-card.featured {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
 }
 
 .page-shell {
