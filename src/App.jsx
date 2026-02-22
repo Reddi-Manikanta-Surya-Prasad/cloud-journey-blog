@@ -14,6 +14,7 @@ import {
 } from 'aws-amplify/auth'
 import { generateClient } from 'aws-amplify/data'
 import { getUrl, uploadData } from 'aws-amplify/storage'
+import { Users, FileText, MessageSquare, ShieldAlert } from 'lucide-react'
 import Write from './Write'
 import outputs from '../amplify_outputs.json'
 import cloudTechIcon from './assets/cloud-tech.svg'
@@ -681,6 +682,13 @@ function App() {
   const notificationWrapRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
+  const [toasts, setToasts] = useState([])
+  const [theme, setTheme] = useState(() => localStorage.getItem('blog_theme') || 'light')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('blog_theme', theme)
+  }, [theme])
 
   useEffect(() => {
     bootstrap()
@@ -1015,6 +1023,14 @@ function App() {
       .slice(0, 14)
   }, [posts, comments, postLikes])
 
+  const showToast = useCallback((msg) => {
+    const id = Date.now().toString(36)
+    setToasts((prev) => [...prev, { id, msg }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 2500)
+  }, [])
+
   async function bootstrap() {
     setLoading(true)
     try {
@@ -1075,13 +1091,19 @@ function App() {
 
       if (readAuthMode === 'userPool' && isAdmin) {
         try {
-          const moderationRes = await client.models.UserModeration.list({ authMode: 'userPool' })
+          const [moderationRes, profilesRes] = await Promise.all([
+            client.models.UserModeration.list({ authMode: 'userPool' }),
+            client.models.UserProfile.list({ authMode: 'userPool' }),
+          ])
           if (!moderationRes.errors?.length) setModerations(moderationRes.data)
+          if (!profilesRes.errors?.length) setUserProfiles(profilesRes.data)
         } catch {
           setModerations([])
+          setUserProfiles([])
         }
       } else if (!isAdmin) {
         setModerations([])
+        setUserProfiles([])
       }
 
       const missingPaths = new Set()
@@ -1195,14 +1217,28 @@ function App() {
     localStorage.setItem(`blog_progress_${currentUser.userId}`, JSON.stringify(next))
   }
 
-  function setPostReaction(postId, reaction) {
+  const setPostReaction = (postId, reactionCode) => {
     if (!ensureAuth()) return
-    const normalized = String(reaction || '').toLowerCase()
+    const normalized = String(reactionCode || '').toLowerCase()
     if (!['confusing', 'aha', 'useful'].includes(normalized)) return
-    const existing = postReactionMap[postId]
-    const next = { ...postReactionMap, [postId]: existing === normalized ? '' : normalized }
-    setPostReactionMap(next)
-    localStorage.setItem(`blog_reactions_${currentUser.userId}`, JSON.stringify(next))
+
+    setPostReactionMap((prev) => {
+      const next = { ...prev, [postId]: reactionCode }
+      try {
+        localStorage.setItem(`blog_reactions_${currentUser?.userId || 'guest'}`, JSON.stringify(next))
+      } catch {
+        // no-op
+      }
+      return next
+    })
+
+    // Provide fun visual feedback
+    const msgs = {
+      confusing: '🤯 Thanks for the feedback! We\'ll try to make it clearer.',
+      aha: '💡 Awesome! Glad it clicked for you.',
+      useful: '🔥 Fantastic! Thanks for reading.'
+    }
+    showToast(msgs[reactionCode] || 'Feedback received.')
   }
 
   function toggleFollowAuthor(authorSub) {
@@ -1486,17 +1522,17 @@ function App() {
       await Promise.all(
         commentLikes
           .filter((l) => commentIds.has(l.commentId))
-          .map((l) => client.models.CommentLike.delete({ id: l.id })),
+          .map((l) => client.models.CommentLike.delete({ id: l.id }, { authMode: 'userPool' })),
       )
 
-      await Promise.all(postComments.map((c) => client.models.Comment.delete({ id: c.id })))
+      await Promise.all(postComments.map((c) => client.models.Comment.delete({ id: c.id }, { authMode: 'userPool' })))
       await Promise.all(
         postLikes
           .filter((l) => l.postId === postId)
-          .map((l) => client.models.PostLike.delete({ id: l.id })),
+          .map((l) => client.models.PostLike.delete({ id: l.id }, { authMode: 'userPool' })),
       )
 
-      await client.models.Post.delete({ id: postId })
+      await client.models.Post.delete({ id: postId }, { authMode: 'userPool' })
 
       if (activePostId === postId) {
         setActivePostId(null)
@@ -1803,6 +1839,16 @@ function App() {
             <span className="guest-pill">Guest</span>
           )}
 
+          <select
+            className="ghost hidden-mobile"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
+          >
+            <option value="light">☀️ Light</option>
+            <option value="dark">🌙 Dark</option>
+            <option value="crazy">🦄 Crazy</option>
+          </select>
           {currentUser ? (
             <>
               <div className="notification-wrap" ref={notificationWrapRef}>
@@ -1833,39 +1879,39 @@ function App() {
                           </button>
                         </div>
                         <ul>
-                        {visibleNotifications.slice(0, 20).map((item) => (
-                          <li key={item.id}>
-                            <p>{item.text}</p>
-                            <small>{new Date(item.createdAt).toLocaleString()}</small>
-                            <div className="notification-item-actions">
-                              {item.postId ? (
+                          {visibleNotifications.slice(0, 20).map((item) => (
+                            <li key={item.id}>
+                              <p>{item.text}</p>
+                              <small>{new Date(item.createdAt).toLocaleString()}</small>
+                              <div className="notification-item-actions">
+                                {item.postId ? (
+                                  <button
+                                    type="button"
+                                    className="ghost"
+                                    onClick={() => openNotificationTarget(item)}
+                                  >
+                                    Open
+                                  </button>
+                                ) : null}
+                                {!readNotificationIds.includes(item.id) ? (
+                                  <button
+                                    type="button"
+                                    className="ghost"
+                                    onClick={() => markOneNotificationRead(item.id)}
+                                  >
+                                    Mark as read
+                                  </button>
+                                ) : null}
                                 <button
                                   type="button"
                                   className="ghost"
-                                  onClick={() => openNotificationTarget(item)}
+                                  onClick={() => deleteNotification(item.id)}
                                 >
-                                  Open
+                                  Delete
                                 </button>
-                              ) : null}
-                              {!readNotificationIds.includes(item.id) ? (
-                                <button
-                                  type="button"
-                                  className="ghost"
-                                  onClick={() => markOneNotificationRead(item.id)}
-                                >
-                                  Mark as read
-                                </button>
-                              ) : null}
-                              <button
-                                type="button"
-                                className="ghost"
-                                onClick={() => deleteNotification(item.id)}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </li>
-                        ))}
+                              </div>
+                            </li>
+                          ))}
                         </ul>
                       </>
                     ) : (
@@ -1903,7 +1949,7 @@ function App() {
       </header>
 
       <main className="content-shell">
-                <section className="toolbar floating-toolbar">
+        <section className="toolbar floating-toolbar">
           <div className="discover-row">
             <input
               value={searchQuery}
@@ -2242,8 +2288,8 @@ function App() {
               {authMode === 'signup'
                 ? 'Create your account'
                 : authMode === 'confirm'
-                ? 'Enter email confirmation code'
-                : 'Login to continue'}
+                  ? 'Enter email confirmation code'
+                  : 'Login to continue'}
             </p>
 
             {authMode === 'signup' ? (
@@ -2352,6 +2398,12 @@ function App() {
           </form>
         </div>
       ) : null}
+
+      <div className="toast-container">
+        {toasts.map((t) => (
+          <div key={t.id} className="toast">{t.msg}</div>
+        ))}
+      </div>
     </div>
   )
 }

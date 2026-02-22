@@ -1,16 +1,114 @@
-﻿:root {
-  --bg-1: #06111d;
-  --bg-2: #0e2c4c;
-  --bg-3: #145786;
-  --surface: rgba(255, 255, 255, 0.94);
-  --ink: #1a3559;
-  --ink-soft: #476892;
-  --brand-a: #08a8ff;
-  --brand-b: #2fd3ff;
-  --danger-a: #c22e2e;
-  --danger-b: #e85f5f;
-  --focus-ring: rgba(8, 168, 255, 0.3);
-  font-family: 'Segoe UI', 'Trebuchet MS', system-ui, sans-serif;
+﻿:root,
+[data-theme='light'] {
+  --bg-page: #eff4fa;
+  --bg-card: #ffffff;
+  --text-main: #14335a;
+  --text-muted: #5e7d9e;
+  --border-card: #dceaf9;
+  --brand-a: #297cdd;
+  --brand-b: #009dff;
+  --danger-a: #ef4444;
+  --danger-b: #f87171;
+  --focus-ring: rgba(41, 124, 221, 0.2);
+  --header-bg: rgba(255, 255, 255, 0.85);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-main);
+  background: var(--bg-page);
+}
+
+[data-theme='dark'] {
+  --bg-page: #0b111e;
+  --bg-card: #151e32;
+  --text-main: #e2eaf5;
+  --text-muted: #8ba2c2;
+  --border-card: #25334d;
+  --brand-a: #3a8ded;
+  --brand-b: #0dc0f9;
+  --danger-a: #f87171;
+  --danger-b: #fca5a5;
+  --focus-ring: rgba(58, 141, 237, 0.25);
+  --header-bg: rgba(21, 30, 50, 0.85);
+  color: var(--text-main);
+  background: var(--bg-page);
+}
+
+[data-theme='crazy'] {
+  --bg-page: #0fffb3;
+  --bg-card: #ff0f7b;
+  --text-main: #000000;
+  --text-muted: #ffffff;
+  --border-card: #f89b29;
+  --brand-a: #ffdd00;
+  --brand-b: #ff00ff;
+  --danger-a: #000000;
+  --danger-b: #444444;
+  --focus-ring: rgba(255, 221, 0, 0.6);
+  --header-bg: rgba(255, 15, 123, 0.9);
+  color: var(--text-main);
+  background: var(--bg-page);
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: inherit;
+  color: inherit;
+  background-color: inherit;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+.hidden-pane {
+  display: none !important;
+}
+
+.active-pane {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Toasts */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+}
+
+.toast {
+  background: linear-gradient(145deg, var(--brand-a), var(--brand-b));
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  animation: slideInBottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideInBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 * {
@@ -37,6 +135,49 @@ html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   width: 0;
   height: 0;
+}
+
+/* Crazy View Special Mobile Overrides */
+@media (max-width: 768px) {
+  [data-theme='crazy'] .app-header {
+    position: fixed;
+    bottom: 20px;
+    top: auto;
+    left: 20px;
+    right: 20px;
+    border-radius: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    border: 2px solid var(--brand-b);
+  }
+
+  [data-theme='crazy'] .app-container {
+    padding-bottom: 120px;
+  }
+
+  [data-theme='crazy'] .card {
+    border: 4px solid var(--border-card);
+    box-shadow: 8px 8px 0 var(--text-main);
+    transform: rotate(1deg);
+    border-radius: 0;
+  }
+
+  [data-theme='crazy'] .card:hover {
+    transform: scale(1.05) rotate(-2deg);
+    box-shadow: 12px 12px 0 var(--brand-b);
+  }
+
+  [data-theme='crazy'] button {
+    border-radius: 0;
+    box-shadow: 4px 4px 0 var(--text-main);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  [data-theme='crazy'] button:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--text-main);
+  }
 }
 
 .page-shell {
@@ -1201,7 +1342,7 @@ body::-webkit-scrollbar {
   background: rgba(255, 255, 255, 0.64);
 }
 
-.inline-toolbar > * {
+.inline-toolbar>* {
   align-self: stretch;
 }
 
@@ -1837,6 +1978,7 @@ button.danger {
 }
 
 @media (max-width: 760px) {
+
   .app-header,
   .toolbar,
   .post-head,
@@ -1983,7 +2125,7 @@ button.danger {
     height: 56px;
   }
 
-  .discover-row > * {
+  .discover-row>* {
     min-width: 0;
   }
 }

@@ -1009,22 +1009,23 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                     </div>
                   ) : null}
                 </div>
-                <label className="mini-field mini-field-icon" title="Text color">
-                  <span className="swatch-label swatch-icon-a"><Type size={14} /></span>
-                  <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+                <label className="mini-field mini-field-icon" title="Text Color">
+                  <span className="swatch-label swatch-icon-a">
+                    <Type size={16} />
+                    <div style={{ height: '3px', background: textColor, marginTop: '-2px', borderRadius: '2px' }} />
+                  </span>
+                  <input type="color" className="hidden-input" value={textColor} onChange={(e) => { setTextColor(e.target.value); runCommand('foreColor', e.target.value); }} />
                   <span className="swatch-caret">▾</span>
                 </label>
-                <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color" aria-label="Apply text color">
-                  <Type size={18} style={{ color: textColor }} />
-                </button>
-                <label className="mini-field mini-field-icon" title="Highlight color">
-                  <span className="swatch-label swatch-icon-pen"><Highlighter size={14} /></span>
-                  <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+
+                <label className="mini-field mini-field-icon" title="Highlight Color">
+                  <span className="swatch-label swatch-icon-pen">
+                    <Highlighter size={16} />
+                    <div style={{ height: '4px', background: bgColor, marginTop: '-2px', borderRadius: '2px' }} />
+                  </span>
+                  <input type="color" className="hidden-input" value={bgColor} onChange={(e) => { setBgColor(e.target.value); runCommand('hiliteColor', e.target.value); }} />
                   <span className="swatch-caret">▾</span>
                 </label>
-                <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight" aria-label="Apply highlight">
-                  <Highlighter size={18} style={{ color: bgColor }} />
-                </button>
                 <span className="ribbon-caption">Text</span>
               </div>
 
@@ -1245,94 +1246,98 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         ) : null}
       </div>
 
-      {showPainter ? (
-        <div className="modal" onClick={() => setShowPainter(false)}>
-          <div className="card painter-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Painter Tool</h3>
-            <div className="painter-controls">
-              <label>
-                Color
-                <input type="color" value={paintColor} onChange={(e) => setPaintColor(e.target.value)} disabled={paintEraser} />
-              </label>
-              <label>
-                Brush
-                <input type="range" min="1" max="24" value={paintSize} onChange={(e) => setPaintSize(Number(e.target.value))} />
-              </label>
-              <button type="button" className={`ghost ${paintEraser ? 'active-like' : ''}`} onClick={() => setPaintEraser((v) => !v)}>
-                Eraser
-              </button>
-              <button type="button" className="ghost" onClick={clearPainter}>
-                Clear
-              </button>
-            </div>
-            <div ref={painterWrapRef} className="painter-canvas-wrap">
-              <canvas
-                ref={painterCanvasRef}
-                className="painter-canvas"
-                onPointerDown={paintPointerDown}
-                onPointerMove={paintPointerMove}
-                onPointerUp={paintPointerUp}
-                onPointerLeave={paintPointerUp}
-              />
-            </div>
-            <div className="button-row">
-              <button
-                type="button"
-                onClick={async () => {
-                  await autoAttachPainterImage()
-                  setShowPainter(false)
-                }}
-              >
-                Save & Auto Attach
-              </button>
-              <button type="button" className="ghost" onClick={() => setShowPainter(false)}>
-                Close
-              </button>
+      {
+        showPainter ? (
+          <div className="modal" onClick={() => setShowPainter(false)}>
+            <div className="card painter-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>Painter Tool</h3>
+              <div className="painter-controls">
+                <label>
+                  Color
+                  <input type="color" value={paintColor} onChange={(e) => setPaintColor(e.target.value)} disabled={paintEraser} />
+                </label>
+                <label>
+                  Brush
+                  <input type="range" min="1" max="24" value={paintSize} onChange={(e) => setPaintSize(Number(e.target.value))} />
+                </label>
+                <button type="button" className={`ghost ${paintEraser ? 'active-like' : ''}`} onClick={() => setPaintEraser((v) => !v)}>
+                  Eraser
+                </button>
+                <button type="button" className="ghost" onClick={clearPainter}>
+                  Clear
+                </button>
+              </div>
+              <div ref={painterWrapRef} className="painter-canvas-wrap">
+                <canvas
+                  ref={painterCanvasRef}
+                  className="painter-canvas"
+                  onPointerDown={paintPointerDown}
+                  onPointerMove={paintPointerMove}
+                  onPointerUp={paintPointerUp}
+                  onPointerLeave={paintPointerUp}
+                />
+              </div>
+              <div className="button-row">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await autoAttachPainterImage()
+                    setShowPainter(false)
+                  }}
+                >
+                  Save & Auto Attach
+                </button>
+                <button type="button" className="ghost" onClick={() => setShowPainter(false)}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null
+      }
 
-      {showDiagram ? (
-        <div className="modal" onClick={() => setShowDiagram(false)}>
-          <div className="card diagram-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Architecture Diagram Builder</h3>
-            <label>Mermaid Definition</label>
-            <textarea
-              rows={8}
-              value={diagramCode}
-              onChange={(e) => setDiagramCode(e.target.value)}
-              placeholder="flowchart TD
+      {
+        showDiagram ? (
+          <div className="modal" onClick={() => setShowDiagram(false)}>
+            <div className="card diagram-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>Architecture Diagram Builder</h3>
+              <label>Mermaid Definition</label>
+              <textarea
+                rows={8}
+                value={diagramCode}
+                onChange={(e) => setDiagramCode(e.target.value)}
+                placeholder="flowchart TD
 A[User] --> B[App]"
-            />
-            <div className="button-row">
-              <button type="button" onClick={() => void generateDiagram()}>
-                Generate Preview
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await autoAttachDiagramImage()
-                  setShowDiagram(false)
-                }}
-                disabled={!diagramSvg}
-              >
-                Save & Auto Attach
-              </button>
-              <button type="button" className="ghost" onClick={() => setShowDiagram(false)}>
-                Close
-              </button>
+              />
+              <div className="button-row">
+                <button type="button" onClick={() => void generateDiagram()}>
+                  Generate Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await autoAttachDiagramImage()
+                    setShowDiagram(false)
+                  }}
+                  disabled={!diagramSvg}
+                >
+                  Save & Auto Attach
+                </button>
+                <button type="button" className="ghost" onClick={() => setShowDiagram(false)}>
+                  Close
+                </button>
+              </div>
+              {diagramErr ? <p className="error">{diagramErr}</p> : null}
+              {diagramSvg ? (
+                <div className="diagram-preview" dangerouslySetInnerHTML={{ __html: diagramSvg }} />
+              ) : (
+                <p>Generate preview to attach diagram.</p>
+              )}
             </div>
-            {diagramErr ? <p className="error">{diagramErr}</p> : null}
-            {diagramSvg ? (
-              <div className="diagram-preview" dangerouslySetInnerHTML={{ __html: diagramSvg }} />
-            ) : (
-              <p>Generate preview to attach diagram.</p>
-            )}
           </div>
-        </div>
-      ) : null}
-    </form>
+        ) : null
+      }
+    </form >
   )
 }
 
