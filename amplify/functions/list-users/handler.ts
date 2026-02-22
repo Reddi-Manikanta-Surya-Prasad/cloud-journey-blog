@@ -1,5 +1,4 @@
 import type { Schema } from '../../data/resource'
-import { env } from '$amplify/env/list-users'
 import { CognitoIdentityProviderClient, ListUsersCommand } from '@aws-sdk/client-cognito-identity-provider'
 
 type Handler = Schema['listCognitoUsers']['functionHandler']
@@ -7,7 +6,7 @@ type Handler = Schema['listCognitoUsers']['functionHandler']
 const client = new CognitoIdentityProviderClient()
 
 export const handler: Handler = async (event) => {
-    const userPoolId = env.USER_POOL_ID
+    const userPoolId = process.env.USER_POOL_ID
     if (!userPoolId) {
         throw new Error('USER_POOL_ID is not set in environment.')
     }
