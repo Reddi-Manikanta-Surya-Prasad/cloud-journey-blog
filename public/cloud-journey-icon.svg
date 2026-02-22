@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4facfe" />
+      <stop offset="100%" stop-color="#00f2fe" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141E30" />
+      <stop offset="100%" stop-color="#243B55" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)" />
+
+  <!-- Cloud Shadow/Glow -->
+  <path d="M160 352a96 96 0 0 1-13.4-191.1A144 144 0 0 1 408 272a80 80 0 0 1-56 152H160z" 
+        fill="rgba(0, 242, 254, 0.4)" filter="url(#glow)" transform="translate(0, 20)" />
+
+  <!-- Main Cloud Shape -->
+  <path d="M160 320a96 96 0 0 1-13.4-191.1A144 144 0 0 1 408 240a80 80 0 0 1-56 152H160z" 
+        fill="url(#cloudGrad)" />
+
+  <!-- Tech/Journey Circuit Line overlaying the cloud -->
+  <path d="M120 280 L200 280 L240 220 L320 220 L360 280 L420 280" 
+        fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <circle cx="200" cy="280" r="16" fill="#ffffff" />
+  <circle cx="360" cy="280" r="16" fill="#ffffff" />
+  <circle cx="280" cy="220" r="20" fill="#ffffff" />
+</svg>
