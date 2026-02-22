@@ -21,6 +21,7 @@ import cloudTechIcon from './assets/cloud-tech.svg'
 
 Amplify.configure(outputs)
 const client = generateClient()
+window.client = client
 const ADMIN_EMAILS = ['reddimani14@gmail.com']
 
 function toStorageSafeName(name) {
@@ -730,9 +731,12 @@ function App() {
 
   const fetchCognitoUsers = async () => {
     try {
-      const { data } = await client.queries.listCognitoUsers({ limit: 100 })
-      if (data?.usersJson) {
-        const parsed = JSON.parse(data.usersJson)
+      const res = await client.queries.listCognitoUsers({ limit: 100 })
+      console.log('RAW COGNITO RESPONSE:', res)
+      const data = res.data
+      if (data && (data.usersJson || data.listCognitoUsers?.usersJson)) {
+        const rawJson = data.usersJson || data.listCognitoUsers?.usersJson
+        const parsed = JSON.parse(rawJson)
         const mapped = parsed.map((cUser) => {
           const getAttr = (name) => cUser.Attributes?.find((a) => a.Name === name)?.Value || ''
           return {
