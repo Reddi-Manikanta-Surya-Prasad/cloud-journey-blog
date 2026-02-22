@@ -28,7 +28,7 @@ export const auth = defineAuth({
   },
   senders: {
     email: {
-      fromEmail: 'Mani <reddimani14@gmail.com>',
+      fromEmail: 'reddimani14@gmail.com',
     },
   },
   userAttributes: {
