@@ -678,6 +678,7 @@ function App() {
   const [postReactionMap, setPostReactionMap] = useState({})
   const [mediaUrlCache, setMediaUrlCache] = useState({})
   const [moderations, setModerations] = useState([])
+  const [userProfiles, setUserProfiles] = useState([])
   const mediaUrlCacheRef = useRef({})
   const notificationWrapRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
