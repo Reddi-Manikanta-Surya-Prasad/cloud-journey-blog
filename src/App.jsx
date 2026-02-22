@@ -686,6 +686,7 @@ function App() {
   const [savingPost, setSavingPost] = useState(false)
   const [activePostId, setActivePostId] = useState(null)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [adminTab, setAdminTab] = useState('users')
   const [isAdmin, setIsAdmin] = useState(false)
   const [headerScrolled, setHeaderScrolled] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
