@@ -751,6 +751,7 @@ function App() {
       }
     } catch (err) {
       console.warn('Failed to fetch Cognito users:', err)
+      alert('Cognito List Error: ' + (err.message || JSON.stringify(err)))
     }
   }
 
