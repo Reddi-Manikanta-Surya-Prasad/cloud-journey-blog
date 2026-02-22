@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "us-east-1_E9vkDL12f",
+    "user_pool_id": "us-east-1_gnX98GIYp",
     "aws_region": "us-east-1",
-    "user_pool_client_id": "1bnvgfsp78au1p5mg7pi77oeg2",
-    "identity_pool_id": "us-east-1:adeb0646-43b3-4f41-95f6-e816b703d1e5",
+    "user_pool_client_id": "ou6bukdcde39aslv4ga337b0t",
+    "identity_pool_id": "us-east-1:e16c4fc7-d8f6-4770-ba57-2dedd9f1ca7e",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -14,7 +14,13 @@
     "user_verification_types": [
       "email"
     ],
-    "groups": [],
+    "groups": [
+      {
+        "ADMINS": {
+          "precedence": 0
+        }
+      }
+    ],
     "mfa_configuration": "NONE",
     "password_policy": {
       "min_length": 8,
@@ -23,12 +29,40 @@
       "require_symbols": true,
       "require_uppercase": true
     },
+    "oauth": {
+      "identity_providers": [
+        "GOOGLE"
+      ],
+      "redirect_sign_in_uri": [
+        "http://localhost:5173/",
+        "https://main.d14oin3rflwldw.amplifyapp.com/",
+        "https://cloudjourney.suryareddi.in/",
+        "https://clouddjourney.suryareddi.in/",
+        "https://djourney.suryareddi.in/"
+      ],
+      "redirect_sign_out_uri": [
+        "http://localhost:5173/",
+        "https://main.d14oin3rflwldw.amplifyapp.com/",
+        "https://cloudjourney.suryareddi.in/",
+        "https://clouddjourney.suryareddi.in/",
+        "https://djourney.suryareddi.in/"
+      ],
+      "response_type": "code",
+      "scopes": [
+        "phone",
+        "email",
+        "openid",
+        "profile",
+        "aws.cognito.signin.user.admin"
+      ],
+      "domain": "f1bf95ce52e15320a762.auth.us-east-1.amazoncognito.com"
+    },
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://y77jjoy5mffd7cualpr3kja6ba.appsync-api.us-east-1.amazonaws.com/graphql",
+    "url": "https://4mmh3kfy5jhrbgk4swrhid4x7q.appsync-api.us-east-1.amazonaws.com/graphql",
     "aws_region": "us-east-1",
-    "api_key": "da2-burfkbnmjzclxe4kpd3rlvmrbe",
+    "api_key": "da2-k5b6dm6vs5avxp4ot2yps6pbvi",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "API_KEY",
@@ -77,6 +111,97 @@
             },
             "mediaPath": {
               "name": "mediaPath",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "hidden": {
+              "name": "hidden",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "hiddenReason": {
+              "name": "hiddenReason",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "skillLevel": {
+              "name": "skillLevel",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "tldr": {
+              "name": "tldr",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "beginnerSummary": {
+              "name": "beginnerSummary",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "proSummary": {
+              "name": "proSummary",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "whyMatters": {
+              "name": "whyMatters",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "commonMistakes": {
+              "name": "commonMistakes",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "timeToPracticeMins": {
+              "name": "timeToPracticeMins",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "nextTopicTitle": {
+              "name": "nextTopicTitle",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "nextTopicUrl": {
+              "name": "nextTopicUrl",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "roadmapUrl": {
+              "name": "roadmapUrl",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "versionLabel": {
+              "name": "versionLabel",
               "isArray": false,
               "type": "String",
               "isRequired": false,
@@ -180,6 +305,19 @@
                       "read"
                     ],
                     "identityClaim": "cognito:username"
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": [
+                      "read",
+                      "update",
+                      "delete"
+                    ],
+                    "groups": [
+                      "ADMINS"
+                    ]
                   }
                 ]
               }
@@ -302,6 +440,19 @@
                       "create",
                       "update",
                       "delete"
+                    ]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": [
+                      "read",
+                      "update",
+                      "delete"
+                    ],
+                    "groups": [
+                      "ADMINS"
                     ]
                   }
                 ]
@@ -504,22 +655,274 @@
             "primaryKeyFieldName": "id",
             "sortKeyFieldNames": []
           }
+        },
+        "UserProfile": {
+          "name": "UserProfile",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "userSub": {
+              "name": "userSub",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "UserProfiles",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "operations": [
+                      "create",
+                      "update",
+                      "read"
+                    ],
+                    "identityClaim": "cognito:username"
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": [
+                      "read",
+                      "update",
+                      "delete"
+                    ],
+                    "groups": [
+                      "ADMINS"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "UserModeration": {
+          "name": "UserModeration",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "userSub": {
+              "name": "userSub",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "blocked": {
+              "name": "blocked",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "reason": {
+              "name": "reason",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedBySub": {
+              "name": "updatedBySub",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedByName": {
+              "name": "updatedByName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "UserModerations",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "id"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": [
+                      "create",
+                      "read",
+                      "update",
+                      "delete"
+                    ],
+                    "groups": [
+                      "ADMINS"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
         }
       },
       "enums": {},
-      "nonModels": {}
+      "nonModels": {
+        "ListCognitoUsersReturnType": {
+          "name": "ListCognitoUsersReturnType",
+          "fields": {
+            "usersJson": {
+              "name": "usersJson",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "nextToken": {
+              "name": "nextToken",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        }
+      },
+      "queries": {
+        "listCognitoUsers": {
+          "name": "listCognitoUsers",
+          "isArray": false,
+          "type": {
+            "nonModel": "ListCognitoUsersReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "limit": {
+              "name": "limit",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "nextToken": {
+              "name": "nextToken",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        }
+      }
     }
   },
   "storage": {
     "aws_region": "us-east-1",
-    "bucket_name": "amplify-blogapp-pirate-san-blogmediabucket98e1d019-hryavzi1yrqu",
+    "bucket_name": "amplify-d14oin3rflwldw-mai-blogmediabucket98e1d019-mep1hujp1wo5",
     "buckets": [
       {
         "name": "blogMedia",
-        "bucket_name": "amplify-blogapp-pirate-san-blogmediabucket98e1d019-hryavzi1yrqu",
+        "bucket_name": "amplify-d14oin3rflwldw-mai-blogmediabucket98e1d019-mep1hujp1wo5",
         "aws_region": "us-east-1",
         "paths": {
           "media/*": {
+            "guest": [
+              "get",
+              "list"
+            ],
             "authenticated": [
               "get",
               "list",

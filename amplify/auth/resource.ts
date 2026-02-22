@@ -26,10 +26,18 @@ export const auth = defineAuth({
       ],
     },
   },
+  senders: {
+    email: {
+      fromEmail: 'Mani <reddimani14@gmail.com>',
+    },
+  },
   userAttributes: {
     preferredUsername: {
       required: false,
       mutable: true,
     },
   },
+  access: (allow) => [
+    allow.guest(),
+  ]
 })
