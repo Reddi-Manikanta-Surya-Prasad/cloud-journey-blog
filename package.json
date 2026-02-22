@@ -12,6 +12,7 @@
     "dependencies": {
         "@aws-amplify/data-schema": "^1.25.0",
         "@aws-amplify/data-schema-types": "^1.2.1",
+        "@aws-sdk/client-cognito-identity-provider": "^3.995.0",
         "aws-amplify": "^6.15.7",
         "highlight.js": "^11.11.1",
         "lucide-react": "^0.575.0",
