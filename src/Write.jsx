@@ -1,4 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Type,
+  Highlighter,
+  PenTool,
+  Code,
+  ImagePlus,
+  Paperclip,
+  Palette,
+  LayoutTemplate,
+  Trash2
+} from 'lucide-react'
 
 function sanitizeEditorHtml(html) {
   const raw = String(html || '')
@@ -325,16 +344,16 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       title: normalizeTitleContent(initialValue.title || ''),
       content: normalizeEditorContent(extracted.content || ''),
       attachments: extracted.attachments || [],
-            skillLevel: initialValue.skillLevel || 'beginner',
-            tldr: initialValue.tldr || '',
-            beginnerSummary: initialValue.beginnerSummary || '',
-            proSummary: initialValue.proSummary || '',
-            whyMatters: initialValue.whyMatters || '',
-            commonMistakes: initialValue.commonMistakes || '',
-            timeToPracticeMins: initialValue.timeToPracticeMins || '',
-            nextTopicTitle: initialValue.nextTopicTitle || '',
-            nextTopicUrl: initialValue.nextTopicUrl || '',
-            roadmapUrl: initialValue.roadmapUrl || '',
+      skillLevel: initialValue.skillLevel || 'beginner',
+      tldr: initialValue.tldr || '',
+      beginnerSummary: initialValue.beginnerSummary || '',
+      proSummary: initialValue.proSummary || '',
+      whyMatters: initialValue.whyMatters || '',
+      commonMistakes: initialValue.commonMistakes || '',
+      timeToPracticeMins: initialValue.timeToPracticeMins || '',
+      nextTopicTitle: initialValue.nextTopicTitle || '',
+      nextTopicUrl: initialValue.nextTopicUrl || '',
+      roadmapUrl: initialValue.roadmapUrl || '',
       versionLabel: initialValue.versionLabel || '',
     }
   }, [initialValue])
@@ -365,6 +384,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [showFormatMenu, setShowFormatMenu] = useState(true)
   const [showNumberMenu, setShowNumberMenu] = useState(false)
   const [showBulletMenu, setShowBulletMenu] = useState(false)
+  const [activeTab, setActiveTab] = useState('content')
   const [showPainter, setShowPainter] = useState(false)
   const [showDiagram, setShowDiagram] = useState(false)
   const [activeTarget, setActiveTarget] = useState('content')
@@ -392,9 +412,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     setForm((prev) => ({ ...prev, content: sanitizeEditorHtml(html) }))
   }
 
-  const updateTitleHtmlState = () => {
-    const html = titleEditorRef.current?.innerHTML || ''
-    setForm((prev) => ({ ...prev, title: normalizeTitleContent(html) }))
+  const handleTitleChange = (e) => {
+    setForm((prev) => ({ ...prev, title: e.target.value }))
   }
 
   const preserveSelection = (e) => {
@@ -418,7 +437,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
   const wrapSelectionWithClass = (className) => {
     const editor = activeTarget === 'title' ? titleEditorRef.current : editorRef.current
-    if (!editor) return
+    if (!editor || activeTarget === 'title') return // disabled for title textarea
     editor.focus()
     const selection = window.getSelection()
     if (!selection || !selection.rangeCount) return
@@ -428,8 +447,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const current = editor.innerHTML || ''
       if (!current.trim()) return
       editor.innerHTML = `<span class="${className}">${current}</span>`
-      if (activeTarget === 'title') updateTitleHtmlState()
-      else updateEditorHtmlState()
+      updateEditorHtmlState()
       return
     }
 
@@ -441,8 +459,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     range.deleteContents()
     range.insertNode(fragment)
     selection.removeAllRanges()
-    if (activeTarget === 'title') updateTitleHtmlState()
-    else updateEditorHtmlState()
+    updateEditorHtmlState()
   }
 
   const applyUnorderedStyle = (styleType) => {
@@ -597,8 +614,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const handleSubmit = (e) => {
     e.preventDefault()
     const cleanedContent = sanitizeEditorHtml(form.content)
-    const cleanedTitle = normalizeTitleContent(form.title)
-    if (!stripHtmlForStats(cleanedTitle).trim() || !cleanedContent.trim() || busy || inlineBusy) return
+    const cleanedTitle = form.title.trim()
+    if (!cleanedTitle || !cleanedContent.trim() || busy || inlineBusy) return
     onSubmit({
       title: cleanedTitle,
       content: appendAttachmentsToContent(cleanedContent, attachments),
@@ -647,11 +664,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   }, [form.content])
 
   useEffect(() => {
-    if (!titleEditorRef.current) return
-    const next = normalizeTitleContent(form.title)
-    if (titleEditorRef.current.innerHTML !== next) {
-      titleEditorRef.current.innerHTML = next
-    }
+    // Title is fully managed by React state now.
   }, [form.title])
 
   useEffect(() => {
@@ -810,8 +823,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       const cleanedContent = sanitizeEditorHtml(form.content)
-      const cleanedTitle = normalizeTitleContent(form.title)
-      if (!stripHtmlForStats(cleanedTitle).trim() || !cleanedContent.trim() || busy || inlineBusy) return
+      const cleanedTitle = form.title.trim()
+      if (!cleanedTitle || !cleanedContent.trim() || busy || inlineBusy) return
       onSubmit({
         title: cleanedTitle,
         content: appendAttachmentsToContent(cleanedContent, attachments),
@@ -844,7 +857,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           <button
             type="button"
             className="ghost"
-              onClick={() => {
+            onClick={() => {
               setForm({
                 title: '',
                 content: '',
@@ -872,242 +885,258 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         </p>
       ) : null}
 
-      <label>Title</label>
-      <div
-        ref={titleEditorRef}
-        className="rich-title-editor"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={updateTitleHtmlState}
-        onFocus={() => setActiveTarget('title')}
-        data-placeholder="Write a strong title"
-      />
+      <div className="write-tabs">
+        <button
+          type="button"
+          className={`write-tab-btn ${activeTab === 'content' ? 'active' : ''}`}
+          onClick={() => setActiveTab('content')}
+        >
+          Main Content
+        </button>
+        <button
+          type="button"
+          className={`write-tab-btn ${activeTab === 'summaries' ? 'active' : ''}`}
+          onClick={() => setActiveTab('summaries')}
+        >
+          Educational Summaries
+        </button>
+        <button
+          type="button"
+          className={`write-tab-btn ${activeTab === 'metadata' ? 'active' : ''}`}
+          onClick={() => setActiveTab('metadata')}
+        >
+          Post Metadata
+        </button>
+      </div>
 
-      <label>Content</label>
-      <div className="editor-ribbon">
-        <div className="format-toolbar-shell">
-          <button
-            type="button"
-            className="ghost format-toggle"
-            onClick={() => setShowFormatMenu((prev) => !prev)}
-            aria-expanded={showFormatMenu}
-            aria-controls="writer-style-menu"
-          >
-            Format {showFormatMenu ? '▲' : '▼'}
-          </button>
+      <div className={`tab-pane ${activeTab === 'content' ? 'active-pane' : 'hidden-pane'}`}>
+        <label>Title</label>
+        <textarea
+          ref={titleEditorRef}
+          className="rich-title-editor"
+          value={form.title}
+          onChange={handleTitleChange}
+          onFocus={() => setActiveTarget('title')}
+          placeholder="Write a strong title"
+          rows={2}
+        />
+
+        <label>Content</label>
+        <div className="editor-ribbon">
+          <div className="format-toolbar-shell">
+            <button
+              type="button"
+              className="ghost format-toggle"
+              onClick={() => setShowFormatMenu((prev) => !prev)}
+              aria-expanded={showFormatMenu}
+              aria-controls="writer-style-menu"
+            >
+              Format {showFormatMenu ? '▲' : '▼'}
+            </button>
+          </div>
+          {showFormatMenu ? (
+            <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
+              <div className="ribbon-group">
+                <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold" aria-label="Bold">
+                  <Bold size={18} />
+                </button>
+                <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic" aria-label="Italic">
+                  <Italic size={18} />
+                </button>
+                <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('underline')} disabled={inlineBusy || busy} title="Underline" aria-label="Underline">
+                  <Underline size={18} />
+                </button>
+                <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('strikeThrough')} disabled={inlineBusy || busy} title="Strikethrough" aria-label="Strikethrough">
+                  <Strikethrough size={18} />
+                </button>
+                <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1" aria-label="Heading 1">
+                  <Heading1 size={18} />
+                </button>
+                <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2" aria-label="Heading 2">
+                  <Heading2 size={18} />
+                </button>
+                <div className="list-menu-wrap" ref={bulletMenuRef}>
+                  <button
+                    type="button"
+                    className="ghost icon-tool list-tool"
+                    onMouseDown={preserveSelection}
+                    onClick={() => setShowBulletMenu((v) => !v)}
+                    disabled={inlineBusy || busy}
+                    title="Bullets"
+                    aria-label="Bullets"
+                  >
+                    <List size={18} />
+                    <span className="chev">▾</span>
+                  </button>
+                  {showBulletMenu ? (
+                    <div className="list-menu-panel">
+                      <div className="list-menu-title">Bullet Library</div>
+                      <div className="list-menu-grid">
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { runCommand('insertUnorderedList', null, 'content'); setShowBulletMenu(false) }} title="Default bullet">•</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('disc'); setShowBulletMenu(false) }} title="Dot bullet">•</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('circle'); setShowBulletMenu(false) }} title="Circle bullet">◦</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('square'); setShowBulletMenu(false) }} title="Square bullet">▪</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('star'); setShowBulletMenu(false) }} title="Star bullet">*</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('dash'); setShowBulletMenu(false) }} title="Dash bullet">–</button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="list-menu-wrap" ref={numberMenuRef}>
+                  <button
+                    type="button"
+                    className="ghost icon-tool list-tool"
+                    onMouseDown={preserveSelection}
+                    onClick={() => setShowNumberMenu((v) => !v)}
+                    disabled={inlineBusy || busy}
+                    title="Numbering"
+                    aria-label="Numbering"
+                  >
+                    <ListOrdered size={18} />
+                    <span className="chev">▾</span>
+                  </button>
+                  {showNumberMenu ? (
+                    <div className="list-menu-panel">
+                      <div className="list-menu-title">Numbering Library</div>
+                      <div className="list-menu-grid numbers">
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('decimal'); setShowNumberMenu(false) }} title="1. 2. 3.">1.</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('decimal-leading-zero'); setShowNumberMenu(false) }} title="01. 02. 03.">01.</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('upper-alpha'); setShowNumberMenu(false) }} title="A. B. C.">A.</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('lower-alpha'); setShowNumberMenu(false) }} title="a. b. c.">a.</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('upper-roman'); setShowNumberMenu(false) }} title="I. II. III.">I.</button>
+                        <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('lower-roman'); setShowNumberMenu(false) }} title="i. ii. iii.">i.</button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <label className="mini-field mini-field-icon" title="Text color">
+                  <span className="swatch-label swatch-icon-a"><Type size={14} /></span>
+                  <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+                  <span className="swatch-caret">▾</span>
+                </label>
+                <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color" aria-label="Apply text color">
+                  <Type size={18} style={{ color: textColor }} />
+                </button>
+                <label className="mini-field mini-field-icon" title="Highlight color">
+                  <span className="swatch-label swatch-icon-pen"><Highlighter size={14} /></span>
+                  <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+                  <span className="swatch-caret">▾</span>
+                </label>
+                <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight" aria-label="Apply highlight">
+                  <Highlighter size={18} style={{ color: bgColor }} />
+                </button>
+                <span className="ribbon-caption">Text</span>
+              </div>
+
+              <div className="ribbon-group">
+                <select
+                  className={`style-select ${handStyle}`}
+                  value={handStyle}
+                  onChange={(e) => setHandStyle(e.target.value)}
+                  title="Select handwriting style"
+                >
+                  {handStyles.map((style) => (
+                    <option key={style.value} value={style.value}>
+                      {style.label}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className={`ghost hand-sample ${handStyle}`} onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Preview handwriting">Sample</button>
+                <button type="button" className="ghost hand-action icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply handwriting" aria-label="Apply handwriting">
+                  <PenTool size={18} />
+                </button>
+                <span className="ribbon-caption">Styles</span>
+              </div>
+
+              <div className="ribbon-group">
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeTemplate} disabled={inlineBusy || busy} title="Insert code block" aria-label="Insert code block"><Code size={18} /></button>
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => inlineInsertInputRef.current?.click()} disabled={inlineBusy || busy} title="Insert image or video at cursor" aria-label="Insert image or video at cursor"><ImagePlus size={18} /></button>
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video below editor" aria-label="Attach image or video below editor"><Paperclip size={18} /></button>
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy} title="Open painter tool" aria-label="Open painter tool"><Palette size={18} /></button>
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy} title="Open architecture diagram tool" aria-label="Open architecture diagram tool"><LayoutTemplate size={18} /></button>
+                <input
+                  ref={inlineInsertInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden-input"
+                  onChange={handleInlineInsertPick}
+                />
+                <input
+                  ref={attachInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden-input"
+                  onChange={handleAttachPick}
+                />
+                <span className="ribbon-caption">Media & Diagrams</span>
+              </div>
+            </div>
+          ) : null}
         </div>
-        {showFormatMenu ? (
-          <div id="writer-style-menu" className="inline-toolbar ribbon-groups">
-            <div className="ribbon-group">
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('bold')} disabled={inlineBusy || busy} title="Bold" aria-label="Bold">
-                <span className="icon-glyph icon-bold">B</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('italic')} disabled={inlineBusy || busy} title="Italic" aria-label="Italic">
-                <span className="icon-glyph icon-italic">I</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('underline')} disabled={inlineBusy || busy} title="Underline" aria-label="Underline">
-                <span className="icon-glyph icon-underline">U</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('strikeThrough')} disabled={inlineBusy || busy} title="Strikethrough" aria-label="Strikethrough">
-                <span className="icon-glyph icon-strike">ab</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H1')} disabled={inlineBusy || busy} title="Heading 1" aria-label="Heading 1">
-                <span className="icon-glyph">H1</span>
-              </button>
-              <button type="button" className="ghost icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('formatBlock', 'H2')} disabled={inlineBusy || busy} title="Heading 2" aria-label="Heading 2">
-                <span className="icon-glyph">H2</span>
-              </button>
-              <div className="list-menu-wrap" ref={bulletMenuRef}>
-                <button
-                  type="button"
-                  className="ghost icon-tool list-tool"
-                  onMouseDown={preserveSelection}
-                  onClick={() => setShowBulletMenu((v) => !v)}
-                  disabled={inlineBusy || busy}
-                  title="Bullets"
-                  aria-label="Bullets"
-                >
-                  <span className="list-preview">{'\u2022'} {`\u2013`} {`\u2013`}</span>
-                  <span className="chev">▾</span>
-                </button>
-                {showBulletMenu ? (
-                  <div className="list-menu-panel">
-                    <div className="list-menu-title">Bullet Library</div>
-                    <div className="list-menu-grid">
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { runCommand('insertUnorderedList', null, 'content'); setShowBulletMenu(false) }} title="Default bullet">•</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('disc'); setShowBulletMenu(false) }} title="Dot bullet">•</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('circle'); setShowBulletMenu(false) }} title="Circle bullet">◦</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('square'); setShowBulletMenu(false) }} title="Square bullet">▪</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('star'); setShowBulletMenu(false) }} title="Star bullet">*</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyUnorderedStyle('dash'); setShowBulletMenu(false) }} title="Dash bullet">–</button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-              <div className="list-menu-wrap" ref={numberMenuRef}>
-                <button
-                  type="button"
-                  className="ghost icon-tool list-tool"
-                  onMouseDown={preserveSelection}
-                  onClick={() => setShowNumberMenu((v) => !v)}
-                  disabled={inlineBusy || busy}
-                  title="Numbering"
-                  aria-label="Numbering"
-                >
-                  <span className="list-preview">1. {`\u2013`} {`\u2013`}</span>
-                  <span className="chev">▾</span>
-                </button>
-                {showNumberMenu ? (
-                  <div className="list-menu-panel">
-                    <div className="list-menu-title">Numbering Library</div>
-                    <div className="list-menu-grid numbers">
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('decimal'); setShowNumberMenu(false) }} title="1. 2. 3.">1.</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('decimal-leading-zero'); setShowNumberMenu(false) }} title="01. 02. 03.">01.</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('upper-alpha'); setShowNumberMenu(false) }} title="A. B. C.">A.</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('lower-alpha'); setShowNumberMenu(false) }} title="a. b. c.">a.</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('upper-roman'); setShowNumberMenu(false) }} title="I. II. III.">I.</button>
-                      <button type="button" className="ghost list-choice" onMouseDown={preserveSelection} onClick={() => { applyOrderedStyle('lower-roman'); setShowNumberMenu(false) }} title="i. ii. iii.">i.</button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-              <label className="mini-field mini-field-icon" title="Text color">
-                <span className="swatch-label swatch-icon-a">A</span>
-                <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
-                <span className="swatch-caret">▾</span>
-              </label>
-              <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('foreColor', textColor)} disabled={inlineBusy || busy} title="Apply text color" aria-label="Apply text color">
-                <span className="icon-glyph color-a">A</span>
-              </button>
-              <label className="mini-field mini-field-icon" title="Highlight color">
-                <span className="swatch-label swatch-icon-pen">{'\u270E'}</span>
-                <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
-                <span className="swatch-caret">▾</span>
-              </label>
-              <button type="button" className="ghost icon-tool color-icon-tool" onMouseDown={preserveSelection} onClick={() => runCommand('hiliteColor', bgColor)} disabled={inlineBusy || busy} title="Apply highlight" aria-label="Apply highlight">
-                <span className="icon-glyph highlight-a">A</span>
-              </button>
-              <span className="ribbon-caption">Text</span>
-            </div>
 
-            <div className="ribbon-group">
-              <select
-                className={`style-select ${handStyle}`}
-                value={handStyle}
-                onChange={(e) => setHandStyle(e.target.value)}
-                title="Select handwriting style"
-              >
-                {handStyles.map((style) => (
-                  <option key={style.value} value={style.value}>
-                    {style.label}
-                  </option>
-                ))}
-              </select>
-              <button type="button" className={`ghost hand-sample ${handStyle}`} onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Preview handwriting">Sample</button>
-              <button type="button" className="ghost hand-action icon-tool" onMouseDown={preserveSelection} onClick={() => wrapSelectionWithClass(handStyle)} disabled={inlineBusy || busy} title="Apply handwriting" aria-label="Apply handwriting">
-                <span className="icon-glyph">{'\u270E'}</span>
-              </button>
-              <span className="ribbon-caption">Styles</span>
-            </div>
+        <div
+          ref={editorRef}
+          className="rich-editor"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={updateEditorHtmlState}
+          onFocus={() => setActiveTarget('content')}
+          onKeyDown={handleEditorKeyDown}
+          onClick={handleEditorClick}
+          onPaste={handlePaste}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+          data-placeholder="Write your story with rich formatting..."
+        />
 
-            <div className="ribbon-group">
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeTemplate} disabled={inlineBusy || busy} title="Insert code block" aria-label="Insert code block">{'</>'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => inlineInsertInputRef.current?.click()} disabled={inlineBusy || busy} title="Insert image or video at cursor" aria-label="Insert image or video at cursor">{'\u2795'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video below editor" aria-label="Attach image or video below editor">{'\u{1F4CE}'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy} title="Open painter tool" aria-label="Open painter tool">{'\u{1F3A8}'}</button>
-              <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy} title="Open architecture diagram tool" aria-label="Open architecture diagram tool">{'\u{1F3D7}\u{FE0F}'}</button>
-              <input
-                ref={inlineInsertInputRef}
-                type="file"
-                accept="image/*,video/*"
-                className="hidden-input"
-                onChange={handleInlineInsertPick}
-              />
-              <input
-                ref={attachInputRef}
-                type="file"
-                accept="image/*,video/*"
-                className="hidden-input"
-                onChange={handleAttachPick}
-              />
-              <span className="ribbon-caption">Media & Diagrams</span>
+        <small>
+          Tip: WYSIWYG mode is on. No raw [color]/[hand] handlers shown in edit mode. Painter/Diagram exports auto-attach as images.
+        </small>
+        {attachments.length ? (
+          <div className="attachment-tray">
+            <div className="attachment-tray-head">Post Attachments</div>
+            <div className="attachment-grid">
+              {attachments.map((item, idx) => (
+                <div className="attachment-item" key={`${item.source}-${idx}`}>
+                  {item.type === 'vid' ? (
+                    <video src={item.source} controls playsInline preload="metadata" />
+                  ) : (
+                    <img src={item.source} alt={`attachment-${idx + 1}`} loading="lazy" decoding="async" />
+                  )}
+                  <div className="attachment-actions">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => {
+                        const mediaHtml =
+                          item.type === 'vid'
+                            ? `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${item.source}"></video></div><p><br></p>`
+                            : `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><img data-inline-media="1" src="${item.source}" alt="Inline media" loading="lazy" decoding="async" /></div><p><br></p>`
+                        runCommand('insertHTML', mediaHtml, 'content')
+                        setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                      }}
+                      title="Insert in content"
+                    >
+                      Insert inline
+                    </button>
+                    <button
+                      type="button"
+                      className="attachment-delete"
+                      onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                      title="Delete attachment"
+                      aria-label="Delete attachment"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ) : null}
       </div>
 
-      <div
-        ref={editorRef}
-        className="rich-editor"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={updateEditorHtmlState}
-        onFocus={() => setActiveTarget('content')}
-        onKeyDown={handleEditorKeyDown}
-        onClick={handleEditorClick}
-        onPaste={handlePaste}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDrop}
-        data-placeholder="Write your story with rich formatting..."
-      />
-
-      <small>
-        Tip: WYSIWYG mode is on. No raw [color]/[hand] handlers shown in edit mode. Painter/Diagram exports auto-attach as images.
-      </small>
-      {attachments.length ? (
-        <div className="attachment-tray">
-          <div className="attachment-tray-head">Post Attachments</div>
-          <div className="attachment-grid">
-            {attachments.map((item, idx) => (
-              <div className="attachment-item" key={`${item.source}-${idx}`}>
-                {item.type === 'vid' ? (
-                  <video src={item.source} controls playsInline preload="metadata" />
-                ) : (
-                  <img src={item.source} alt={`attachment-${idx + 1}`} loading="lazy" decoding="async" />
-                )}
-                <div className="attachment-actions">
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => {
-                      const mediaHtml =
-                        item.type === 'vid'
-                          ? `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${item.source}"></video></div><p><br></p>`
-                          : `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><img data-inline-media="1" src="${item.source}" alt="Inline media" loading="lazy" decoding="async" /></div><p><br></p>`
-                      runCommand('insertHTML', mediaHtml, 'content')
-                      setAttachments((prev) => prev.filter((_, i) => i !== idx))
-                    }}
-                    title="Insert in content"
-                  >
-                    Insert inline
-                  </button>
-                  <button
-                    type="button"
-                    className="attachment-delete"
-                    onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                    title="Delete attachment"
-                    aria-label="Delete attachment"
-                  >
-                    🗑
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="phase1-grid">
-        <label>Skill Level</label>
-        <select
-          value={form.skillLevel}
-          onChange={(e) => setForm((prev) => ({ ...prev, skillLevel: e.target.value }))}
-        >
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
-
+      <div className={`tab-pane phase1-grid ${activeTab === 'summaries' ? 'active-pane' : 'hidden-pane'}`}>
         <label>If You Are Short On Time (TL;DR)</label>
         <textarea
           rows={2}
@@ -1148,6 +1177,32 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           placeholder="Common failures to avoid..."
         />
 
+        <label>What To Learn Next (title)</label>
+        <input
+          value={form.nextTopicTitle}
+          onChange={(e) => setForm((prev) => ({ ...prev, nextTopicTitle: e.target.value }))}
+          placeholder="Next: Terraform State Deep Dive"
+        />
+
+        <label>Next Topic URL</label>
+        <input
+          value={form.nextTopicUrl}
+          onChange={(e) => setForm((prev) => ({ ...prev, nextTopicUrl: e.target.value }))}
+          placeholder="https://..."
+        />
+      </div>
+
+      <div className={`tab-pane phase1-grid ${activeTab === 'metadata' ? 'active-pane' : 'hidden-pane'}`}>
+        <label>Skill Level</label>
+        <select
+          value={form.skillLevel}
+          onChange={(e) => setForm((prev) => ({ ...prev, skillLevel: e.target.value }))}
+        >
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+
         <label>Time To Practice (minutes)</label>
         <input
           type="number"
@@ -1164,20 +1219,6 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           value={form.versionLabel}
           onChange={(e) => setForm((prev) => ({ ...prev, versionLabel: e.target.value }))}
           placeholder="Updated for Terraform v1.6 | Feb 2026"
-        />
-
-        <label>What To Learn Next (title)</label>
-        <input
-          value={form.nextTopicTitle}
-          onChange={(e) => setForm((prev) => ({ ...prev, nextTopicTitle: e.target.value }))}
-          placeholder="Next: Terraform State Deep Dive"
-        />
-
-        <label>Next Topic URL</label>
-        <input
-          value={form.nextTopicUrl}
-          onChange={(e) => setForm((prev) => ({ ...prev, nextTopicUrl: e.target.value }))}
-          placeholder="https://..."
         />
 
         <label>Roadmap URL</label>

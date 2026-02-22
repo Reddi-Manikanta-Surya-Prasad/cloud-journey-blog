@@ -72,6 +72,18 @@ const schema = a
         allow.authenticated().to(['read', 'create', 'delete']),
       ]),
 
+    UserProfile: a
+      .model({
+        userSub: a.string().required(),
+        email: a.string().required(),
+        name: a.string().required(),
+      })
+      .authorization((allow) => [
+        allow.owner().to(['create', 'update', 'read']),
+        allow.groups(['ADMINS']).to(['read', 'update', 'delete']),
+        allow.authenticated().to(['read']),
+      ]),
+
     UserModeration: a
       .model({
         // Use userSub as id so one moderation record exists per user.
