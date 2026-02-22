@@ -1,4 +1,5 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
+import { listUsers } from '../functions/list-users/resource'
 
 const schema = a
   .schema({
@@ -94,9 +95,25 @@ const schema = a
         updatedBySub: a.string(),
         updatedByName: a.string(),
       })
-      .authorization((allow) => [
-        allow.groups(['ADMINS']).to(['create', 'read', 'update', 'delete']),
-      ]),
+  })
+  .authorization((allow) => [
+    allow.groups(['ADMINS']).to(['create', 'read', 'update', 'delete']),
+  ]),
+
+  listCognitoUsers: a
+    .query()
+      .arguments({
+        limit: a.integer(),
+        nextToken: a.string(),
+      })
+      .returns(
+        a.customType({
+          usersJson: a.string().required(),
+          nextToken: a.string(),
+        })
+      )
+      .handler(a.handler.function(listUsers))
+      .authorization((allow) => [allow.groups(['ADMINS'])]),
   })
   .authorization((allow) => [allow.authenticated()])
 
