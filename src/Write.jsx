@@ -412,6 +412,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     setForm((prev) => ({ ...prev, content: sanitizeEditorHtml(html) }))
   }
 
+  const updateTitleHtmlState = () => {
+    const html = titleEditorRef.current?.innerHTML || ''
+    setForm((prev) => ({ ...prev, title: sanitizeEditorHtml(html) }))
+  }
+
   const handleTitleChange = (e) => {
     setForm((prev) => ({ ...prev, title: e.target.value }))
   }
@@ -664,7 +669,11 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   }, [form.content])
 
   useEffect(() => {
-    // Title is fully managed by React state now.
+    if (!titleEditorRef.current) return
+    const next = sanitizeEditorHtml(form.title)
+    if (titleEditorRef.current.innerHTML !== next) {
+      titleEditorRef.current.innerHTML = next
+    }
   }, [form.title])
 
   useEffect(() => {
@@ -911,14 +920,16 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
       <div className={`tab-pane ${activeTab === 'content' ? 'active-pane' : 'hidden-pane'}`}>
         <label>Title</label>
-        <textarea
+        <div
           ref={titleEditorRef}
           className="rich-title-editor"
-          value={form.title}
-          onChange={handleTitleChange}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={updateTitleHtmlState}
+          onBlur={updateTitleHtmlState}
           onFocus={() => setActiveTarget('title')}
-          placeholder="Write a strong title"
-          rows={2}
+          data-placeholder="Write a strong title"
+          style={{ minHeight: '44px', padding: '10px', border: '1px solid #b7d2f7', borderRadius: '8px', background: '#fff', fontSize: '1.2rem', fontWeight: 'bold' }}
         />
 
         <label>Content</label>
@@ -1009,23 +1020,27 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                     </div>
                   ) : null}
                 </div>
-                <label className="mini-field mini-field-icon" title="Text Color">
-                  <span className="swatch-label swatch-icon-a">
+                <div className="mini-field-split" title="Text Color">
+                  <button type="button" className="ghost swatch-apply" onMouseDown={preserveSelection} onClick={(e) => { e.preventDefault(); runCommand('foreColor', textColor); }}>
                     <Type size={16} />
-                    <div style={{ height: '3px', background: textColor, marginTop: '-2px', borderRadius: '2px' }} />
-                  </span>
-                  <input type="color" className="hidden-input" value={textColor} onChange={(e) => { setTextColor(e.target.value); runCommand('foreColor', e.target.value); }} />
-                  <span className="swatch-caret">▾</span>
-                </label>
+                    <div style={{ height: '3px', background: textColor, width: '100%', marginTop: '-2px', borderRadius: '2px' }} />
+                  </button>
+                  <label className="swatch-picker-label" title="Pick text color">
+                    <input type="color" className="hidden-input" value={textColor} onChange={(e) => { setTextColor(e.target.value); runCommand('foreColor', e.target.value); }} />
+                    <span className="swatch-caret">▾</span>
+                  </label>
+                </div>
 
-                <label className="mini-field mini-field-icon" title="Highlight Color">
-                  <span className="swatch-label swatch-icon-pen">
+                <div className="mini-field-split" title="Highlight Color">
+                  <button type="button" className="ghost swatch-apply" onMouseDown={preserveSelection} onClick={(e) => { e.preventDefault(); runCommand('hiliteColor', bgColor); }}>
                     <Highlighter size={16} />
-                    <div style={{ height: '4px', background: bgColor, marginTop: '-2px', borderRadius: '2px' }} />
-                  </span>
-                  <input type="color" className="hidden-input" value={bgColor} onChange={(e) => { setBgColor(e.target.value); runCommand('hiliteColor', e.target.value); }} />
-                  <span className="swatch-caret">▾</span>
-                </label>
+                    <div style={{ height: '4px', background: bgColor, width: '100%', marginTop: '-2px', borderRadius: '2px' }} />
+                  </button>
+                  <label className="swatch-picker-label" title="Pick highlight color">
+                    <input type="color" className="hidden-input" value={bgColor} onChange={(e) => { setBgColor(e.target.value); runCommand('hiliteColor', e.target.value); }} />
+                    <span className="swatch-caret">▾</span>
+                  </label>
+                </div>
                 <span className="ribbon-caption">Text</span>
               </div>
 

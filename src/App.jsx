@@ -1051,6 +1051,18 @@ function App() {
         email: attrs.email || '',
         name: friendlyName,
       })
+
+      try {
+        const { data: profiles } = await client.models.UserProfile.list({ filter: { userSub: { eq: user.userId } } })
+        if (profiles && profiles.length > 0) {
+          await client.models.UserProfile.update({ id: profiles[0].id, name: friendlyName, email })
+        } else {
+          await client.models.UserProfile.create({ userSub: user.userId, name: friendlyName, email })
+        }
+      } catch (err) {
+        console.error('Failed to sync UserProfile', err)
+      }
+
       await refreshData(false, 'userPool')
     } catch {
       setCurrentUser(null)
