@@ -713,6 +713,7 @@ function App() {
   const mediaUrlCacheRef = useRef({})
   const notificationWrapRef = useRef(null)
   const profileMenuRef = useRef(null)
+  const profileRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
   const [toasts, setToasts] = useState([])
@@ -858,6 +859,23 @@ function App() {
       document.removeEventListener('touchstart', handleOutsideClick)
     }
   }, [showProfileMenu])
+
+  useEffect(() => {
+    if (!showProfile) return
+
+    const handleOutsideClick = (event) => {
+      if (profileRef.current?.contains(event.target)) return
+      if (event.target.closest('.profile-menu-wrap')) return
+      setShowProfile(false)
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('touchstart', handleOutsideClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('touchstart', handleOutsideClick)
+    }
+  }, [showProfile])
 
   useEffect(() => {
     mediaUrlCacheRef.current = mediaUrlCache
@@ -2053,10 +2071,6 @@ function App() {
         <div className="header-right">
           {currentUser && (
             <>
-              {showProfile && (
-                <button className="ghost" onClick={() => setShowProfile(false)}>Close Profile</button>
-              )}
-
               <select
                 className="theme-selector"
                 value={theme}
@@ -2141,7 +2155,12 @@ function App() {
                 <button
                   className="username-btn"
                   onClick={() => {
-                    setShowProfileMenu((prev) => !prev)
+                    if (showProfile) {
+                      setShowProfile(false)
+                      setShowProfileMenu(false)
+                    } else {
+                      setShowProfileMenu((prev) => !prev)
+                    }
                     setShowNotifications(false)
                   }}
                 >
@@ -2259,7 +2278,7 @@ function App() {
         ) : null}
 
         {showProfile && currentUser ? (
-          <section className="card profile-page" style={{ minHeight: '600px', border: 'none', background: 'transparent', boxShadow: 'none' }}>
+          <section ref={profileRef} className="card profile-page" style={{ minHeight: '600px', border: 'none', background: 'transparent', boxShadow: 'none' }}>
             <div className="profile-tab-content" style={{ marginTop: '20px' }}>
               {profileTab === 'posts' && (
                 <div className="profile-post-list">
