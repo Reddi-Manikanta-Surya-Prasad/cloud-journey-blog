@@ -305,8 +305,9 @@ body::-webkit-scrollbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 4px 11px;
+  gap: 20px;
+  padding: 0 15px;
+  min-height: 60px;
   background: transparent;
   border-bottom: 1px solid transparent;
   backdrop-filter: none;
@@ -363,7 +364,7 @@ body::-webkit-scrollbar {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .notification-wrap {
@@ -2492,7 +2493,7 @@ button.danger {
 @media (max-width: 560px) {
   .app-header {
     flex-wrap: nowrap !important;
-    padding: 6px 8px;
+    padding: 0 15px;
     align-items: center;
   }
 
@@ -2510,5 +2511,19 @@ button.danger {
 
   .notification-panel {
     top: 120px;
+  }
+}
+
+@media (max-width: 360px) {
+  .brand-tagline {
+    display: none !important;
+  }
+
+  .username-btn,
+  .guest-pill {
+    max-width: 85px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

@@ -2152,7 +2152,7 @@ function App() {
           </button>
           <div className="header-brand-text" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <h1 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>Cloud Journey</h1>
-            <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.85, fontWeight: 500 }}>write.share.grow</p>
+            <p className="brand-tagline" style={{ fontSize: '11px', margin: 0, opacity: 0.85, fontWeight: 500 }}>write.share.grow</p>
           </div>
         </div>
 
