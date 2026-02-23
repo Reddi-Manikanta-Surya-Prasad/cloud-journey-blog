@@ -370,6 +370,12 @@ function splitMixedTextIntoBlocks(text) {
     const score = codeLineScore(line)
 
     if (!line.trim() || score < 3) {
+      // If this line starts with an HTML tag, treat it as an html block not plain text
+      if (/^<(h[1-6]|div|p|ul|ol|section|article|blockquote|table|figure|span|strong|em|font|mark)\b/i.test(line.trim())) {
+        flushText()
+        blocks.push({ type: 'html', value: line })
+        continue
+      }
       textBuffer.push(line)
       continue
     }
