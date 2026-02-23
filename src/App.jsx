@@ -2141,15 +2141,12 @@ function App() {
         <div className="header-right">
           {currentUser && (
             <>
-              <select
-                className="theme-selector"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                style={{ padding: '0 4px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '1rem', border: 'none', width: 'auto', marginRight: '8px' }}
+              <button
+                className="theme-toggle-btn"
+                onClick={() => setTheme(theme === 'interactive-canvas' ? 'crazy' : 'interactive-canvas')}
               >
-                <option value="interactive-canvas">🌞</option>
-                <option value="crazy">👾</option>
-              </select>
+                {theme === 'interactive-canvas' ? '🌞' : '👾'}
+              </button>
 
               <div className="notification-wrap" ref={notificationWrapRef}>
                 <button
@@ -2259,15 +2256,12 @@ function App() {
           )}
           {!currentUser && (
             <>
-              <select
-                className="theme-selector"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                style={{ padding: '0 4px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '1rem', border: 'none', width: 'auto', marginRight: '8px' }}
+              <button
+                className="theme-toggle-btn"
+                onClick={() => setTheme(theme === 'interactive-canvas' ? 'crazy' : 'interactive-canvas')}
               >
-                <option value="interactive-canvas">🌞</option>
-                <option value="crazy">👾</option>
-              </select>
+                {theme === 'interactive-canvas' ? '🌞' : '👾'}
+              </button>
               <button
                 className="ghost"
                 onClick={() => setShowAuth(true)}

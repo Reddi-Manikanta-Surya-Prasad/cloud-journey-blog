@@ -597,6 +597,55 @@ body::-webkit-scrollbar {
   margin-bottom: 12px;
 }
 
+/* Theme Toggle Button & Tooltip */
+.theme-toggle-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.2s;
+  color: var(--text);
+  margin-right: 8px;
+}
+
+.theme-toggle-btn:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.theme-toggle-btn::after {
+  content: "Change Theme";
+  position: absolute;
+  top: 100%;
+  right: 50%;
+  transform: translateX(50%);
+  margin-top: 8px;
+  padding: 6px 10px;
+  background-color: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.theme-toggle-btn:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 
 .preview-grid {
   display: grid;
