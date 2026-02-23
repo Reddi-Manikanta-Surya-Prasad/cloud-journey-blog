@@ -59,11 +59,10 @@ export const handler = async (event) => {
     }
 
     const userParams = {
-        // [SANDBOX BYPASS] To ensure the notification is received during testing, route it to the verified Admin email.
-        Destination: { ToAddresses: [ADMIN_EMAIL] },
+        Destination: { ToAddresses: [userEmail] },
         Message: {
             Body: { Html: { Data: userHtml } },
-            Subject: { Data: `[TESTING for ${userEmail}] ` + subject }
+            Subject: { Data: subject }
         },
         Source: ADMIN_EMAIL,
         ReplyToAddresses: [ADMIN_EMAIL]
