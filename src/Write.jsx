@@ -458,7 +458,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
   const wrapSelectionWithClass = (className) => {
     const editor = activeTarget === 'title' ? titleEditorRef.current : editorRef.current
-    if (!editor || activeTarget === 'title') return // disabled for title textarea
+    if (!editor) return
     editor.focus()
     const selection = window.getSelection()
     if (!selection || !selection.rangeCount) return
@@ -468,7 +468,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
       const current = editor.innerHTML || ''
       if (!current.trim()) return
       editor.innerHTML = `<span class="${className}">${current}</span>`
-      updateEditorHtmlState()
+      if (activeTarget === 'title') updateTitleHtmlState()
+      else updateEditorHtmlState()
       return
     }
 
@@ -480,7 +481,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     range.deleteContents()
     range.insertNode(fragment)
     selection.removeAllRanges()
-    updateEditorHtmlState()
+    if (activeTarget === 'title') updateTitleHtmlState()
+    else updateEditorHtmlState()
   }
 
   const applyUnorderedStyle = (styleType) => {
@@ -1142,9 +1144,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
           data-placeholder="Write your story with rich formatting..."
         />
 
-        <small>
-          Tip: WYSIWYG mode is on. No raw [color]/[hand] handlers shown in edit mode. Painter/Diagram exports auto-attach as images.
-        </small>
+
         {attachments.length ? (
           <div className="attachment-tray">
             <div className="attachment-tray-head">Post Attachments</div>

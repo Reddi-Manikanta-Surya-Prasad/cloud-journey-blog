@@ -1110,6 +1110,20 @@ body::-webkit-scrollbar {
   opacity: 1;
 }
 
+@media (max-width: 560px) {
+  .blog-action-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .action-bar-group {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+}
+
 .comments {
   margin-top: 10px;
 }

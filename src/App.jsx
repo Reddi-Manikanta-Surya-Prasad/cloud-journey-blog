@@ -2580,9 +2580,9 @@ function App() {
         {!showAdminPanel && (showComposer || editingPostId) && currentUser ? (
           <section className="writer-shell">
             {composerStep === 'config' ? (
-              <div className="card pre-composer-config" style={{ maxWidth: '600px', margin: '40px auto', padding: '30px' }}>
-                <h3 style={{ marginTop: 0 }}>Post Setup</h3>
-                <p style={{ opacity: 0.8, marginBottom: '20px' }}>Before you start writing, please specify the target level and topic.</p>
+              <div className="pre-composer-config" style={{ margin: '40px auto', maxWidth: '800px', padding: '0 20px' }}>
+                <h3 style={{ marginTop: 0, fontSize: '1.8rem', color: 'var(--ink)' }}>Post Setup</h3>
+                <p style={{ opacity: 0.8, marginBottom: '24px', fontSize: '1.1rem' }}>Before you start writing, please specify the target level and topic.</p>
 
                 <div style={{ marginBottom: '15px' }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Target Level *</label>
@@ -3086,7 +3086,8 @@ function FullPostView({
     }
 
     const speakNow = () => {
-      const utterance = new SpeechSynthesisUtterance(`${post.title}. ${text}`)
+      const plainTitle = stripReadableText ? stripReadableText(post.title) : post.title.replace(/<[^>]+>/g, '')
+      const utterance = new SpeechSynthesisUtterance(`${plainTitle}. ${text}`)
       utterance.rate = 1
       utterance.pitch = 1
 
