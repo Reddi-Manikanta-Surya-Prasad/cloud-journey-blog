@@ -736,7 +736,9 @@ function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const navigate = useCallback((path, replace = false) => {
+  const navigate = useCallback((rawPath, replace = false) => {
+    let path = rawPath.replace(/\/+$/, '') || '/'
+
     // Unauthenticated route guard
     if (!currentUser && (path === '/admin-dashboard' || path === '/profile' || path.startsWith('/home'))) {
       path = '/'
@@ -774,7 +776,7 @@ function App() {
 
   useEffect(() => {
     const handlePopState = (e) => {
-      let path = window.location.pathname
+      let path = window.location.pathname.replace(/\/+$/, '') || '/'
 
       if (!currentUser && (path === '/admin-dashboard' || path === '/profile' || path.startsWith('/home'))) {
         return navigate('/', true)
@@ -1254,7 +1256,7 @@ function App() {
 
       await refreshData(false, 'userPool')
 
-      const initialPath = window.location.pathname
+      const initialPath = window.location.pathname.replace(/\/+$/, '') || '/'
       if (initialPath === '/admin-dashboard') {
         if (adminByGroup || adminByEmail) {
           setShowAdminPanel(true)
@@ -1274,7 +1276,7 @@ function App() {
       setModerations([])
       await refreshData(false, 'apiKey')
 
-      const path = window.location.pathname
+      let path = window.location.pathname.replace(/\/+$/, '') || '/'
       if (path === '/admin-dashboard' || path === '/profile' || path.startsWith('/home')) {
         navigate('/', true)
       } else if (path === '/' || path === '') {
