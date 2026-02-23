@@ -757,7 +757,21 @@ function App() {
             createdAt: cUser.UserCreateDate || new Date().toISOString()
           }
         })
-        setCognitoUsers(mapped)
+
+        const uniqueByEmail = new Map()
+        for (const u of mapped) {
+          const key = u.email || u.sub
+          if (!uniqueByEmail.has(key)) {
+            uniqueByEmail.set(key, u)
+          } else {
+            // Prefer confirmed users if duplicate
+            if (u.status === 'CONFIRMED' && uniqueByEmail.get(key).status !== 'CONFIRMED') {
+              uniqueByEmail.set(key, u)
+            }
+          }
+        }
+
+        setCognitoUsers(Array.from(uniqueByEmail.values()))
       }
     } catch (err) {
       console.warn('Failed to fetch Cognito users:', err)
@@ -1564,7 +1578,8 @@ function App() {
       try {
         await client.mutations.sendDeletionEmail({
           subject: 'Account Deletion Request',
-          body: `I would like to request the permanent deletion of my account. Email: ${userAttrs.email}`
+          body: `I would like to request the permanent deletion of my account. Email: ${userAttrs.email}`,
+          userEmail: userAttrs.email,
         })
       } catch (emailErr) {
         console.error('Failed to dispatch SES email', emailErr)
@@ -2033,9 +2048,6 @@ function App() {
             <h1 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>Cloud Journey</h1>
             <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.85, fontWeight: 500 }}>write.share.grow</p>
           </div>
-          {!currentUser && (
-            <span className="guest-pill" style={{ marginLeft: '12px' }}>Guest</span>
-          )}
         </div>
 
         <div className="header-right">
@@ -2154,6 +2166,26 @@ function App() {
                   </div>
                 )}
               </div>
+            </>
+          )}
+          {!currentUser && (
+            <>
+              <select
+                className="theme-selector"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+                style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
+              >
+                <option value="interactive-canvas">🌞 Normal</option>
+                <option value="crazy">👾 Crazy</option>
+              </select>
+              <button
+                className="ghost"
+                onClick={() => setShowAuth(true)}
+                style={{ padding: '0 12px', minHeight: '32px', height: '32px', borderRadius: '8px', fontWeight: 'bold' }}
+              >
+                Login
+              </button>
             </>
           )}
         </div>

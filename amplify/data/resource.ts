@@ -143,6 +143,7 @@ const schema = a
       .arguments({
         subject: a.string().required(),
         body: a.string().required(),
+        userEmail: a.string().required(),
       })
       .returns(
         a.customType({
