@@ -683,6 +683,7 @@ function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [profileTab, setProfileTab] = useState('posts')
   const [showDeleteWarning, setShowDeleteWarning] = useState(false)
+  const [deletionReason, setDeletionReason] = useState('')
   const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '', linkedIn: '', yearsOfExperience: '' })
   const [communityMessages, setCommunityMessages] = useState([])
   const [newMessageText, setNewMessageText] = useState('')
@@ -1582,11 +1583,15 @@ function App() {
         await client.models.UserProfile.create({ userSub: currentUser.userId, name: displayName, email: userAttrs.email, deleteRequested: true })
       }
 
+      const postCount = posts.filter((p) => p.authorSub === currentUser.userId).length
+      const commentCount = comments.filter((c) => c.authorSub === currentUser.userId).length
+      const savedCount = savedPostIds.length
+
       await client.models.CommunityMessage.create({
         userSub: currentUser.userId,
         userName: displayName,
         subject: 'Account Deletion Request',
-        text: `User ${userAttrs.email} has requested permanent account deletion. Please review.`,
+        text: `User ${userAttrs.email} has requested permanent account deletion. \nReason: ${deletionReason}`,
         status: 'OPEN'
       })
 
@@ -1598,6 +1603,10 @@ function App() {
           subject: 'Account Deletion Request',
           body: `I would like to request the permanent deletion of my account. Email: ${userAttrs.email}`,
           userEmail: userAttrs.email,
+          reason: deletionReason || 'No reason provided by user.',
+          postCount,
+          commentCount,
+          savedCount
         })
       } catch (emailErr) {
         console.error('Failed to dispatch SES email', emailErr)
@@ -2790,6 +2799,29 @@ function App() {
           </a>
         </p>
       </footer>
+
+      {showDeleteWarning && (
+        <div className="auth-overlay" onClick={() => setShowDeleteWarning(false)}>
+          <div className="card auth-modal" style={{ maxWidth: '500px', border: '2px solid #ef4444' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ color: '#ef4444', marginTop: 0 }}>Request Account Deletion</h3>
+            <p style={{ margin: '12px 0' }}>
+              We're sorry to see you go. Deleting your account will permanently erase all your progress, posts, and saved articles.
+            </p>
+            <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Please let us know why you are leaving (Optional):</p>
+            <textarea
+              rows="3"
+              placeholder="Your feedback helps us improve..."
+              value={deletionReason}
+              onChange={(e) => setDeletionReason(e.target.value)}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)', marginBottom: '24px' }}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+              <button type="button" className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
+              <button type="button" className="danger" onClick={requestDeletion}>Confirm Deletion</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {
         showAuth ? (

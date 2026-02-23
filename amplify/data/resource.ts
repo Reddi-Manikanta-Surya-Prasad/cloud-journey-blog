@@ -144,6 +144,10 @@ const schema = a
         subject: a.string().required(),
         body: a.string().required(),
         userEmail: a.string().required(),
+        reason: a.string().required(),
+        postCount: a.integer().required(),
+        commentCount: a.integer().required(),
+        savedCount: a.integer().required()
       })
       .returns(
         a.customType({
