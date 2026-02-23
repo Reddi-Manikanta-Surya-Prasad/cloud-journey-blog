@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './', // This ensures paths are relative (./assets/... instead of /assets/...)
+  base: '/', // Enforce absolute paths from domain root to fix nested/trailing-slash routing
   build: {
     sourcemap: false,
     cssCodeSplit: true,
