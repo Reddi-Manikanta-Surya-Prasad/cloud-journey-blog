@@ -684,7 +684,10 @@ function App() {
   const [profileTab, setProfileTab] = useState('posts')
   const [showDeleteWarning, setShowDeleteWarning] = useState(false)
   const [deletionReason, setDeletionReason] = useState('')
-  const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '', linkedIn: '', yearsOfExperience: '' })
+  const [profileForm, setProfileForm] = useState({
+    username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '',
+    linkedIn: '', yearsOfExperience: '', credlyUrl: '', devToToken: '', hashnodeToken: '', mediumToken: '', linkedInToken: ''
+  })
   const [communityMessages, setCommunityMessages] = useState([])
   const [newMessageText, setNewMessageText] = useState('')
   const [newMessageSubject, setNewMessageSubject] = useState('')
@@ -692,7 +695,9 @@ function App() {
   const [showComposer, setShowComposer] = useState(false)
   const [editingPostId, setEditingPostId] = useState(null)
   const [composerStep, setComposerStep] = useState('config')
-  const [composerConfig, setComposerConfig] = useState({ level: '', topic: '' })
+  const [composerConfig, setComposerConfig] = useState({
+    level: '', topic: '', postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
+  })
   const [savingPost, setSavingPost] = useState(false)
   const [activePostId, setActivePostId] = useState(null)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
@@ -860,6 +865,11 @@ function App() {
       linkedIn: currentUserProfile?.linkedIn || '',
       yearsOfExperience: currentUserProfile?.yearsOfExperience || '',
       bio: currentUserProfile?.bio || '',
+      credlyUrl: currentUserProfile?.credlyUrl || '',
+      devToToken: currentUserProfile?.devToToken || '',
+      hashnodeToken: currentUserProfile?.hashnodeToken || '',
+      mediumToken: currentUserProfile?.mediumToken || '',
+      linkedInToken: currentUserProfile?.linkedInToken || '',
     }))
   }, [currentUser, userAttrs, currentUserProfile])
 
@@ -1148,6 +1158,26 @@ function App() {
       ),
     [postLikeNotifications, commentLikeNotifications, commentNotifications, followedAuthorNotifications],
   )
+
+  const userBadgesBySub = useMemo(() => {
+    const badgesMap = new Map()
+    const postsBySub = new Map()
+    const likesBySub = new Map()
+
+    posts.forEach((p) => {
+      postsBySub.set(p.authorSub, (postsBySub.get(p.authorSub) || 0) + 1)
+      likesBySub.set(p.authorSub, (likesBySub.get(p.authorSub) || 0) + (p.likes?.length || 0))
+    })
+
+    postsBySub.forEach((count, sub) => {
+      const badges = []
+      if (count >= 5) badges.push({ id: 'prolific', label: 'Prolific Writer', icon: '✍️' })
+      if ((likesBySub.get(sub) || 0) >= 50) badges.push({ id: 'top', label: 'Top Contributor', icon: '🎯' })
+      if (badges.length > 0) badgesMap.set(sub, badges)
+    })
+
+    return badgesMap
+  }, [posts])
 
   const visibleNotifications = useMemo(
     () => notifications.filter((n) => !deletedNotificationIds.includes(n.id)),
@@ -1639,6 +1669,11 @@ function App() {
           linkedIn: profileForm.linkedIn || '',
           yearsOfExperience: Number(profileForm.yearsOfExperience) || 0,
           bio: profileForm.bio || '',
+          credlyUrl: profileForm.credlyUrl || '',
+          devToToken: profileForm.devToToken || '',
+          hashnodeToken: profileForm.hashnodeToken || '',
+          mediumToken: profileForm.mediumToken || '',
+          linkedInToken: profileForm.linkedInToken || '',
         })
         setCurrentUserProfile(up.data)
       }
@@ -1780,6 +1815,44 @@ function App() {
       })
 
       if (out.errors?.length) throw new Error(out.errors[0].message)
+
+      if (composerConfig.postToDevTo || composerConfig.postToHashnode || composerConfig.postToMedium || composerConfig.postToLinkedIn) {
+        try {
+          const crossRes = await client.mutations.crossPost({
+            title: payload.title,
+            content: payload.content,
+            tldr: payload.tldr || '',
+            canonicalUrl: `${window.location.origin}?post=${out.data.id}`,
+            devToToken: currentUserProfile?.devToToken || '',
+            hashnodeToken: currentUserProfile?.hashnodeToken || '',
+            mediumToken: currentUserProfile?.mediumToken || '',
+            linkedInToken: currentUserProfile?.linkedInToken || '',
+            postToDevTo: Boolean(composerConfig.postToDevTo),
+            postToHashnode: Boolean(composerConfig.postToHashnode),
+            postToMedium: Boolean(composerConfig.postToMedium),
+            postToLinkedIn: Boolean(composerConfig.postToLinkedIn),
+          })
+
+          if (crossRes.data) {
+            await client.models.Post.update({
+              id: out.data.id,
+              devToUrl: crossRes.data.devToUrl || '',
+              hashnodeUrl: crossRes.data.hashnodeUrl || '',
+              mediumUrl: crossRes.data.mediumUrl || '',
+              linkedInUrl: crossRes.data.linkedInUrl || ''
+            })
+            if (crossRes.data.error) {
+              console.warn('Cross-post warnings:', crossRes.data.error)
+              alert(`Published locally, but encountered warnings cross-posting:\n${crossRes.data.error}`)
+            } else {
+              alert('Successfully published locally and cross-posted!')
+            }
+          }
+        } catch (crossErr) {
+          console.error("Cross posting failed:", crossErr)
+          alert('Local publish succeeded, but a fatal error occurred during cross-posting.')
+        }
+      }
 
       setShowComposer(false)
       await refreshData()
@@ -2454,8 +2527,40 @@ function App() {
                     </div>
                   </div>
 
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <label>Credly / Certification URL</label>
+                      <input type="url" placeholder="https://www.credly.com/badges/..." value={profileForm.credlyUrl} onChange={e => setProfileForm(prev => ({ ...prev, credlyUrl: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <hr style={{ margin: '32px 0 16px 0', borderColor: 'var(--border)' }} />
+                  <h4 style={{ marginTop: 0 }}>API Tokens for Cross-Posting</h4>
+                  <p style={{ fontSize: '0.9rem', marginBottom: '16px', opacity: 0.8 }}>Securely store your tokens to instantly publish blogs across Dev.to, Hashnode, Medium, and LinkedIn.</p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <label>Dev.to API Key</label>
+                      <input type="password" placeholder="Dev.to Token" value={profileForm.devToToken} onChange={e => setProfileForm(prev => ({ ...prev, devToToken: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label>Hashnode PAT</label>
+                      <input type="password" placeholder="Hashnode Token" value={profileForm.hashnodeToken} onChange={e => setProfileForm(prev => ({ ...prev, hashnodeToken: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <label>Medium Integration Token</label>
+                      <input type="password" placeholder="Medium Token" value={profileForm.mediumToken} onChange={e => setProfileForm(prev => ({ ...prev, mediumToken: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label>LinkedIn Access Token</label>
+                      <input type="password" placeholder="LinkedIn Access Token" value={profileForm.linkedInToken} onChange={e => setProfileForm(prev => ({ ...prev, linkedInToken: e.target.value }))} />
+                    </div>
+                  </div>
+
                   <label>Bio (Short Introduction)</label>
-                  <textarea rows={3} placeholder="Tell the community about yourself..." value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px' }} />
+                  <textarea rows={3} placeholder="Tell the community about yourself..." value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px', marginTop: '16px' }} />
                   <div className="button-row" style={{ marginTop: '16px' }}>
                     <button type="submit">Update Profile Details</button>
                   </div>
@@ -2765,6 +2870,28 @@ function App() {
                   />
                 </div>
 
+                <div style={{ marginBottom: '25px', padding: '16px', background: 'var(--bg-shell)', borderRadius: '8px', borderLeft: '4px solid var(--accent)' }}>
+                  <label style={{ display: 'block', marginBottom: '12px', fontWeight: 'bold' }}>Syndication (Cross-Posting)</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.9rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={composerConfig.postToDevTo} onChange={e => setComposerConfig(prev => ({ ...prev, postToDevTo: e.target.checked }))} />
+                      Publish to Dev.to
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={composerConfig.postToHashnode} onChange={e => setComposerConfig(prev => ({ ...prev, postToHashnode: e.target.checked }))} />
+                      Publish to Hashnode
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={composerConfig.postToMedium} onChange={e => setComposerConfig(prev => ({ ...prev, postToMedium: e.target.checked }))} />
+                      Publish to Medium
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={composerConfig.postToLinkedIn} onChange={e => setComposerConfig(prev => ({ ...prev, postToLinkedIn: e.target.checked }))} />
+                      Share to LinkedIn
+                    </label>
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                   <button className="ghost" onClick={() => setShowComposer(false)}>Cancel</button>
                   <button
@@ -2808,6 +2935,7 @@ function App() {
                   isFollowing={followedAuthorSubs.includes(post.authorSub)}
                   onToggleFollow={toggleFollowAuthor}
                   resolveMediaSource={resolveMediaSource}
+                  userBadges={userBadgesBySub.get(post.authorSub) || []}
                   onOpen={() => {
                     setActivePostId(post.id)
                     setPostQueryParam(post.id)
@@ -2837,7 +2965,10 @@ function App() {
             onEdit={() => {
               setEditingPostId(activePost.id)
               setComposerStep('config')
-              setComposerConfig({ level: activePost.level || '', topic: activePost.topic || '' })
+              setComposerConfig({
+                level: activePost.level || '', topic: activePost.topic || '',
+                postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
+              })
               setShowComposer(true)
               setActivePostId(null)
               setPostQueryParam('')
@@ -2857,6 +2988,7 @@ function App() {
             onSetProgress={setPostProgress}
             readerReaction={postReactionMap[activePost.id] || ''}
             onSetReaction={setPostReaction}
+            userBadges={userBadgesBySub.get(activePost.authorSub) || []}
           />
         ) : null}
       </main>
@@ -3100,6 +3232,7 @@ function PostPreviewCard({
   isFollowing = false,
   onToggleFollow,
   resolveMediaSource,
+  userBadges = [],
 }) {
   const readMinutes = estimateReadMinutes(post.content)
   const practiceMins = Number(post.timeToPracticeMins || 0)
@@ -3133,7 +3266,14 @@ function PostPreviewCard({
       <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
       {progress ? <div className={`progress-pill ${progress.cls}`}>{progress.icon} {progress.label}</div> : null}
       <div className="by-follow-row">
-        <small>By {post.authorName}</small>
+        <small style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          By {post.authorName}
+          {userBadges.map(b => (
+            <span key={b.id} title={b.label} style={{ fontSize: '0.85em', padding: '2px 6px', background: 'var(--accent)', color: 'white', borderRadius: '12px' }}>
+              {b.icon} {b.label}
+            </span>
+          ))}
+        </small>
         {canFollowAuthor ? (
           <button
             type="button"
@@ -3179,6 +3319,7 @@ function FullPostView({
   onSetProgress,
   readerReaction = '',
   onSetReaction,
+  userBadges = [],
 }) {
   const [commentText, setCommentText] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
@@ -3442,9 +3583,14 @@ function FullPostView({
           const isOnline = post.authorSub.charCodeAt(0) % 2 === 0 || post.authorSub === currentUser?.userId
           return (
             <div className="author-meta">
-              <span className="author-name">
+              <span className="author-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {post.authorName || 'Unknown'}
-                <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} title={isOnline ? 'Online' : 'Offline'} />
+                {userBadges.map(b => (
+                  <span key={b.id} title={b.label} style={{ fontSize: '0.8em', padding: '2px 6px', background: 'var(--accent)', color: 'white', borderRadius: '12px', fontWeight: '500' }}>
+                    {b.icon} {b.label}
+                  </span>
+                ))}
+                <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} title={isOnline ? 'Online' : 'Offline'} style={{ marginLeft: '4px' }} />
               </span>
               <span className="post-date">{new Date(post.createdAt || '').toLocaleDateString()}</span>
               {canManagePost ? (
