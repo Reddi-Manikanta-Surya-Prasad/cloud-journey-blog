@@ -12,6 +12,8 @@ const schema = a
         mediaPath: a.string(),
         hidden: a.boolean(),
         hiddenReason: a.string(),
+        level: a.string(),    // Beginner, Intermediate, Advanced, Pro
+        topic: a.string(),    // Custom user-defined string topic
         skillLevel: a.string(),
         tldr: a.string(),
         beginnerSummary: a.string(),
@@ -78,6 +80,11 @@ const schema = a
         userSub: a.string().required(),
         email: a.string().required(),
         name: a.string().required(),
+        fullName: a.string(),
+        profession: a.string(),
+        linkedIn: a.string(),
+        yearsOfExperience: a.integer(),
+        bio: a.string(),
         deleteRequested: a.boolean(),
       })
       .authorization((allow) => [

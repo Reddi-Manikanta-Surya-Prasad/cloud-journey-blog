@@ -682,13 +682,15 @@ function App() {
   const [showProfile, setShowProfile] = useState(false)
   const [profileTab, setProfileTab] = useState('posts')
   const [showDeleteWarning, setShowDeleteWarning] = useState(false)
-  const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', avatarUrl: '' })
+  const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '', linkedIn: '', yearsOfExperience: '' })
   const [communityMessages, setCommunityMessages] = useState([])
   const [newMessageText, setNewMessageText] = useState('')
   const [newMessageSubject, setNewMessageSubject] = useState('')
 
   const [showComposer, setShowComposer] = useState(false)
   const [editingPostId, setEditingPostId] = useState(null)
+  const [composerStep, setComposerStep] = useState('config')
+  const [composerConfig, setComposerConfig] = useState({ level: '', topic: '' })
   const [savingPost, setSavingPost] = useState(false)
   const [activePostId, setActivePostId] = useState(null)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
@@ -705,6 +707,7 @@ function App() {
   const [mediaUrlCache, setMediaUrlCache] = useState({})
   const [moderations, setModerations] = useState([])
   const [userProfiles, setUserProfiles] = useState([])
+  const [currentUserProfile, setCurrentUserProfile] = useState(null)
   const [cognitoUsers, setCognitoUsers] = useState([])
   const mediaUrlCacheRef = useRef({})
   const notificationWrapRef = useRef(null)
@@ -770,8 +773,13 @@ function App() {
       ...prev,
       username: userAttrs.name || '',
       email: userAttrs.email || '',
+      fullName: currentUserProfile?.fullName || '',
+      profession: currentUserProfile?.profession || '',
+      linkedIn: currentUserProfile?.linkedIn || '',
+      yearsOfExperience: currentUserProfile?.yearsOfExperience || '',
+      bio: currentUserProfile?.bio || '',
     }))
-  }, [currentUser, userAttrs])
+  }, [currentUser, userAttrs, currentUserProfile])
 
   useEffect(() => {
     if (!currentUser) {
@@ -1120,9 +1128,11 @@ function App() {
         if (client.models.UserProfile) {
           const { data: profiles } = await client.models.UserProfile.list({ filter: { userSub: { eq: user.userId } } })
           if (profiles && profiles.length > 0) {
+            setCurrentUserProfile(profiles[0])
             await client.models.UserProfile.update({ id: profiles[0].id, name: friendlyName, email })
           } else {
-            await client.models.UserProfile.create({ userSub: user.userId, name: friendlyName, email })
+            const created = await client.models.UserProfile.create({ userSub: user.userId, name: friendlyName, email })
+            setCurrentUserProfile(created.data)
           }
         }
       } catch (err) {
@@ -1489,6 +1499,20 @@ function App() {
         ),
       )
 
+      if (currentUserProfile) {
+        const up = await client.models.UserProfile.update({
+          id: currentUserProfile.id,
+          name: nextName,
+          email: nextEmail,
+          fullName: profileForm.fullName || '',
+          profession: profileForm.profession || '',
+          linkedIn: profileForm.linkedIn || '',
+          yearsOfExperience: Number(profileForm.yearsOfExperience) || 0,
+          bio: profileForm.bio || '',
+        })
+        setCurrentUserProfile(up.data)
+      }
+
       setUserAttrs((prev) => ({ ...prev, name: nextName, email: nextEmail }))
       setShowProfile(false)
       await refreshData()
@@ -1591,6 +1615,8 @@ function App() {
         mediaType: cover.mediaType,
         mediaUrl: cover.mediaUrl,
         mediaPath: cover.mediaPath,
+        level: composerConfig.level,
+        topic: composerConfig.topic,
         authorSub: currentUser.userId,
         authorName: displayName,
       })
@@ -1632,6 +1658,8 @@ function App() {
         mediaType: cover.mediaType,
         mediaUrl: cover.mediaUrl,
         mediaPath: cover.mediaPath,
+        level: composerConfig.level,
+        topic: composerConfig.topic,
         authorName: displayName,
       })
 
@@ -2128,7 +2156,12 @@ function App() {
                 <button
                   className="cta-publish"
                   onClick={() => {
-                    setShowComposer((v) => !v)
+                    const next = !showComposer
+                    setShowComposer(next)
+                    if (next) {
+                      setComposerStep('config')
+                      setComposerConfig({ level: '', topic: '' })
+                    }
                     setEditingPostId(null)
                     setActivePostId(null)
                     setPostQueryParam('')
@@ -2231,13 +2264,43 @@ function App() {
               )}
               {profileTab === 'settings' && (
                 <form className="profile-settings-form" onSubmit={(e) => { e.preventDefault(); saveProfile(e); }}>
-                  <h3 style={{ marginTop: 0 }}>Profile Settings</h3>
-                  <label>Username</label>
-                  <input value={profileForm.username} onChange={e => setProfileForm(prev => ({ ...prev, username: e.target.value }))} style={{ marginBottom: '12px' }} />
-                  <label>Email</label>
-                  <input type="email" value={profileForm.email} onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))} style={{ marginBottom: '12px' }} />
-                  <label>Bio</label>
-                  <textarea rows={3} value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px' }} />
+                  <h3 style={{ marginTop: 0 }}>Profile & Account Setup</h3>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <label>Username *</label>
+                      <input value={profileForm.username} onChange={e => setProfileForm(prev => ({ ...prev, username: e.target.value }))} required />
+                    </div>
+                    <div>
+                      <label>Email Address *</label>
+                      <input type="email" value={profileForm.email} onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))} required />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <label>Full Name</label>
+                      <input placeholder="e.g. John Doe" value={profileForm.fullName} onChange={e => setProfileForm(prev => ({ ...prev, fullName: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label>Profession / Title</label>
+                      <input placeholder="e.g. Cloud Architect" value={profileForm.profession} onChange={e => setProfileForm(prev => ({ ...prev, profession: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <label>LinkedIn URL</label>
+                      <input type="url" placeholder="https://linkedin.com/in/..." value={profileForm.linkedIn} onChange={e => setProfileForm(prev => ({ ...prev, linkedIn: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label>Years of Experience</label>
+                      <input type="number" min="0" placeholder="e.g. 5" value={profileForm.yearsOfExperience} onChange={e => setProfileForm(prev => ({ ...prev, yearsOfExperience: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <label>Bio (Short Introduction)</label>
+                  <textarea rows={3} placeholder="Tell the community about yourself..." value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px' }} />
                   <div className="button-row" style={{ marginTop: '16px' }}>
                     <button type="submit">Update Profile Details</button>
                   </div>
@@ -2516,19 +2579,63 @@ function App() {
 
         {!showAdminPanel && (showComposer || editingPostId) && currentUser ? (
           <section className="writer-shell">
-            <Write
-              key={editingPostId || 'new'}
-              submitLabel={editingPost ? 'Update Blog' : 'Publish Blog'}
-              initialValue={editingPost || null}
-              draftKey={`post-draft-${editingPostId || 'new'}`}
-              onSubmit={editingPost ? updatePost : createPost}
-              onInlineUpload={uploadInlineMediaSource}
-              onCancel={() => {
-                setEditingPostId(null)
-                setShowComposer(false)
-              }}
-              busy={savingPost}
-            />
+            {composerStep === 'config' ? (
+              <div className="card pre-composer-config" style={{ maxWidth: '600px', margin: '40px auto', padding: '30px' }}>
+                <h3 style={{ marginTop: 0 }}>Post Setup</h3>
+                <p style={{ opacity: 0.8, marginBottom: '20px' }}>Before you start writing, please specify the target level and topic.</p>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Target Level *</label>
+                  <select
+                    value={composerConfig.level}
+                    onChange={e => setComposerConfig(prev => ({ ...prev, level: e.target.value }))}
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select Level...</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="Pro">Pro</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '25px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Custom Topic *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Kubernetes Networking, React State..."
+                    value={composerConfig.topic}
+                    onChange={e => setComposerConfig(prev => ({ ...prev, topic: e.target.value }))}
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button className="ghost" onClick={() => setShowComposer(false)}>Cancel</button>
+                  <button
+                    className="cta-publish"
+                    disabled={!composerConfig.level || !composerConfig.topic.trim()}
+                    onClick={() => setComposerStep('write')}
+                  >
+                    Start Writing
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Write
+                key={editingPostId || 'new'}
+                submitLabel={editingPost ? 'Update Blog' : 'Publish Blog'}
+                initialValue={editingPost || null}
+                draftKey={`post-draft-${editingPostId || 'new'}`}
+                onSubmit={editingPost ? updatePost : createPost}
+                onInlineUpload={uploadInlineMediaSource}
+                onCancel={() => {
+                  setEditingPostId(null)
+                  setShowComposer(false)
+                }}
+                busy={savingPost}
+              />
+            )}
           </section>
         ) : null}
 
@@ -2574,6 +2681,8 @@ function App() {
             }}
             onEdit={() => {
               setEditingPostId(activePost.id)
+              setComposerStep('config')
+              setComposerConfig({ level: activePost.level || '', topic: activePost.topic || '' })
               setShowComposer(true)
               setActivePostId(null)
               setPostQueryParam('')

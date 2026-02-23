@@ -34,6 +34,12 @@
     "groups"
    ]
   },
+  "AWS::Amplify::Function": {
+   "version": "1",
+   "stackOutputs": [
+    "definedFunctions"
+   ]
+  },
   "AWS::Amplify::GraphQL": {
    "version": "1",
    "stackOutputs": [
@@ -166,6 +172,23 @@
   "groups": {
    "Value": "[{\"ADMINS\":{\"precedence\":0}}]"
   },
+  "definedFunctions": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "[\"",
+      {
+       "Fn::GetAtt": [
+        "function1351588B",
+        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Ref"
+       ]
+      },
+      "\"]"
+     ]
+    ]
+   }
+  },
   "awsAppsyncApiId": {
    "Value": {
     "Fn::GetAtt": [
@@ -267,7 +290,7 @@
       {
        "Ref": "AWS::Region"
       },
-      "\\\",\\\"paths\\\":{\\\"media/*\\\":{\\\"guest\\\":[\\\"get\\\",\\\"list\\\"],\\\"authenticated\\\":[\\\"get\\\",\\\"list\\\",\\\"write\\\",\\\"delete\\\"]}}}\"]"
+      "\\\",\\\"paths\\\":{\\\"media/*\\\":{\\\"guest\\\":[\\\"get\\\",\\\"list\\\"],\\\"authenticated\\\":[\\\"get\\\",\\\"list\\\",\\\"write\\\",\\\"delete\\\"],\\\"groupsADMINS\\\":[\\\"get\\\",\\\"list\\\",\\\"write\\\",\\\"delete\\\"]}}}\"]"
      ]
     ]
    }
@@ -303,7 +326,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/e31ea5b6aeca1be95bcabecfaa59ac09c6e903bf66e8cdcea07b7dd09e16fd46.json"
+       "/4e4cadc69a129dcec8e4ff805489ae9b5f56d0da35ef7891af03b394d24f7452.json"
       ]
      ]
     }
@@ -343,6 +366,12 @@
        "auth179371D7",
        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref"
       ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": {
+      "Fn::GetAtt": [
+       "function1351588B",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn"
+      ]
      }
     },
     "Tags": [
@@ -371,7 +400,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/e460ae689beaafeeca47ee0feb017c75a777cb83f7c2a2e3d23c7241fab21647.json"
+       "/f458ac3dff5b475974fd616deda8ac388f38750a10b8392c421e6c8fba1abb36.json"
       ]
      ]
     }
@@ -381,6 +410,62 @@
    "Metadata": {
     "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data.NestedStack/data.NestedStackResource",
     "aws:asset:path": "amplifyblogappPiratesandbox6e2bfb59f0data2DAF63DA.nested.template.json",
+    "aws:asset:property": "TemplateURL"
+   }
+  },
+  "function1351588B": {
+   "Type": "AWS::CloudFormation::Stack",
+   "Properties": {
+    "Parameters": {
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPool75BD0E81Arn": {
+      "Fn::GetAtt": [
+       "auth179371D7",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPool75BD0E81Arn"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPool75BD0E81Ref": {
+      "Fn::GetAtt": [
+       "auth179371D7",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPool75BD0E81Ref"
+      ]
+     }
+    },
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ],
+    "TemplateURL": {
+     "Fn::Join": [
+      "",
+      [
+       "https://s3.",
+       {
+        "Ref": "AWS::Region"
+       },
+       ".",
+       {
+        "Ref": "AWS::URLSuffix"
+       },
+       "/",
+       {
+        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+       },
+       "/b5e734f4302e0dbf17f60edb0e6ec7e28e978ed085fd09805dcc676f4b8ec06a.json"
+      ]
+     ]
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function.NestedStack/function.NestedStackResource",
+    "aws:asset:path": "amplifyblogappPiratesandbox6e2bfb59f0function24D43BFF.nested.template.json",
     "aws:asset:property": "TemplateURL"
    }
   },
@@ -399,6 +484,12 @@
        "auth179371D7",
        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthauthenticatedUserRole50531DF1Ref"
       ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthADMINSGroupRoleE0F9F6FDRef": {
+      "Fn::GetAtt": [
+       "auth179371D7",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthADMINSGroupRoleE0F9F6FDRef"
+      ]
      }
     },
     "Tags": [
@@ -427,7 +518,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/9a8826e7d6f98ec6c4da26e6573377bb7e1ec8acbdf5d9a8ab652fa98269622c.json"
+       "/0f417706e72fae5fe2df25aff706c501aa4f7604d6bc872d6cda8bc4fb87d2d6.json"
       ]
      ]
     }

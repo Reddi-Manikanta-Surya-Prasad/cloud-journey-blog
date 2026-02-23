@@ -319,6 +319,30 @@
     "AutoVerifiedAttributes": [
      "email"
     ],
+    "EmailConfiguration": {
+     "EmailSendingAccount": "DEVELOPER",
+     "From": "reddimani14@gmail.com",
+     "SourceArn": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":ses:",
+        {
+         "Ref": "AWS::Region"
+        },
+        ":",
+        {
+         "Ref": "AWS::AccountId"
+        },
+        ":identity/reddimani14@gmail.com"
+       ]
+      ]
+     }
+    },
     "EmailVerificationMessage": "The verification code to your new account is {####}",
     "EmailVerificationSubject": "Verify your new account",
     "Policies": {
@@ -1045,6 +1069,19 @@
   "amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthunauthenticatedUserRoleB9CFAC9ARef": {
    "Value": {
     "Ref": "amplifyAuthunauthenticatedUserRole2B524D9E"
+   }
+  },
+  "amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthUserPool75BD0E81Arn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "amplifyAuthUserPool4BA7F805",
+     "Arn"
+    ]
+   }
+  },
+  "amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthADMINSGroupRoleE0F9F6FDRef": {
+   "Value": {
+    "Ref": "amplifyAuthADMINSGroupRole474FA206"
    }
   }
  }
