@@ -78,6 +78,7 @@ const schema = a
         userSub: a.string().required(),
         email: a.string().required(),
         name: a.string().required(),
+        deleteRequested: a.boolean(),
       })
       .authorization((allow) => [
         allow.owner().to(['create', 'update', 'read']),
@@ -97,6 +98,21 @@ const schema = a
       })
       .authorization((allow) => [
         allow.groups(['ADMINS']).to(['create', 'read', 'update', 'delete']),
+      ]),
+
+    CommunityMessage: a
+      .model({
+        userSub: a.string().required(),
+        userName: a.string().required(),
+        subject: a.string().required(),
+        text: a.string().required(),
+        replyText: a.string(),
+        repliedAt: a.datetime(),
+        status: a.string().required(), // e.g. OPEN, RESOLVED
+      })
+      .authorization((allow) => [
+        allow.owner().to(['create', 'read']),
+        allow.groups(['ADMINS']).to(['read', 'update', 'delete']),
       ]),
 
     listCognitoUsers: a

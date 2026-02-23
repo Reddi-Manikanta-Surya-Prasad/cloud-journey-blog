@@ -680,7 +680,12 @@ function App() {
   const [authError, setAuthError] = useState('')
 
   const [showProfile, setShowProfile] = useState(false)
+  const [profileTab, setProfileTab] = useState('posts')
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false)
   const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', avatarUrl: '' })
+  const [communityMessages, setCommunityMessages] = useState([])
+  const [newMessageText, setNewMessageText] = useState('')
+  const [newMessageSubject, setNewMessageSubject] = useState('')
 
   const [showComposer, setShowComposer] = useState(false)
   const [editingPostId, setEditingPostId] = useState(null)
@@ -1140,11 +1145,12 @@ function App() {
     if (withSpinner) setRefreshing(true)
     const readAuthMode = authModeOverride || (currentUser ? 'userPool' : 'apiKey')
     try {
-      const [postRes, commentRes, commentLikeRes, postLikeRes] = await Promise.all([
+      const [postRes, commentRes, commentLikeRes, postLikeRes, messageRes] = await Promise.all([
         client.models.Post.list({ authMode: readAuthMode }),
         client.models.Comment.list({ authMode: readAuthMode }),
         client.models.CommentLike.list({ authMode: readAuthMode }),
         client.models.PostLike.list({ authMode: readAuthMode }),
+        (readAuthMode === 'userPool' && client.models.CommunityMessage) ? client.models.CommunityMessage.list({ authMode: 'userPool' }) : { data: [] }
       ])
 
       if (postRes.errors?.length || commentRes.errors?.length || commentLikeRes.errors?.length || postLikeRes.errors?.length) {
@@ -1162,6 +1168,7 @@ function App() {
       setComments(commentRes.data)
       setCommentLikes(commentLikeRes.data)
       setPostLikes(postLikeRes.data)
+      if (messageRes?.data) setCommunityMessages(messageRes.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
 
       if (readAuthMode === 'userPool' && isAdmin) {
         try {
@@ -1488,6 +1495,61 @@ function App() {
     } catch (err) {
       console.error(err)
       alert('Could not update profile.')
+    }
+  }
+
+  const requestDeletion = async () => {
+    if (!ensureAuth()) return
+    try {
+      const { data: profiles } = await client.models.UserProfile.list({ filter: { userSub: { eq: currentUser.userId } } })
+      if (profiles && profiles.length > 0) {
+        await client.models.UserProfile.update({ id: profiles[0].id, deleteRequested: true })
+      } else {
+        await client.models.UserProfile.create({ userSub: currentUser.userId, name: displayName, email: userAttrs.email, deleteRequested: true })
+      }
+      setShowDeleteWarning(false)
+      showToast('Account deletion requested. Support team has been notified.')
+      await refreshData()
+    } catch (err) {
+      console.error(err)
+      alert('Could not submit deletion request.')
+    }
+  }
+
+  const submitCommunityMessage = async (e) => {
+    e.preventDefault()
+    if (!ensureAuth() || !newMessageSubject.trim() || !newMessageText.trim()) return
+    try {
+      await client.models.CommunityMessage.create({
+        userSub: currentUser.userId,
+        userName: displayName,
+        subject: newMessageSubject.trim(),
+        text: newMessageText.trim(),
+        status: 'OPEN'
+      })
+      setNewMessageSubject('')
+      setNewMessageText('')
+      showToast('Message sent to admin!')
+      await refreshData()
+    } catch (err) {
+      console.error(err)
+      alert('Could not send message.')
+    }
+  }
+
+  const replyToCommunityMessage = async (messageId, replyText) => {
+    if (!isAdmin || !replyText.trim()) return
+    try {
+      await client.models.CommunityMessage.update({
+        id: messageId,
+        replyText: replyText.trim(),
+        repliedAt: new Date().toISOString(),
+        status: 'RESOLVED'
+      })
+      await refreshData()
+    } catch (err) {
+      console.error(err)
+      alert('Could not send reply.')
     }
   }
 
@@ -2134,6 +2196,11 @@ function App() {
               </table>
             </div>
 
+            <div className="admin-tabs" style={{ marginBottom: '24px', display: 'flex', gap: '8px' }}>
+              <button className={`ghost ${adminTab === 'users' ? 'active-tab' : ''}`} onClick={() => setAdminTab('users')}>Users & Stats</button>
+              <button className={`ghost ${adminTab === 'messages' ? 'active-tab' : ''}`} onClick={() => setAdminTab('messages')}>Community Messages</button>
+            </div>
+
             {adminTab === 'users' ? (
               <div className="admin-section">
                 <h3>Registered Users</h3>
@@ -2230,67 +2297,120 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+
+                <h4>Posts Moderation</h4>
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {posts.map((p) => (
+                        <tr key={p.id}>
+                          <td>{p.title}</td>
+                          <td>{p.authorName}</td>
+                          <td>{p.hidden ? 'Hidden' : 'Visible'}</td>
+                          <td className="admin-actions">
+                            <button className="ghost" onClick={() => togglePostHidden(p.id, !p.hidden)}>
+                              {p.hidden ? 'Unhide' : 'Hide'}
+                            </button>
+                            <button className="danger" onClick={() => deletePost(p.id)}>
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>Comments Moderation</h4>
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Post</th>
+                        <th>Comment</th>
+                        <th>Author</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {comments.map((c) => (
+                        <tr key={c.id}>
+                          <td>{posts.find((p) => p.id === c.postId)?.title || 'Post'}</td>
+                          <td>{c.text}</td>
+                          <td>{c.authorName}</td>
+                          <td>
+                            <button className="danger" onClick={() => deleteComment(c.postId, c.id)}>
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : null}
 
-            <h4>Posts Moderation</h4>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Author</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {posts.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.title}</td>
-                      <td>{p.authorName}</td>
-                      <td>{p.hidden ? 'Hidden' : 'Visible'}</td>
-                      <td className="admin-actions">
-                        <button className="ghost" onClick={() => togglePostHidden(p.id, !p.hidden)}>
-                          {p.hidden ? 'Unhide' : 'Hide'}
-                        </button>
-                        <button className="danger" onClick={() => deletePost(p.id)}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <h4>Comments Moderation</h4>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Post</th>
-                    <th>Comment</th>
-                    <th>Author</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comments.map((c) => (
-                    <tr key={c.id}>
-                      <td>{posts.find((p) => p.id === c.postId)?.title || 'Post'}</td>
-                      <td>{c.text}</td>
-                      <td>{c.authorName}</td>
-                      <td>
-                        <button className="danger" onClick={() => deleteComment(c.postId, c.id)}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {adminTab === 'messages' ? (
+              <div className="admin-section">
+                <h3>Community Messages</h3>
+                <div className="table-wrapper">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Subject</th>
+                        <th>Message</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {communityMessages.length === 0 ? <tr><td colSpan="5">No messages yet.</td></tr> : null}
+                      {communityMessages.map((msg) => (
+                        <tr key={msg.id}>
+                          <td>{msg.userName}<br /><small>{msg.userSub}</small></td>
+                          <td><strong>{msg.subject}</strong><br /><small>{new Date(msg.createdAt).toLocaleDateString()}</small></td>
+                          <td style={{ maxWidth: '300px' }}>
+                            <p style={{ margin: 0, fontSize: '0.9rem' }}>{msg.text}</p>
+                            {msg.replyText && (
+                              <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg-card)', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
+                                <small><strong>Reply:</strong> {msg.replyText}</small>
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`status-badge ${msg.status.toLowerCase()}`}>{msg.status}</span>
+                          </td>
+                          <td className="admin-actions">
+                            {msg.status !== 'RESOLVED' ? (
+                              <button className="ghost" onClick={() => {
+                                const reply = window.prompt(`Reply to ${msg.userName}:`)
+                                if (reply) replyToCommunityMessage(msg.id, reply)
+                              }}>Reply / Resolve</button>
+                            ) : null}
+                            <button className="danger" onClick={async () => {
+                              if (window.confirm('Delete this message?')) {
+                                await client.models.CommunityMessage.delete({ id: msg.id })
+                                refreshData()
+                              }
+                            }}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -2390,172 +2510,256 @@ function App() {
         </p>
       </footer>
 
-      {showAuth ? (
-        <div className="auth-overlay" onClick={() => setShowAuth(false)}>
-          <form
-            className="card auth-modal"
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={handleAuthSubmit}
-          >
+      {
+        showAuth ? (
+          <div className="auth-overlay" onClick={() => setShowAuth(false)}>
+            <form
+              className="card auth-modal"
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={handleAuthSubmit}
+            >
 
 
-            <p className="auth-title">
-              {authMode === 'signup'
-                ? 'Create your account'
-                : authMode === 'confirm'
-                  ? 'Enter email confirmation code'
-                  : 'Login to continue'}
-            </p>
+              <p className="auth-title">
+                {authMode === 'signup'
+                  ? 'Create your account'
+                  : authMode === 'confirm'
+                    ? 'Enter email confirmation code'
+                    : 'Login to continue'}
+              </p>
 
-            {authMode === 'signup' ? (
-              <>
-                <label>Username</label>
-                <input
-                  value={authForm.username}
-                  onChange={(e) => setAuthForm((prev) => ({ ...prev, username: e.target.value }))}
-                />
-              </>
-            ) : null}
+              {authMode === 'signup' ? (
+                <>
+                  <label>Username</label>
+                  <input
+                    value={authForm.username}
+                    onChange={(e) => setAuthForm((prev) => ({ ...prev, username: e.target.value }))}
+                  />
+                </>
+              ) : null}
 
-            {authMode !== 'confirm' ? (
-              <>
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={authForm.email}
-                  onChange={(e) => setAuthForm((prev) => ({ ...prev, email: e.target.value }))}
-                />
+              {authMode !== 'confirm' ? (
+                <>
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    value={authForm.email}
+                    onChange={(e) => setAuthForm((prev) => ({ ...prev, email: e.target.value }))}
+                  />
 
-                <label>Password</label>
-                <input
-                  type="password"
-                  value={authForm.password}
-                  onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
-                />
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
+                  />
 
-                {authMode === 'signup' ? (
-                  <div className="password-meter">
-                    <span className={passwordScore >= 1 ? 'on' : ''} />
-                    <span className={passwordScore >= 2 ? 'on' : ''} />
-                    <span className={passwordScore >= 3 ? 'on' : ''} />
-                    <span className={passwordScore >= 4 ? 'on' : ''} />
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <label>Confirmation Code</label>
-                <input
-                  value={authForm.code}
-                  onChange={(e) => setAuthForm((prev) => ({ ...prev, code: e.target.value }))}
-                />
-              </>
-            )}
-
-            {authError ? <p className="error">{authError}</p> : null}
-
-            <div className="button-row">
-              <button type="submit" className="auth-submit-btn">
-                {authMode === 'signup' ? 'Create Account' : authMode === 'confirm' ? 'Confirm' : 'Login'}
-              </button>
-              {authMode === 'confirm' ? (
-                <button className="ghost" type="button" onClick={() => setAuthMode('login')}>
-                  Back
-                </button>
-              ) : (
-                <button className="ghost" type="button" onClick={() => setShowAuth(false)}>
-                  Close
-                </button>
-              )}
-            </div>
-
-            {authMode !== 'confirm' ? (
-              <div className="oauth-section">
-                <button type="button" className="google-auth-button" onClick={handleGoogleLogin}>
-                  <svg viewBox="0 0 48 48" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-                  </svg>
-                  Continue with Google
-                </button>
-                <div className="auth-toggle-text">
                   {authMode === 'signup' ? (
-                    <>
-                      Already have an account?{' '}
-                      <span
-                        className="auth-link"
-                        onClick={() => {
-                          setAuthMode('login')
-                          setAuthError('')
-                        }}
-                      >
-                        Log in
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      Don't have an account?{' '}
-                      <span
-                        className="auth-link"
-                        onClick={() => {
-                          setAuthMode('signup')
-                          setAuthError('')
-                        }}
-                      >
-                        Sign up
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </form>
-        </div>
-      ) : null}
+                    <div className="password-meter">
+                      <span className={passwordScore >= 1 ? 'on' : ''} />
+                      <span className={passwordScore >= 2 ? 'on' : ''} />
+                      <span className={passwordScore >= 3 ? 'on' : ''} />
+                      <span className={passwordScore >= 4 ? 'on' : ''} />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <label>Confirmation Code</label>
+                  <input
+                    value={authForm.code}
+                    onChange={(e) => setAuthForm((prev) => ({ ...prev, code: e.target.value }))}
+                  />
+                </>
+              )}
 
-      {showProfile && currentUser ? (
-        <div className="auth-overlay" onClick={() => setShowProfile(false)}>
-          <form
-            className="card auth-modal profile-modal"
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={saveProfile}
-          >
-            <h3>{displayName}'s Profile</h3>
-            <label>Username</label>
-            <input
-              value={profileForm.username}
-              onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
-            />
-            <label>Email</label>
-            <input
-              type="email"
-              value={profileForm.email}
-              onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
-            />
-            <label>Bio</label>
-            <textarea
-              rows={4}
-              value={profileForm.bio}
-              onChange={(e) => setProfileForm((prev) => ({ ...prev, bio: e.target.value }))}
-            />
-            <div className="button-row">
-              <button type="submit">Update Profile</button>
-              <button className="ghost" type="button" onClick={() => setShowProfile(false)}>
-                Close
-              </button>
+              {authError ? <p className="error">{authError}</p> : null}
+
+              <div className="button-row">
+                <button type="submit" className="auth-submit-btn">
+                  {authMode === 'signup' ? 'Create Account' : authMode === 'confirm' ? 'Confirm' : 'Login'}
+                </button>
+                {authMode === 'confirm' ? (
+                  <button className="ghost" type="button" onClick={() => setAuthMode('login')}>
+                    Back
+                  </button>
+                ) : (
+                  <button className="ghost" type="button" onClick={() => setShowAuth(false)}>
+                    Close
+                  </button>
+                )}
+              </div>
+
+              {authMode !== 'confirm' ? (
+                <div className="oauth-section">
+                  <button type="button" className="google-auth-button" onClick={handleGoogleLogin}>
+                    <svg viewBox="0 0 48 48" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                    </svg>
+                    Continue with Google
+                  </button>
+                  <div className="auth-toggle-text">
+                    {authMode === 'signup' ? (
+                      <>
+                        Already have an account?{' '}
+                        <span
+                          className="auth-link"
+                          onClick={() => {
+                            setAuthMode('login')
+                            setAuthError('')
+                          }}
+                        >
+                          Log in
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Don't have an account?{' '}
+                        <span
+                          className="auth-link"
+                          onClick={() => {
+                            setAuthMode('signup')
+                            setAuthError('')
+                          }}
+                        >
+                          Sign up
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </form>
+          </div>
+        ) : null
+      }
+
+      {
+        showProfile && currentUser ? (
+          <div className="auth-overlay" onClick={() => setShowProfile(false)}>
+            <div
+              className="card auth-modal profile-modal-large"
+              style={{ width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="profile-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0 }}>{displayName}'s Profile</h3>
+                <button className="ghost" onClick={() => setShowProfile(false)}>Close</button>
+              </div>
+
+              <div className="profile-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                <button className={`ghost ${profileTab === 'posts' ? 'active-tab' : ''}`} onClick={() => setProfileTab('posts')}>My Posts</button>
+                <button className={`ghost ${profileTab === 'saved' ? 'active-tab' : ''}`} onClick={() => setProfileTab('saved')}>Saved Articles</button>
+                <button className={`ghost ${profileTab === 'messages' ? 'active-tab' : ''}`} onClick={() => setProfileTab('messages')}>Messages</button>
+                <button className={`ghost ${profileTab === 'settings' ? 'active-tab' : ''}`} onClick={() => setProfileTab('settings')}>Settings</button>
+              </div>
+
+              <div className="profile-tab-content">
+                {profileTab === 'posts' && (
+                  <div className="profile-post-list">
+                    {posts.filter(p => p.authorSub === currentUser.userId).length === 0 ? <p>You haven't published any posts yet.</p> : null}
+                    {posts.filter(p => p.authorSub === currentUser.userId).map(p => (
+                      <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
+                        <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
+                        <small>{new Date(p.createdAt).toLocaleDateString()} • {p.likes.length} Likes • {p.comments.length} Comments</small>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {profileTab === 'saved' && (
+                  <div className="profile-post-list">
+                    {posts.filter(p => savedPostIds.includes(p.id)).length === 0 ? <p>You haven't saved any posts yet.</p> : null}
+                    {posts.filter(p => savedPostIds.includes(p.id)).map(p => (
+                      <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
+                        <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
+                        <small>By {p.authorName} • {new Date(p.createdAt).toLocaleDateString()}</small>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {profileTab === 'messages' && (
+                  <div className="profile-messages">
+                    <div className="message-history" style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {communityMessages.filter(m => m.userSub === currentUser.userId).length === 0 ? <p>No messages sent to admin yet.</p> : null}
+                      {communityMessages.filter(m => m.userSub === currentUser.userId).map(m => (
+                        <div key={m.id} className="card" style={{ padding: '16px', border: '1px solid var(--border)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <strong style={{ fontSize: '1.1rem' }}>{m.subject}</strong>
+                            <span className={`status-badge ${m.status.toLowerCase()}`}>{m.status}</span>
+                          </div>
+                          <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>{m.text}</p>
+                          {m.replyText && (
+                            <div style={{ padding: '12px', background: 'var(--bg-shell)', borderRadius: '6px', borderLeft: '3px solid var(--accent)' }}>
+                              <strong style={{ fontSize: '0.9rem' }}>Admin Reply:</strong>
+                              <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{m.replyText}</p>
+                              <small style={{ display: 'block', marginTop: '8px', opacity: 0.7 }}>{new Date(m.repliedAt).toLocaleString()}</small>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <form className="card" style={{ border: '2px solid var(--border)' }} onSubmit={submitCommunityMessage}>
+                      <h4 style={{ marginTop: 0 }}>Send a new message to Admin</h4>
+                      <input placeholder="Subject" value={newMessageSubject} onChange={e => setNewMessageSubject(e.target.value)} required style={{ marginBottom: '12px' }} />
+                      <textarea rows="3" placeholder="How can we help?" value={newMessageText} onChange={e => setNewMessageText(e.target.value)} required style={{ marginBottom: '12px' }} />
+                      <button type="submit" disabled={!newMessageSubject || !newMessageText}>Send Message</button>
+                    </form>
+                  </div>
+                )}
+                {profileTab === 'settings' && (
+                  <form className="profile-settings-form" onSubmit={(e) => { e.preventDefault(); saveProfile(e); }}>
+                    <label>Username</label>
+                    <input value={profileForm.username} onChange={e => setProfileForm(prev => ({ ...prev, username: e.target.value }))} style={{ marginBottom: '12px' }} />
+                    <label>Email</label>
+                    <input type="email" value={profileForm.email} onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))} style={{ marginBottom: '12px' }} />
+                    <label>Bio</label>
+                    <textarea rows={3} value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px' }} />
+                    <div className="button-row" style={{ marginTop: '16px' }}>
+                      <button type="submit">Update Profile Details</button>
+                    </div>
+
+                    <hr style={{ margin: '32px 0', borderColor: 'var(--border)' }} />
+                    <div className="danger-zone card" style={{ borderColor: '#ef4444' }}>
+                      <h4 style={{ color: '#ef4444', marginTop: 0 }}> Danger Zone</h4>
+                      <p style={{ fontSize: '0.9rem' }}>Permanently delete your account and all associated data.</p>
+                      <button type="button" className="danger" onClick={() => setShowDeleteWarning(true)}>Request Account Deletion</button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
-          </form>
-        </div>
-      ) : null}
+          </div>
+        ) : null
+      }
+
+      {
+        showDeleteWarning && (
+          <div className="auth-overlay delete-warning-overlay" style={{ zIndex: 3000 }}>
+            <div className="card modal-warning" style={{ border: '2px solid #ef4444' }}>
+              <h3 style={{ color: '#ef4444', marginTop: 0 }}>⚠️ Delete Account</h3>
+              <p>Are you sure you want to permanently delete your account?</p>
+              <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>This action will permanently erase your posts, comments, progress, and profile information.</p>
+              <p style={{ fontSize: '0.9rem', background: 'var(--bg-shell)', padding: '12px', borderRadius: '6px' }}>
+                Admin will review and process this request via: <br /><strong>cloudjourney@gmail.com</strong>
+              </p>
+              <div className="button-row" style={{ marginTop: '24px' }}>
+                <button className="danger" onClick={requestDeletion}>Yes, request deletion</button>
+                <button className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       <div className="toast-container">
         {toasts.map((t) => (
           <div key={t.id} className="toast">{t.msg}</div>
         ))}
       </div>
-    </div>
+    </div >
   )
 }
 
