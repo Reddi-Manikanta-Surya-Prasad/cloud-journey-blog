@@ -29,6 +29,21 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
 
     const errors: string[] = []
 
+    // Debug: log what we received (mask actual secrets)
+    console.log('crossPost invoked:', JSON.stringify({
+        postToLinkedIn,
+        postToDevTo,
+        postToMedium,
+        postToHashnode,
+        hasLinkedInToken: !!linkedInToken,
+        hasLinkedInMemberId: !!linkedInMemberId,
+        hasLinkedInClientId: !!linkedInClientId,
+        hasLinkedInClientSecret: !!linkedInClientSecret,
+        canonicalUrl,
+        title,
+    }))
+
+
     // 1. Dev.to API
     if (postToDevTo && devToToken) {
         try {
