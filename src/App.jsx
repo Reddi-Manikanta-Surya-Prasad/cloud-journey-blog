@@ -1830,6 +1830,11 @@ function App() {
 
       if (composerConfig.postToDevTo || composerConfig.postToHashnode || composerConfig.postToMedium || composerConfig.postToLinkedIn) {
         try {
+          console.log('🚀 crossPost called:', {
+            postToLinkedIn: Boolean(composerConfig.postToLinkedIn),
+            hasToken: !!currentUserProfile?.linkedInToken,
+            hasClientId: !!currentUserProfile?.linkedInClientId,
+          })
           const crossRes = await client.mutations.crossPost({
             title: payload.title,
             content: payload.content,
@@ -1847,8 +1852,12 @@ function App() {
             postToMedium: Boolean(composerConfig.postToMedium),
             postToLinkedIn: Boolean(composerConfig.postToLinkedIn),
           })
-
-          if (crossRes.data) {
+          console.log('crossPost response:', JSON.stringify(crossRes))
+          if (crossRes.errors?.length) {
+            const msg = crossRes.errors.map(e => e.message).join(', ')
+            console.error('crossPost AppSync error:', msg)
+            alert(`Cross-posting failed: ${msg}`)
+          } else if (crossRes.data) {
             await client.models.Post.update({
               id: out.data.id,
               devToUrl: crossRes.data.devToUrl || '',
@@ -1864,10 +1873,11 @@ function App() {
             }
           }
         } catch (crossErr) {
-          console.error("Cross posting failed:", crossErr)
-          alert('Local publish succeeded, but a fatal error occurred during cross-posting.')
+          console.error('Cross posting failed:', crossErr)
+          alert(`Local publish succeeded, but cross-posting failed: ${crossErr.message}`)
         }
       }
+
 
       setShowComposer(false)
       await refreshData()
