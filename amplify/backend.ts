@@ -5,7 +5,6 @@ import { data } from './data/resource'
 import { storage } from './storage/resource'
 import { listUsers } from './functions/list-users/resource'
 import { sendDeletionEmail } from './functions/send-deletion-email/resource'
-import { crossPost } from './functions/cross-post/resource'
 
 const backend = defineBackend({
   auth,
@@ -13,7 +12,6 @@ const backend = defineBackend({
   storage,
   listUsers,
   sendDeletionEmail,
-  crossPost,
 })
 
 

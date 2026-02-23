@@ -692,7 +692,7 @@ function App() {
   const [deletionReason, setDeletionReason] = useState('')
   const [profileForm, setProfileForm] = useState({
     username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '',
-    linkedIn: '', yearsOfExperience: '', credlyUrl: '', devToToken: '', hashnodeToken: '', mediumToken: '', linkedInToken: '', linkedInMemberId: '', linkedInClientId: '', linkedInClientSecret: ''
+    linkedIn: '', yearsOfExperience: '', credlyUrl: ''
   })
   const [communityMessages, setCommunityMessages] = useState([])
   const [newMessageText, setNewMessageText] = useState('')
@@ -700,10 +700,10 @@ function App() {
 
   const [showComposer, setShowComposer] = useState(false)
   const [editingPostId, setEditingPostId] = useState(null)
-  const [composerStep, setComposerStep] = useState('config')
   const [composerConfig, setComposerConfig] = useState({
-    level: '', topic: '', postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
+    level: '', topic: ''
   })
+
   const [savingPost, setSavingPost] = useState(false)
   const [activePostId, setActivePostId] = useState(null)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
@@ -1828,56 +1828,6 @@ function App() {
 
       if (out.errors?.length) throw new Error(out.errors[0].message)
 
-      if (composerConfig.postToDevTo || composerConfig.postToHashnode || composerConfig.postToMedium || composerConfig.postToLinkedIn) {
-        try {
-          console.log('🚀 crossPost called:', {
-            postToLinkedIn: Boolean(composerConfig.postToLinkedIn),
-            hasToken: !!currentUserProfile?.linkedInToken,
-            hasClientId: !!currentUserProfile?.linkedInClientId,
-          })
-          const crossRes = await client.mutations.crossPost({
-            title: payload.title,
-            content: payload.content,
-            tldr: payload.tldr || '',
-            canonicalUrl: `${window.location.origin}?post=${out.data.id}`,
-            devToToken: currentUserProfile?.devToToken || '',
-            hashnodeToken: currentUserProfile?.hashnodeToken || '',
-            mediumToken: currentUserProfile?.mediumToken || '',
-            linkedInToken: currentUserProfile?.linkedInToken || '',
-            linkedInMemberId: currentUserProfile?.linkedInMemberId || '',
-            linkedInClientId: currentUserProfile?.linkedInClientId || '',
-            linkedInClientSecret: currentUserProfile?.linkedInClientSecret || '',
-            postToDevTo: Boolean(composerConfig.postToDevTo),
-            postToHashnode: Boolean(composerConfig.postToHashnode),
-            postToMedium: Boolean(composerConfig.postToMedium),
-            postToLinkedIn: Boolean(composerConfig.postToLinkedIn),
-          })
-          console.log('crossPost response:', JSON.stringify(crossRes))
-          if (crossRes.errors?.length) {
-            const msg = crossRes.errors.map(e => e.message).join(', ')
-            console.error('crossPost AppSync error:', msg)
-            alert(`Cross-posting failed: ${msg}`)
-          } else if (crossRes.data) {
-            await client.models.Post.update({
-              id: out.data.id,
-              devToUrl: crossRes.data.devToUrl || '',
-              hashnodeUrl: crossRes.data.hashnodeUrl || '',
-              mediumUrl: crossRes.data.mediumUrl || '',
-              linkedInUrl: crossRes.data.linkedInUrl || ''
-            })
-            if (crossRes.data.error) {
-              console.warn('Cross-post warnings:', crossRes.data.error)
-              alert(`Published locally, but encountered warnings cross-posting:\n${crossRes.data.error}`)
-            } else {
-              alert('Successfully published locally and cross-posted!')
-            }
-          }
-        } catch (crossErr) {
-          console.error('Cross posting failed:', crossErr)
-          alert(`Local publish succeeded, but cross-posting failed: ${crossErr.message}`)
-        }
-      }
-
 
       setShowComposer(false)
       await refreshData()
@@ -2412,9 +2362,7 @@ function App() {
                     const next = !showComposer
                     setShowComposer(next)
                     if (next) {
-                      setComposerStep('config')
-                      setComposerConfig({ level: '', topic: '', postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false })
-
+                      setComposerConfig({ level: '', topic: '' })
                     }
                     setEditingPostId(null)
                     setActivePostId(null)
@@ -2873,85 +2821,20 @@ function App() {
 
         {!showAdminPanel && (showComposer || editingPostId) && currentUser ? (
           <section className="writer-shell">
-            {composerStep === 'config' ? (
-              <div className="pre-composer-config" style={{ margin: '40px auto', maxWidth: '800px', padding: '0 20px' }}>
-                <h3 style={{ marginTop: 0, fontSize: '1.8rem', color: 'var(--ink)' }}>Post Setup</h3>
-                <p style={{ opacity: 0.8, marginBottom: '24px', fontSize: '1.1rem' }}>Before you start writing, please specify the target level and topic.</p>
+            <Write
+              key={editingPostId || 'new'}
+              submitLabel={editingPost ? 'Update Blog' : 'Publish Blog'}
+              initialValue={editingPost || null}
+              draftKey={`post-draft-${editingPostId || 'new'}`}
+              onSubmit={editingPost ? updatePost : createPost}
+              onInlineUpload={uploadInlineMediaSource}
+              onCancel={() => {
+                setEditingPostId(null)
+                setShowComposer(false)
+              }}
+              busy={savingPost}
+            />
 
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Target Level *</label>
-                  <select
-                    value={composerConfig.level}
-                    onChange={e => setComposerConfig(prev => ({ ...prev, level: e.target.value }))}
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)' }}
-                  >
-                    <option value="">Select Level...</option>
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                    <option value="Pro">Pro</option>
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: '25px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Custom Topic *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Kubernetes Networking, React State..."
-                    value={composerConfig.topic}
-                    onChange={e => setComposerConfig(prev => ({ ...prev, topic: e.target.value }))}
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '25px', padding: '16px', background: 'var(--bg-shell)', borderRadius: '8px', borderLeft: '4px solid var(--accent)' }}>
-                  <label style={{ display: 'block', marginBottom: '12px', fontWeight: 'bold' }}>Syndication (Cross-Posting)</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.9rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={composerConfig.postToDevTo} onChange={e => setComposerConfig(prev => ({ ...prev, postToDevTo: e.target.checked }))} />
-                      Publish to Dev.to
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={composerConfig.postToHashnode} onChange={e => setComposerConfig(prev => ({ ...prev, postToHashnode: e.target.checked }))} />
-                      Publish to Hashnode
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={composerConfig.postToMedium} onChange={e => setComposerConfig(prev => ({ ...prev, postToMedium: e.target.checked }))} />
-                      Publish to Medium
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={composerConfig.postToLinkedIn} onChange={e => setComposerConfig(prev => ({ ...prev, postToLinkedIn: e.target.checked }))} />
-                      Share to LinkedIn
-                    </label>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  <button className="ghost" onClick={() => setShowComposer(false)}>Cancel</button>
-                  <button
-                    className="cta-publish"
-                    disabled={!composerConfig.level || !composerConfig.topic.trim()}
-                    onClick={() => setComposerStep('write')}
-                  >
-                    Start Writing
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <Write
-                key={editingPostId || 'new'}
-                submitLabel={editingPost ? 'Update Blog' : 'Publish Blog'}
-                initialValue={editingPost || null}
-                draftKey={`post-draft-${editingPostId || 'new'}`}
-                onSubmit={editingPost ? updatePost : createPost}
-                onInlineUpload={uploadInlineMediaSource}
-                onCancel={() => {
-                  setEditingPostId(null)
-                  setShowComposer(false)
-                }}
-                busy={savingPost}
-              />
-            )}
           </section>
         ) : null}
 

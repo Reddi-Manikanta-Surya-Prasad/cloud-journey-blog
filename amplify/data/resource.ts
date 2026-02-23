@@ -1,7 +1,6 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
 import { listUsers } from '../functions/list-users/resource'
 import { sendDeletionEmail } from '../functions/send-deletion-email/resource'
-import { crossPost } from '../functions/cross-post/resource'
 
 const schema = a
   .schema({
@@ -169,37 +168,6 @@ const schema = a
         })
       )
       .handler(a.handler.function(sendDeletionEmail))
-      .authorization((allow) => [allow.authenticated()]),
-
-    crossPost: a
-      .mutation()
-      .arguments({
-        title: a.string().required(),
-        content: a.string().required(),
-        tldr: a.string(),
-        canonicalUrl: a.string().required(),
-        devToToken: a.string(),
-        hashnodeToken: a.string(),
-        mediumToken: a.string(),
-        linkedInToken: a.string(),
-        linkedInMemberId: a.string(),
-        linkedInClientId: a.string(),
-        linkedInClientSecret: a.string(),
-        postToDevTo: a.boolean(),
-        postToHashnode: a.boolean(),
-        postToMedium: a.boolean(),
-        postToLinkedIn: a.boolean(),
-      })
-      .returns(
-        a.customType({
-          devToUrl: a.string(),
-          hashnodeUrl: a.string(),
-          mediumUrl: a.string(),
-          linkedInUrl: a.string(),
-          error: a.string(),
-        })
-      )
-      .handler(a.handler.function(crossPost))
       .authorization((allow) => [allow.authenticated()]),
   })
   .authorization((allow) => [allow.authenticated()])
