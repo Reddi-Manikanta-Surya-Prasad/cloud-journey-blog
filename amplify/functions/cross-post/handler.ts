@@ -106,8 +106,8 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
     // 3. LinkedIn API (UGC Post)
     if (postToLinkedIn && linkedInToken) {
         try {
-            // Step A: Get Person URN
-            const meRes = await fetch('https://api.linkedin.com/v2/me', {
+            // Step A: Get Person URN via OpenID userinfo endpoint (works with w_member_social token)
+            const meRes = await fetch('https://api.linkedin.com/v2/userinfo', {
                 headers: {
                     Authorization: `Bearer ${linkedInToken}`,
                 },
@@ -115,7 +115,8 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
 
             if (meRes.ok) {
                 const meData = await meRes.json()
-                const personUrn = `urn:li:person:${meData.id}`
+                // /v2/userinfo returns 'sub' as the member ID
+                const personUrn = `urn:li:person:${meData.sub}`
 
                 // Step B: Create Share
                 const shareText = `New Blog Post: ${title}\n\n${tldr ? `Highlights: ${tldr}\n\n` : ''}Read the full article here: ${canonicalUrl}`
@@ -152,19 +153,21 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
                     }),
                 })
 
-                if (shareRes.ok) {
-                    // LinkedIn API v2 often returns an empty body on 201 Created but sets the ID in a header.
-                    results.linkedInUrl = 'https://www.linkedin.com/feed/' // Requires complex parsing to get exact post URL
+                if (shareRes.ok || shareRes.status === 201) {
+                    results.linkedInUrl = 'https://www.linkedin.com/feed/'
                 } else {
-                    errors.push(`LinkedIn Share: ${shareRes.statusText}`)
+                    const errBody = await shareRes.text()
+                    errors.push(`LinkedIn Share: ${shareRes.status} - ${errBody.slice(0, 200)}`)
                 }
             } else {
-                errors.push(`LinkedIn Auth: ${meRes.statusText}`)
+                const errBody = await meRes.text()
+                errors.push(`LinkedIn Auth: ${meRes.status} - ${errBody.slice(0, 200)}`)
             }
         } catch (err) {
             errors.push(`LinkedIn Error: ${err.message}`)
         }
     }
+
 
     // 4. Hashnode API
     if (postToHashnode && hashnodeToken) {
