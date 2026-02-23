@@ -737,6 +737,16 @@ function App() {
   }, [])
 
   const navigate = useCallback((path, replace = false) => {
+    // Unauthenticated route guard
+    if (!currentUser && (path === '/admin-dashboard' || path === '/profile' || path.startsWith('/home'))) {
+      path = '/'
+    }
+
+    // Admin-only route guard
+    if (path === '/admin-dashboard' && !isAdmin) {
+      path = '/'
+    }
+
     if (replace) {
       window.history.replaceState({ path }, '', path)
     } else {
@@ -759,14 +769,20 @@ function App() {
     } else {
       setShowAdminPanel(false)
       setShowProfile(false)
-      // Note: we intentionally do not blindly override activePostId or showComposer here,
-      // as '/?post=xyz' relies on the home structure. The path is basically '/home' or '/'.
     }
-  }, [])
+  }, [currentUser, isAdmin])
 
   useEffect(() => {
     const handlePopState = (e) => {
-      const path = window.location.pathname
+      let path = window.location.pathname
+
+      if (!currentUser && (path === '/admin-dashboard' || path === '/profile' || path.startsWith('/home'))) {
+        return navigate('/', true)
+      }
+      if (path === '/admin-dashboard' && !isAdmin) {
+        return navigate('/', true)
+      }
+
       if (path === '/admin-dashboard') {
         setShowAdminPanel(true)
         setShowProfile(false)
@@ -780,7 +796,7 @@ function App() {
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+  }, [currentUser, isAdmin, navigate])
 
   useEffect(() => {
     const postIdFromUrl = new URLSearchParams(window.location.search).get('post')
@@ -1243,12 +1259,12 @@ function App() {
         if (adminByGroup || adminByEmail) {
           setShowAdminPanel(true)
         } else {
-          navigate('/home', true)
+          navigate('/', true)
         }
       } else if (initialPath === '/profile') {
         setShowProfile(true)
       } else if (initialPath === '/' || initialPath === '') {
-        navigate('/home', true)
+        navigate('/', true)
       }
 
     } catch {
@@ -1259,10 +1275,10 @@ function App() {
       await refreshData(false, 'apiKey')
 
       const path = window.location.pathname
-      if (path === '/admin-dashboard' || path === '/profile') {
-        navigate('/home', true)
+      if (path === '/admin-dashboard' || path === '/profile' || path.startsWith('/home')) {
+        navigate('/', true)
       } else if (path === '/' || path === '') {
-        navigate('/home', true)
+        navigate('/', true)
       }
     } finally {
       setLoading(false)
@@ -1488,11 +1504,11 @@ function App() {
       }
       return
     }
-    navigate('/home')
+    navigate('/')
   }
 
   function goHomeView() {
-    navigate('/home')
+    navigate('/')
   }
 
   const handleAuthSubmit = async (e) => {
