@@ -2061,7 +2061,7 @@ function App() {
                 className="theme-selector"
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
-                style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
+                style={{ padding: '0 4px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '1rem', border: 'none', width: 'auto', marginRight: '8px' }}
               >
                 <option value="interactive-canvas">🌞</option>
                 <option value="crazy">👾</option>
@@ -2174,7 +2174,7 @@ function App() {
                 className="theme-selector"
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
-                style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
+                style={{ padding: '0 4px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '1rem', border: 'none', width: 'auto', marginRight: '8px' }}
               >
                 <option value="interactive-canvas">🌞</option>
                 <option value="crazy">👾</option>
