@@ -184,6 +184,20 @@
         "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Ref"
        ]
       },
+      "\",\"",
+      {
+       "Fn::GetAtt": [
+        "function1351588B",
+        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Ref"
+       ]
+      },
+      "\",\"",
+      {
+       "Fn::GetAtt": [
+        "function1351588B",
+        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCRef"
+       ]
+      },
       "\"]"
      ]
     ]
@@ -367,6 +381,18 @@
        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref"
       ]
      },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Arn": {
+      "Fn::GetAtt": [
+       "function1351588B",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Arn"
+      ]
+     },
+     "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": {
+      "Fn::GetAtt": [
+       "function1351588B",
+       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn"
+      ]
+     },
      "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": {
       "Fn::GetAtt": [
        "function1351588B",
@@ -400,7 +426,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/f458ac3dff5b475974fd616deda8ac388f38750a10b8392c421e6c8fba1abb36.json"
+       "/cce5b88dc97fbaa996adebbd3e73e659fa804361ec02b8c6eedf14d1e773eefa.json"
       ]
      ]
     }
@@ -456,7 +482,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/b5e734f4302e0dbf17f60edb0e6ec7e28e978ed085fd09805dcc676f4b8ec06a.json"
+       "/152db1a90a6714d040af56c6be7b7a41cd769da8b9e0d7358251e54b09051348.json"
       ]
      ]
     }
