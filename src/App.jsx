@@ -1531,6 +1531,15 @@ function App() {
       } else {
         await client.models.UserProfile.create({ userSub: currentUser.userId, name: displayName, email: userAttrs.email, deleteRequested: true })
       }
+
+      await client.models.CommunityMessage.create({
+        userSub: currentUser.userId,
+        userName: displayName,
+        subject: 'Account Deletion Request',
+        text: `User ${userAttrs.email} has requested permanent account deletion. Please review.`,
+        status: 'OPEN'
+      })
+
       setShowDeleteWarning(false)
       showToast('Account deletion requested. Support team has been notified.')
       await refreshData()

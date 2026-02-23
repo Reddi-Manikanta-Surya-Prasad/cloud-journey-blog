@@ -2387,8 +2387,9 @@ button.danger {
 
   .header-right {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     gap: 10px;
   }
 
@@ -2449,7 +2450,10 @@ button.danger {
   }
 
   .header-right {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
   }
 
   .notification-panel {
