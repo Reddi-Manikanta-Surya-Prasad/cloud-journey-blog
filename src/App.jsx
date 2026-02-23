@@ -2403,7 +2403,8 @@ function App() {
                     setShowComposer(next)
                     if (next) {
                       setComposerStep('config')
-                      setComposerConfig({ level: '', topic: '' })
+                      setComposerConfig({ level: '', topic: '', postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false })
+
                     }
                     setEditingPostId(null)
                     setActivePostId(null)
