@@ -11,6 +11,8 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
         mediumToken,
         linkedInToken,
         linkedInMemberId,
+        linkedInClientId,
+        linkedInClientSecret,
         postToDevTo,
         postToHashnode,
         postToMedium,
@@ -62,7 +64,6 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
     // 2. Medium API
     if (postToMedium && mediumToken) {
         try {
-            // Step A: Get User ID
             const meRes = await fetch('https://api.medium.com/v1/me', {
                 headers: {
                     Authorization: `Bearer ${mediumToken}`,
@@ -74,7 +75,6 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
                 const meData = await meRes.json()
                 const authorId = meData.data.id
 
-                // Step B: Publish Post
                 const pubRes = await fetch(`https://api.medium.com/v1/users/${authorId}/posts`, {
                     method: 'POST',
                     headers: {
@@ -107,13 +107,39 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
         }
     }
 
-    // 3. LinkedIn API (UGC Post) — uses stored Member ID to avoid scope issues
+    // 3. LinkedIn API (UGC Post)
     if (postToLinkedIn && linkedInToken) {
         try {
-            if (!linkedInMemberId) {
-                errors.push('LinkedIn: Please add your LinkedIn Member ID in Profile Settings.')
+            // Resolve the member ID: prefer manually stored id, then introspection, then error
+            let resolvedMemberId = linkedInMemberId || ''
+
+            if (!resolvedMemberId && linkedInClientId && linkedInClientSecret) {
+                // Use token introspection to auto-resolve the member ID
+                const credentials = Buffer.from(`${linkedInClientId}:${linkedInClientSecret}`).toString('base64')
+                const introRes = await fetch('https://www.linkedin.com/oauth/v2/introspectToken', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Basic ${credentials}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `token=${encodeURIComponent(linkedInToken)}`,
+                })
+
+                if (introRes.ok) {
+                    const introData = await introRes.json()
+                    // authorized_user is the full URN e.g. "urn:li:member:123456789"
+                    const urn: string = introData.authorized_user || ''
+                    resolvedMemberId = urn.replace('urn:li:member:', '')
+                } else {
+                    const errBody = await introRes.text()
+                    errors.push(`LinkedIn Introspection: ${introRes.status} - ${errBody.slice(0, 200)}`)
+                }
+            }
+
+            if (!resolvedMemberId) {
+                errors.push('LinkedIn: Could not resolve member ID. Please add your LinkedIn Client ID and Secret in Profile Settings.')
             } else {
-                const personUrn = `urn:li:person:${linkedInMemberId}`
+                const personUrn = `urn:li:person:${resolvedMemberId}`
                 const shareText = `New Blog Post: ${title}\n\n${tldr ? `Highlights: ${tldr}\n\n` : ''}Read the full article here: ${canonicalUrl}`
 
                 const shareRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {

@@ -692,7 +692,7 @@ function App() {
   const [deletionReason, setDeletionReason] = useState('')
   const [profileForm, setProfileForm] = useState({
     username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '',
-    linkedIn: '', yearsOfExperience: '', credlyUrl: '', devToToken: '', hashnodeToken: '', mediumToken: '', linkedInToken: '', linkedInMemberId: ''
+    linkedIn: '', yearsOfExperience: '', credlyUrl: '', devToToken: '', hashnodeToken: '', mediumToken: '', linkedInToken: '', linkedInMemberId: '', linkedInClientId: '', linkedInClientSecret: ''
   })
   const [communityMessages, setCommunityMessages] = useState([])
   const [newMessageText, setNewMessageText] = useState('')
@@ -877,6 +877,8 @@ function App() {
       mediumToken: currentUserProfile?.mediumToken || '',
       linkedInToken: currentUserProfile?.linkedInToken || '',
       linkedInMemberId: currentUserProfile?.linkedInMemberId || '',
+      linkedInClientId: currentUserProfile?.linkedInClientId || '',
+      linkedInClientSecret: currentUserProfile?.linkedInClientSecret || '',
     }))
   }, [currentUser, userAttrs, currentUserProfile])
 
@@ -1682,6 +1684,8 @@ function App() {
           mediumToken: profileForm.mediumToken || '',
           linkedInToken: profileForm.linkedInToken || '',
           linkedInMemberId: profileForm.linkedInMemberId || '',
+          linkedInClientId: profileForm.linkedInClientId || '',
+          linkedInClientSecret: profileForm.linkedInClientSecret || '',
         })
         setCurrentUserProfile(up.data)
       }
@@ -1836,6 +1840,8 @@ function App() {
             mediumToken: currentUserProfile?.mediumToken || '',
             linkedInToken: currentUserProfile?.linkedInToken || '',
             linkedInMemberId: currentUserProfile?.linkedInMemberId || '',
+            linkedInClientId: currentUserProfile?.linkedInClientId || '',
+            linkedInClientSecret: currentUserProfile?.linkedInClientSecret || '',
             postToDevTo: Boolean(composerConfig.postToDevTo),
             postToHashnode: Boolean(composerConfig.postToHashnode),
             postToMedium: Boolean(composerConfig.postToMedium),
@@ -2567,8 +2573,12 @@ function App() {
                       <input type="password" placeholder="LinkedIn Access Token" value={profileForm.linkedInToken} onChange={e => setProfileForm(prev => ({ ...prev, linkedInToken: e.target.value }))} />
                     </div>
                     <div>
-                      <label>LinkedIn Member ID</label>
-                      <input type="text" placeholder="e.g. ACoAA... (from LinkedIn Developer Portal)" value={profileForm.linkedInMemberId} onChange={e => setProfileForm(prev => ({ ...prev, linkedInMemberId: e.target.value }))} />
+                      <label>LinkedIn App Client ID</label>
+                      <input type="text" placeholder="e.g. 865kzlkgfobq9k (from Auth tab in Developer Portal)" value={profileForm.linkedInClientId} onChange={e => setProfileForm(prev => ({ ...prev, linkedInClientId: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label>LinkedIn App Client Secret</label>
+                      <input type="password" placeholder="Primary Client Secret (from Auth tab in Developer Portal)" value={profileForm.linkedInClientSecret} onChange={e => setProfileForm(prev => ({ ...prev, linkedInClientSecret: e.target.value }))} />
                     </div>
                   </div>
 

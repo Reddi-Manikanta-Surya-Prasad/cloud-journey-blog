@@ -98,6 +98,8 @@ const schema = a
         mediumToken: a.string(),
         linkedInToken: a.string(),
         linkedInMemberId: a.string(),
+        linkedInClientId: a.string(),
+        linkedInClientSecret: a.string(),
       })
       .authorization((allow) => [
         allow.owner().to(['create', 'update', 'read']),
@@ -181,6 +183,8 @@ const schema = a
         mediumToken: a.string(),
         linkedInToken: a.string(),
         linkedInMemberId: a.string(),
+        linkedInClientId: a.string(),
+        linkedInClientSecret: a.string(),
         postToDevTo: a.boolean(),
         postToHashnode: a.boolean(),
         postToMedium: a.boolean(),
