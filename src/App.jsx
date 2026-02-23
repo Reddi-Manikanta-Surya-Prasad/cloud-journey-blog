@@ -692,7 +692,7 @@ function App() {
   const [deletionReason, setDeletionReason] = useState('')
   const [profileForm, setProfileForm] = useState({
     username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '',
-    linkedIn: '', yearsOfExperience: '', credlyUrl: '', devToToken: '', hashnodeToken: '', mediumToken: '', linkedInToken: ''
+    linkedIn: '', yearsOfExperience: '', credlyUrl: '', devToToken: '', hashnodeToken: '', mediumToken: '', linkedInToken: '', linkedInMemberId: ''
   })
   const [communityMessages, setCommunityMessages] = useState([])
   const [newMessageText, setNewMessageText] = useState('')
@@ -876,6 +876,7 @@ function App() {
       hashnodeToken: currentUserProfile?.hashnodeToken || '',
       mediumToken: currentUserProfile?.mediumToken || '',
       linkedInToken: currentUserProfile?.linkedInToken || '',
+      linkedInMemberId: currentUserProfile?.linkedInMemberId || '',
     }))
   }, [currentUser, userAttrs, currentUserProfile])
 
@@ -1680,6 +1681,7 @@ function App() {
           hashnodeToken: profileForm.hashnodeToken || '',
           mediumToken: profileForm.mediumToken || '',
           linkedInToken: profileForm.linkedInToken || '',
+          linkedInMemberId: profileForm.linkedInMemberId || '',
         })
         setCurrentUserProfile(up.data)
       }
@@ -1833,6 +1835,7 @@ function App() {
             hashnodeToken: currentUserProfile?.hashnodeToken || '',
             mediumToken: currentUserProfile?.mediumToken || '',
             linkedInToken: currentUserProfile?.linkedInToken || '',
+            linkedInMemberId: currentUserProfile?.linkedInMemberId || '',
             postToDevTo: Boolean(composerConfig.postToDevTo),
             postToHashnode: Boolean(composerConfig.postToHashnode),
             postToMedium: Boolean(composerConfig.postToMedium),
@@ -2562,6 +2565,10 @@ function App() {
                     <div>
                       <label>LinkedIn Access Token</label>
                       <input type="password" placeholder="LinkedIn Access Token" value={profileForm.linkedInToken} onChange={e => setProfileForm(prev => ({ ...prev, linkedInToken: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label>LinkedIn Member ID</label>
+                      <input type="text" placeholder="e.g. ACoAA... (from LinkedIn Developer Portal)" value={profileForm.linkedInMemberId} onChange={e => setProfileForm(prev => ({ ...prev, linkedInMemberId: e.target.value }))} />
                     </div>
                   </div>
 

@@ -10,6 +10,7 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
         hashnodeToken,
         mediumToken,
         linkedInToken,
+        linkedInMemberId,
         postToDevTo,
         postToHashnode,
         postToMedium,
@@ -50,7 +51,8 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
                 const devData = await devRes.json()
                 results.devToUrl = devData.url
             } else {
-                errors.push(`Dev.to: ${devRes.statusText}`)
+                const errBody = await devRes.text()
+                errors.push(`Dev.to: ${devRes.status} - ${errBody.slice(0, 200)}`)
             }
         } catch (err) {
             errors.push(`Dev.to Error: ${err.message}`)
@@ -93,33 +95,27 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
                     const pubData = await pubRes.json()
                     results.mediumUrl = pubData.data.url
                 } else {
-                    errors.push(`Medium Publish: ${pubRes.statusText}`)
+                    const errBody = await pubRes.text()
+                    errors.push(`Medium Publish: ${pubRes.status} - ${errBody.slice(0, 200)}`)
                 }
             } else {
-                errors.push(`Medium Auth: ${meRes.statusText}`)
+                const errBody = await meRes.text()
+                errors.push(`Medium Auth: ${meRes.status} - ${errBody.slice(0, 200)}`)
             }
         } catch (err) {
             errors.push(`Medium Error: ${err.message}`)
         }
     }
 
-    // 3. LinkedIn API (UGC Post)
+    // 3. LinkedIn API (UGC Post) — uses stored Member ID to avoid scope issues
     if (postToLinkedIn && linkedInToken) {
         try {
-            // Step A: Get Person URN via OpenID userinfo endpoint (works with w_member_social token)
-            const meRes = await fetch('https://api.linkedin.com/v2/userinfo', {
-                headers: {
-                    Authorization: `Bearer ${linkedInToken}`,
-                },
-            })
-
-            if (meRes.ok) {
-                const meData = await meRes.json()
-                // /v2/userinfo returns 'sub' as the member ID
-                const personUrn = `urn:li:person:${meData.sub}`
-
-                // Step B: Create Share
+            if (!linkedInMemberId) {
+                errors.push('LinkedIn: Please add your LinkedIn Member ID in Profile Settings.')
+            } else {
+                const personUrn = `urn:li:person:${linkedInMemberId}`
                 const shareText = `New Blog Post: ${title}\n\n${tldr ? `Highlights: ${tldr}\n\n` : ''}Read the full article here: ${canonicalUrl}`
+
                 const shareRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
                     method: 'POST',
                     headers: {
@@ -157,29 +153,21 @@ export const handler: Schema['crossPost']['functionHandler'] = async (event) => 
                     results.linkedInUrl = 'https://www.linkedin.com/feed/'
                 } else {
                     const errBody = await shareRes.text()
-                    errors.push(`LinkedIn Share: ${shareRes.status} - ${errBody.slice(0, 200)}`)
+                    errors.push(`LinkedIn Share: ${shareRes.status} - ${errBody.slice(0, 300)}`)
                 }
-            } else {
-                const errBody = await meRes.text()
-                errors.push(`LinkedIn Auth: ${meRes.status} - ${errBody.slice(0, 200)}`)
             }
         } catch (err) {
             errors.push(`LinkedIn Error: ${err.message}`)
         }
     }
 
-
     // 4. Hashnode API
     if (postToHashnode && hashnodeToken) {
-        // Hashnode implementation usually requires the user's publicationId which we don't have stored.
-        // For now, tracking an error that we need to expand settings to include "Hashnode Publication ID".
         errors.push('Hashnode: Please provide a Publication ID in settings to publish (Coming soon).')
     }
 
     if (errors.length > 0) {
         results.error = errors.join(' | ')
-    } else {
-        results.error = null
     }
 
     return results
