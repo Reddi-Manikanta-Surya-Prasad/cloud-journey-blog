@@ -1428,6 +1428,37 @@ body::-webkit-scrollbar {
   color: #163f6a;
 }
 
+/* ---------------------------------------------------
+   PROFILE FULL PAGE STYLES
+--------------------------------------------------- */
+.profile-page {
+  animation: var(--fade-in);
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.profile-tab-content {
+  flex: 1;
+}
+
+.auth-overlay .profile-modal-large {
+  display: none !important; /* Keep as safe fallback, should be stripped from App.js */
+}
+
+/* Active tab state in the header */
+.header-profile-links .active-tab {
+  background: var(--accent);
+  color: white !important;
+  border-color: var(--accent);
+}
+
+
 .admin-table-wrap {
   overflow: auto;
   border: 1px solid #dce9fb;

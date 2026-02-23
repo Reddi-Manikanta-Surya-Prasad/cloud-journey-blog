@@ -1972,16 +1972,12 @@ function App() {
 
         <div className="header-right">
           {currentUser ? (
-            <button
-              className="username-btn"
-              onClick={() => {
-                setShowProfile((v) => !v)
-                setShowComposer(false)
-                setShowNotifications(false)
-              }}
-            >
-              {displayName}
-            </button>
+            <div className="header-profile-links" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button className={`ghost ${showProfile && profileTab === 'posts' ? 'active-tab' : ''}`} onClick={() => { setShowProfile(true); setProfileTab('posts'); setShowAdminPanel(false); setShowComposer(false); }}>My Posts</button>
+              <button className={`ghost ${showProfile && profileTab === 'saved' ? 'active-tab' : ''}`} onClick={() => { setShowProfile(true); setProfileTab('saved'); setShowAdminPanel(false); setShowComposer(false); }}>Saved Articles</button>
+              <button className={`ghost ${showProfile && profileTab === 'messages' ? 'active-tab' : ''}`} onClick={() => { setShowProfile(true); setProfileTab('messages'); setShowAdminPanel(false); setShowComposer(false); }}>Messages</button>
+              <button className={`ghost ${showProfile && profileTab === 'settings' ? 'active-tab' : ''}`} onClick={() => { setShowProfile(true); setProfileTab('settings'); setShowAdminPanel(false); setShowComposer(false); }}>Settings</button>
+            </div>
           ) : (
             <span className="guest-pill">Guest</span>
           )}
@@ -2095,64 +2091,152 @@ function App() {
       </header>
 
       <main className="content-shell">
-        <section className="toolbar floating-toolbar">
-          <div className="discover-row">
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, content, author..."
-            />
-            <select value={sortMode} onChange={(e) => setSortMode(e.target.value)}>
-              <option value="latest">Latest</option>
-              <option value="mostLiked">Most liked</option>
-              <option value="mostCommented">Most commented</option>
-            </select>
-            {currentUser ? (
-              <button
-                className="cta-publish"
-                onClick={() => {
-                  setShowComposer((v) => !v)
-                  setEditingPostId(null)
-                  setActivePostId(null)
-                  setPostQueryParam('')
-                }}
-              >
-                {showComposer ? 'Close Editor' : 'Publish your blog'}
-              </button>
-            ) : (
-              <button className="cta-publish" onClick={() => setShowAuth(true)}>
-                Login to Create Blog
-              </button>
-            )}
-          </div>
-
-          {currentUser ? (
-            <div className="learning-progress-strip">
-              <span>Completed: {progressStats.mastered}/{progressStats.total || 0}</span>
-              <span>Read: {progressStats.read}</span>
-              <span>Revisit: {progressStats.revisit}</span>
-              <span>Mastered: {progressStats.mastered}</span>
+        {(!showProfile && !showAdminPanel) ? (
+          <section className="toolbar floating-toolbar">
+            <div className="discover-row">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by title, content, author..."
+              />
+              <select value={sortMode} onChange={(e) => setSortMode(e.target.value)}>
+                <option value="latest">Latest</option>
+                <option value="mostLiked">Most liked</option>
+                <option value="mostCommented">Most commented</option>
+              </select>
+              {currentUser ? (
+                <button
+                  className="cta-publish"
+                  onClick={() => {
+                    setShowComposer((v) => !v)
+                    setEditingPostId(null)
+                    setActivePostId(null)
+                    setPostQueryParam('')
+                  }}
+                >
+                  {showComposer ? 'Close Editor' : 'Publish your blog'}
+                </button>
+              ) : (
+                <button className="cta-publish" onClick={() => setShowAuth(true)}>
+                  Login to Create Blog
+                </button>
+              )}
             </div>
-          ) : null}
 
-          <div className="button-row">
-            {refreshing ? <span>Syncing...</span> : null}
-
-            {activePost ? (
-              <button
-                className="ghost"
-                onClick={() => {
-                  setActivePostId(null)
-                  setPostQueryParam('')
-                  setShowComposer(false)
-                  setEditingPostId(null)
-                }}
-              >
-                Back to Blog Grid
-              </button>
+            {currentUser ? (
+              <div className="learning-progress-strip">
+                <span>Completed: {progressStats.mastered}/{progressStats.total || 0}</span>
+                <span>Read: {progressStats.read}</span>
+                <span>Revisit: {progressStats.revisit}</span>
+                <span>Mastered: {progressStats.mastered}</span>
+              </div>
             ) : null}
-          </div>
-        </section>
+
+            <div className="button-row">
+              {refreshing ? <span>Syncing...</span> : null}
+
+              {activePost ? (
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setActivePostId(null)
+                    setPostQueryParam('')
+                    setShowComposer(false)
+                    setEditingPostId(null)
+                  }}
+                >
+                  Back to Blog Grid
+                </button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {showProfile && currentUser ? (
+          <section className="card profile-page" style={{ minHeight: '600px' }}>
+            <div className="profile-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0 }}>{displayName}'s Profile</h2>
+            </div>
+
+            <div className="profile-tab-content" style={{ marginTop: '20px' }}>
+              {profileTab === 'posts' && (
+                <div className="profile-post-list">
+                  <h3 style={{ marginTop: 0 }}>My Posts</h3>
+                  {posts.filter(p => p.authorSub === currentUser.userId).length === 0 ? <p>You haven't published any posts yet.</p> : null}
+                  {posts.filter(p => p.authorSub === currentUser.userId).map(p => (
+                    <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
+                      <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
+                      <small>{new Date(p.createdAt).toLocaleDateString()} • {p.likes.length} Likes • {p.comments.length} Comments</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {profileTab === 'saved' && (
+                <div className="profile-post-list">
+                  <h3 style={{ marginTop: 0 }}>Saved Articles</h3>
+                  {posts.filter(p => savedPostIds.includes(p.id)).length === 0 ? <p>You haven't saved any posts yet.</p> : null}
+                  {posts.filter(p => savedPostIds.includes(p.id)).map(p => (
+                    <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
+                      <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
+                      <small>By {p.authorName} • {new Date(p.createdAt).toLocaleDateString()}</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {profileTab === 'messages' && (
+                <div className="profile-messages">
+                  <h3 style={{ marginTop: 0 }}>Community Messages</h3>
+                  <div className="message-history" style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {communityMessages.filter(m => m.userSub === currentUser.userId).length === 0 ? <p>No messages sent to admin yet.</p> : null}
+                    {communityMessages.filter(m => m.userSub === currentUser.userId).map(m => (
+                      <div key={m.id} className="card" style={{ padding: '16px', border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <strong style={{ fontSize: '1.1rem' }}>{m.subject}</strong>
+                          <span className={`status-badge ${m.status.toLowerCase()}`}>{m.status}</span>
+                        </div>
+                        <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>{m.text}</p>
+                        {m.replyText && (
+                          <div style={{ padding: '12px', background: 'var(--bg-shell)', borderRadius: '6px', borderLeft: '3px solid var(--accent)' }}>
+                            <strong style={{ fontSize: '0.9rem' }}>Admin Reply:</strong>
+                            <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{m.replyText}</p>
+                            <small style={{ display: 'block', marginTop: '8px', opacity: 0.7 }}>{new Date(m.repliedAt).toLocaleString()}</small>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <form className="card" style={{ border: '2px solid var(--border)' }} onSubmit={submitCommunityMessage}>
+                    <h4 style={{ marginTop: 0 }}>Send a new message to Admin</h4>
+                    <input placeholder="Subject" value={newMessageSubject} onChange={e => setNewMessageSubject(e.target.value)} required style={{ marginBottom: '12px' }} />
+                    <textarea rows="3" placeholder="How can we help?" value={newMessageText} onChange={e => setNewMessageText(e.target.value)} required style={{ marginBottom: '12px' }} />
+                    <button type="submit" disabled={!newMessageSubject || !newMessageText}>Send Message</button>
+                  </form>
+                </div>
+              )}
+              {profileTab === 'settings' && (
+                <form className="profile-settings-form" onSubmit={(e) => { e.preventDefault(); saveProfile(e); }}>
+                  <h3 style={{ marginTop: 0 }}>Profile Settings</h3>
+                  <label>Username</label>
+                  <input value={profileForm.username} onChange={e => setProfileForm(prev => ({ ...prev, username: e.target.value }))} style={{ marginBottom: '12px' }} />
+                  <label>Email</label>
+                  <input type="email" value={profileForm.email} onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))} style={{ marginBottom: '12px' }} />
+                  <label>Bio</label>
+                  <textarea rows={3} value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px' }} />
+                  <div className="button-row" style={{ marginTop: '16px' }}>
+                    <button type="submit">Update Profile Details</button>
+                  </div>
+
+                  <hr style={{ margin: '32px 0', borderColor: 'var(--border)' }} />
+                  <div className="danger-zone card" style={{ borderColor: '#ef4444' }}>
+                    <h4 style={{ color: '#ef4444', marginTop: 0 }}> Danger Zone</h4>
+                    <p style={{ fontSize: '0.9rem' }}>Permanently delete your account and all associated data.</p>
+                    <button type="button" className="danger" onClick={() => setShowDeleteWarning(true)}>Request Account Deletion</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </section>
+        ) : null}
 
         {showAdminPanel && isAdmin ? (
           <section className="card admin-panel">
@@ -2637,103 +2721,7 @@ function App() {
         ) : null
       }
 
-      {
-        showProfile && currentUser ? (
-          <div className="auth-overlay" onClick={() => setShowProfile(false)}>
-            <div
-              className="card auth-modal profile-modal-large"
-              style={{ width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="profile-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0 }}>{displayName}'s Profile</h3>
-                <button className="ghost" onClick={() => setShowProfile(false)}>Close</button>
-              </div>
 
-              <div className="profile-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                <button className={`ghost ${profileTab === 'posts' ? 'active-tab' : ''}`} onClick={() => setProfileTab('posts')}>My Posts</button>
-                <button className={`ghost ${profileTab === 'saved' ? 'active-tab' : ''}`} onClick={() => setProfileTab('saved')}>Saved Articles</button>
-                <button className={`ghost ${profileTab === 'messages' ? 'active-tab' : ''}`} onClick={() => setProfileTab('messages')}>Messages</button>
-                <button className={`ghost ${profileTab === 'settings' ? 'active-tab' : ''}`} onClick={() => setProfileTab('settings')}>Settings</button>
-              </div>
-
-              <div className="profile-tab-content">
-                {profileTab === 'posts' && (
-                  <div className="profile-post-list">
-                    {posts.filter(p => p.authorSub === currentUser.userId).length === 0 ? <p>You haven't published any posts yet.</p> : null}
-                    {posts.filter(p => p.authorSub === currentUser.userId).map(p => (
-                      <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
-                        <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
-                        <small>{new Date(p.createdAt).toLocaleDateString()} • {p.likes.length} Likes • {p.comments.length} Comments</small>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {profileTab === 'saved' && (
-                  <div className="profile-post-list">
-                    {posts.filter(p => savedPostIds.includes(p.id)).length === 0 ? <p>You haven't saved any posts yet.</p> : null}
-                    {posts.filter(p => savedPostIds.includes(p.id)).map(p => (
-                      <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
-                        <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
-                        <small>By {p.authorName} • {new Date(p.createdAt).toLocaleDateString()}</small>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {profileTab === 'messages' && (
-                  <div className="profile-messages">
-                    <div className="message-history" style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {communityMessages.filter(m => m.userSub === currentUser.userId).length === 0 ? <p>No messages sent to admin yet.</p> : null}
-                      {communityMessages.filter(m => m.userSub === currentUser.userId).map(m => (
-                        <div key={m.id} className="card" style={{ padding: '16px', border: '1px solid var(--border)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <strong style={{ fontSize: '1.1rem' }}>{m.subject}</strong>
-                            <span className={`status-badge ${m.status.toLowerCase()}`}>{m.status}</span>
-                          </div>
-                          <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>{m.text}</p>
-                          {m.replyText && (
-                            <div style={{ padding: '12px', background: 'var(--bg-shell)', borderRadius: '6px', borderLeft: '3px solid var(--accent)' }}>
-                              <strong style={{ fontSize: '0.9rem' }}>Admin Reply:</strong>
-                              <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{m.replyText}</p>
-                              <small style={{ display: 'block', marginTop: '8px', opacity: 0.7 }}>{new Date(m.repliedAt).toLocaleString()}</small>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <form className="card" style={{ border: '2px solid var(--border)' }} onSubmit={submitCommunityMessage}>
-                      <h4 style={{ marginTop: 0 }}>Send a new message to Admin</h4>
-                      <input placeholder="Subject" value={newMessageSubject} onChange={e => setNewMessageSubject(e.target.value)} required style={{ marginBottom: '12px' }} />
-                      <textarea rows="3" placeholder="How can we help?" value={newMessageText} onChange={e => setNewMessageText(e.target.value)} required style={{ marginBottom: '12px' }} />
-                      <button type="submit" disabled={!newMessageSubject || !newMessageText}>Send Message</button>
-                    </form>
-                  </div>
-                )}
-                {profileTab === 'settings' && (
-                  <form className="profile-settings-form" onSubmit={(e) => { e.preventDefault(); saveProfile(e); }}>
-                    <label>Username</label>
-                    <input value={profileForm.username} onChange={e => setProfileForm(prev => ({ ...prev, username: e.target.value }))} style={{ marginBottom: '12px' }} />
-                    <label>Email</label>
-                    <input type="email" value={profileForm.email} onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))} style={{ marginBottom: '12px' }} />
-                    <label>Bio</label>
-                    <textarea rows={3} value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px' }} />
-                    <div className="button-row" style={{ marginTop: '16px' }}>
-                      <button type="submit">Update Profile Details</button>
-                    </div>
-
-                    <hr style={{ margin: '32px 0', borderColor: 'var(--border)' }} />
-                    <div className="danger-zone card" style={{ borderColor: '#ef4444' }}>
-                      <h4 style={{ color: '#ef4444', marginTop: 0 }}> Danger Zone</h4>
-                      <p style={{ fontSize: '0.9rem' }}>Permanently delete your account and all associated data.</p>
-                      <button type="button" className="danger" onClick={() => setShowDeleteWarning(true)}>Request Account Deletion</button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null
-      }
 
       {
         showDeleteWarning && (
