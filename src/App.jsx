@@ -2743,7 +2743,7 @@ function App() {
               <p>Are you sure you want to permanently delete your account?</p>
               <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>This action will permanently erase your posts, comments, progress, and profile information.</p>
               <p style={{ fontSize: '0.9rem', background: 'var(--bg-shell)', padding: '12px', borderRadius: '6px' }}>
-                Admin will review and process this request via: <br /><strong>cloudjourney@gmail.com</strong>
+                Admin will review and process this request via: <br /><strong>cloudjourney.blog@gmail.com</strong>
               </p>
               <div className="button-row" style={{ marginTop: '24px' }}>
                 <button className="danger" onClick={requestDeletion}>Yes, request deletion</button>
