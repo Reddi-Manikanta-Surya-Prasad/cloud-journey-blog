@@ -140,6 +140,7 @@ html,
 body {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  overflow-x: hidden;
 }
 
 html::-webkit-scrollbar,

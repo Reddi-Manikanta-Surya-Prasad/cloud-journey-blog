@@ -680,6 +680,7 @@ function App() {
   const [authError, setAuthError] = useState('')
 
   const [showProfile, setShowProfile] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [profileTab, setProfileTab] = useState('posts')
   const [showDeleteWarning, setShowDeleteWarning] = useState(false)
   const [profileForm, setProfileForm] = useState({ username: '', email: '', bio: '', avatarUrl: '', fullName: '', profession: '', linkedIn: '', yearsOfExperience: '' })
@@ -711,6 +712,7 @@ function App() {
   const [cognitoUsers, setCognitoUsers] = useState([])
   const mediaUrlCacheRef = useRef({})
   const notificationWrapRef = useRef(null)
+  const profileMenuRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
   const [toasts, setToasts] = useState([])
@@ -826,6 +828,22 @@ function App() {
       document.removeEventListener('touchstart', handleOutsideClick)
     }
   }, [showNotifications])
+
+  useEffect(() => {
+    if (!showProfileMenu) return
+
+    const handleOutsideClick = (event) => {
+      if (profileMenuRef.current?.contains(event.target)) return
+      setShowProfileMenu(false)
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('touchstart', handleOutsideClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('touchstart', handleOutsideClick)
+    }
+  }, [showProfileMenu])
 
   useEffect(() => {
     mediaUrlCacheRef.current = mediaUrlCache
@@ -1542,6 +1560,16 @@ function App() {
 
       setShowDeleteWarning(false)
       showToast('Account deletion requested. Support team has been notified.')
+
+      try {
+        await client.mutations.sendDeletionEmail({
+          subject: 'Account Deletion Request',
+          body: `I would like to request the permanent deletion of my account. Email: ${userAttrs.email}`
+        })
+      } catch (emailErr) {
+        console.error('Failed to dispatch SES email', emailErr)
+      }
+
       await refreshData()
     } catch (err) {
       console.error(err)
@@ -2009,138 +2037,121 @@ function App() {
 
         <div className="header-right">
           {currentUser ? (
-            showProfile ? (
-              <div className="header-profile-links" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className={`ghost ${profileTab === 'posts' ? 'active-tab' : ''}`} onClick={() => setProfileTab('posts')}>My Posts</button>
-                <button className={`ghost ${profileTab === 'saved' ? 'active-tab' : ''}`} onClick={() => setProfileTab('saved')}>Saved Articles</button>
-                <button className={`ghost ${profileTab === 'messages' ? 'active-tab' : ''}`} onClick={() => setProfileTab('messages')}>Messages</button>
-                <button className={`ghost ${profileTab === 'settings' ? 'active-tab' : ''}`} onClick={() => setProfileTab('settings')}>Settings</button>
-                <select
-                  className="theme-selector"
-                  value={theme}
-                  onChange={(e) => setTheme(e.target.value)}
-                  style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px', marginLeft: '8px' }}
-                >
-                  <option value="interactive-canvas">🌞 Normal</option>
-                  <option value="crazy">👾 Crazy</option>
-                </select>
-                <button className="ghost" onClick={() => setShowProfile(false)}>Close</button>
-              </div>
-            ) : (
-              <>
+            <>
+              <div className="profile-menu-wrap" ref={profileMenuRef} style={{ position: 'relative' }}>
                 <button
                   className="username-btn"
                   onClick={() => {
-                    setShowProfile(true);
-                    setProfileTab('posts');
-                    setShowComposer(false);
-                    setShowNotifications(false);
-                    setShowAdminPanel(false);
+                    setShowProfileMenu((prev) => !prev)
+                    setShowNotifications(false)
                   }}
                 >
                   {displayName}
                 </button>
-
-                <select
-                  className="theme-selector"
-                  value={theme}
-                  onChange={(e) => setTheme(e.target.value)}
-                  style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
-                >
-                  <option value="interactive-canvas">🌞 Normal</option>
-                  <option value="crazy">👾 Crazy</option>
-                </select>
-
-                <div className="notification-wrap" ref={notificationWrapRef}>
-                  <button
-                    className="ghost notification-btn"
-                    onClick={() => {
-                      setShowNotifications((prev) => !prev)
-                      setShowProfile(false)
-                    }}
-                    aria-label="Notifications"
-                  >
-                    <span className="notification-icon">{'\uD83D\uDD14'}</span>
-                    {unreadNotificationCount > 0 ? (
-                      <span className="notification-badge">
-                        {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                      </span>
-                    ) : null}
-                  </button>
-
-                  {showNotifications ? (
-                    <div className="notification-panel">
-                      <h4>Notifications</h4>
-                      {visibleNotifications.length ? (
+                {showProfileMenu && (
+                  <div className="notification-panel profile-menu-panel" style={{ width: '200px', right: 0 }}>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('posts'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>My Posts</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('saved'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Saved Articles</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('messages'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Messages</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('settings'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Settings</button></li>
+                      {isAdmin && (
                         <>
-                          <div className="notification-actions">
-                            <button type="button" className="ghost" onClick={markNotificationsSeen}>
-                              Mark all as read
-                            </button>
-                          </div>
-                          <ul>
-                            {visibleNotifications.slice(0, 20).map((item) => (
-                              <li key={item.id}>
-                                <p>{item.text}</p>
-                                <small>{new Date(item.createdAt).toLocaleString()}</small>
-                                <div className="notification-item-actions">
-                                  {item.postId ? (
-                                    <button
-                                      type="button"
-                                      className="ghost"
-                                      onClick={() => openNotificationTarget(item)}
-                                    >
-                                      Open
-                                    </button>
-                                  ) : null}
-                                  {!readNotificationIds.includes(item.id) ? (
-                                    <button
-                                      type="button"
-                                      className="ghost"
-                                      onClick={() => markOneNotificationRead(item.id)}
-                                    >
-                                      Mark as read
-                                    </button>
-                                  ) : null}
+                          <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                          <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowAdminPanel(true); setShowProfileMenu(false); setShowProfile(false); setShowComposer(false); }}>Admin Dashboard</button></li>
+                        </>
+                      )}
+                      <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px', color: '#ef4444' }} onClick={handleLogout}>Logout</button></li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {showProfile && (
+                <button className="ghost" onClick={() => setShowProfile(false)}>Close Profile</button>
+              )}
+
+              <select
+                className="theme-selector"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+                style={{ padding: '0 8px', minHeight: '32px', height: '32px', borderRadius: '8px', fontSize: '0.8rem', border: 'none', width: 'auto', minWidth: '80px', marginRight: '8px' }}
+              >
+                <option value="interactive-canvas">🌞 Normal</option>
+                <option value="crazy">👾 Crazy</option>
+              </select>
+
+              <div className="notification-wrap" ref={notificationWrapRef}>
+                <button
+                  className="ghost notification-btn"
+                  onClick={() => {
+                    setShowNotifications((prev) => !prev)
+                    setShowProfileMenu(false)
+                  }}
+                  aria-label="Notifications"
+                >
+                  <span className="notification-icon">{'\uD83D\uDD14'}</span>
+                  {unreadNotificationCount > 0 ? (
+                    <span className="notification-badge">
+                      {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                    </span>
+                  ) : null}
+                </button>
+
+                {showNotifications ? (
+                  <div className="notification-panel">
+                    <h4>Notifications</h4>
+                    {visibleNotifications.length ? (
+                      <>
+                        <div className="notification-actions">
+                          <button type="button" className="ghost" onClick={markNotificationsSeen}>
+                            Mark all as read
+                          </button>
+                        </div>
+                        <ul>
+                          {visibleNotifications.slice(0, 20).map((item) => (
+                            <li key={item.id}>
+                              <p>{item.text}</p>
+                              <small>{new Date(item.createdAt).toLocaleString()}</small>
+                              <div className="notification-item-actions">
+                                {item.postId ? (
                                   <button
                                     type="button"
                                     className="ghost"
-                                    onClick={() => deleteNotification(item.id)}
+                                    onClick={() => openNotificationTarget(item)}
                                   >
-                                    Delete
+                                    Open
                                   </button>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </>
-                      ) : (
-                        <p className="notification-empty">No notifications yet.</p>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-
-                <button className="ghost" onClick={handleLogout} aria-label="Logout">
-                  Logout
-                </button>
-                {isAdmin ? (
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      setShowAdminPanel((v) => !v)
-                      setShowComposer(false)
-                      setShowProfile(false)
-                      setActivePostId(null)
-                      setPostQueryParam('')
-                    }}
-                    aria-label="Admin dashboard"
-                  >
-                    Admin
-                  </button>
+                                ) : null}
+                                {!readNotificationIds.includes(item.id) ? (
+                                  <button
+                                    type="button"
+                                    className="ghost"
+                                    onClick={() => markOneNotificationRead(item.id)}
+                                  >
+                                    Mark as read
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="ghost"
+                                  onClick={() => deleteNotification(item.id)}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <p className="notification-empty">No notifications yet.</p>
+                    )}
+                  </div>
                 ) : null}
-              </>
-            )
+              </div>
+            </>
           ) : (
             <span className="guest-pill">Guest</span>
           )}

@@ -4,12 +4,14 @@ import { auth } from './auth/resource'
 import { data } from './data/resource'
 import { storage } from './storage/resource'
 import { listUsers } from './functions/list-users/resource'
+import { sendDeletionEmail } from './functions/send-deletion-email/resource'
 
 const backend = defineBackend({
   auth,
   data,
   storage,
   listUsers,
+  sendDeletionEmail,
 })
 
 const listUsersLambda = backend.listUsers.resources.lambda
@@ -19,5 +21,13 @@ listUsersLambda.addToRolePolicy(
   new iam.PolicyStatement({
     actions: ['cognito-idp:ListUsers'],
     resources: [backend.auth.resources.userPool.userPoolArn],
+  })
+)
+
+const sendEmailLambda = backend.sendDeletionEmail.resources.lambda
+sendEmailLambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['ses:SendEmail'],
+    resources: ['*'], // Sandbox requires wide resource mapping or specific verified identities. Wide mapping is standard here. 
   })
 )

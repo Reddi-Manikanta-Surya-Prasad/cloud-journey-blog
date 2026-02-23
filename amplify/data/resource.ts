@@ -1,5 +1,6 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
 import { listUsers } from '../functions/list-users/resource'
+import { sendDeletionEmail } from '../functions/send-deletion-email/resource'
 
 const schema = a
   .schema({
@@ -136,6 +137,21 @@ const schema = a
       )
       .handler(a.handler.function(listUsers))
       .authorization((allow) => [allow.groups(['ADMINS'])]),
+
+    sendDeletionEmail: a
+      .mutation()
+      .arguments({
+        subject: a.string().required(),
+        body: a.string().required(),
+      })
+      .returns(
+        a.customType({
+          success: a.boolean().required(),
+          error: a.string(),
+        })
+      )
+      .handler(a.handler.function(sendDeletionEmail))
+      .authorization((allow) => [allow.authenticated()]),
   })
   .authorization((allow) => [allow.authenticated()])
 
