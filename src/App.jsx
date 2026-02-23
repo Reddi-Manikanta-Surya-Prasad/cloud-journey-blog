@@ -2532,7 +2532,7 @@ function App() {
           </section>
         ) : null}
 
-        {!showAdminPanel && !activePost ? (
+        {!showAdminPanel && !showProfile && !activePost ? (
           <section className="posts-section">
             <div className="preview-grid">
               {displayPosts.map((post, index) => (
@@ -2563,7 +2563,7 @@ function App() {
             ) : null}
           </section>
         ) : null}
-        {!showAdminPanel && activePost ? (
+        {!showAdminPanel && !showProfile && activePost ? (
           <FullPostView
             post={activePost}
             currentUser={currentUser}
