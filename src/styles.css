@@ -600,8 +600,9 @@ body::-webkit-scrollbar {
 /* Theme Toggle Button & Tooltip */
 .theme-toggle-btn {
   position: relative;
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   font-size: 1.4rem;
   padding: 4px 8px;
   cursor: pointer;
@@ -626,9 +627,9 @@ body::-webkit-scrollbar {
   transform: translateX(50%);
   margin-top: 8px;
   padding: 6px 10px;
-  background-color: var(--bg-elevated);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 500;
@@ -2489,6 +2490,12 @@ button.danger {
 }
 
 @media (max-width: 560px) {
+  .app-header {
+    flex-wrap: nowrap !important;
+    padding: 6px 8px;
+    align-items: center;
+  }
+
   .content-shell {
     padding-left: 12px;
     padding-right: 12px;
@@ -2496,7 +2503,7 @@ button.danger {
 
   .header-right {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: flex-end;
     gap: 8px;
   }
