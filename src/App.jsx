@@ -2033,41 +2033,14 @@ function App() {
             <h1 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>Cloud Journey</h1>
             <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.85, fontWeight: 500 }}>write.share.grow</p>
           </div>
+          {!currentUser && (
+            <span className="guest-pill" style={{ marginLeft: '12px' }}>Guest</span>
+          )}
         </div>
 
         <div className="header-right">
-          {currentUser ? (
+          {currentUser && (
             <>
-              <div className="profile-menu-wrap" ref={profileMenuRef} style={{ position: 'relative' }}>
-                <button
-                  className="username-btn"
-                  onClick={() => {
-                    setShowProfileMenu((prev) => !prev)
-                    setShowNotifications(false)
-                  }}
-                >
-                  {displayName}
-                </button>
-                {showProfileMenu && (
-                  <div className="notification-panel profile-menu-panel" style={{ width: '200px', right: 0 }}>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('posts'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>My Posts</button></li>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('saved'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Saved Articles</button></li>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('messages'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Messages</button></li>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('settings'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Settings</button></li>
-                      {isAdmin && (
-                        <>
-                          <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
-                          <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowAdminPanel(true); setShowProfileMenu(false); setShowProfile(false); setShowComposer(false); }}>Admin Dashboard</button></li>
-                        </>
-                      )}
-                      <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px', color: '#ef4444' }} onClick={handleLogout}>Logout</button></li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-
               {showProfile && (
                 <button className="ghost" onClick={() => setShowProfile(false)}>Close Profile</button>
               )}
@@ -2100,7 +2073,7 @@ function App() {
                 </button>
 
                 {showNotifications ? (
-                  <div className="notification-panel">
+                  <div className="notification-panel" style={{ right: 0, left: 'auto', minWidth: '300px' }}>
                     <h4>Notifications</h4>
                     {visibleNotifications.length ? (
                       <>
@@ -2151,9 +2124,37 @@ function App() {
                   </div>
                 ) : null}
               </div>
+
+              <div className="profile-menu-wrap" ref={profileMenuRef} style={{ position: 'relative' }}>
+                <button
+                  className="username-btn"
+                  onClick={() => {
+                    setShowProfileMenu((prev) => !prev)
+                    setShowNotifications(false)
+                  }}
+                >
+                  {displayName}
+                </button>
+                {showProfileMenu && (
+                  <div className="notification-panel profile-menu-panel" style={{ width: '200px', right: 0, left: 'auto' }}>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('posts'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>My Posts</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('saved'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Saved Articles</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('messages'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Messages</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('settings'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Settings</button></li>
+                      {isAdmin && (
+                        <>
+                          <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                          <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowAdminPanel(true); setShowProfileMenu(false); setShowProfile(false); setShowComposer(false); }}>Admin Dashboard</button></li>
+                        </>
+                      )}
+                      <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px', color: '#ef4444' }} onClick={handleLogout}>Logout</button></li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </>
-          ) : (
-            <span className="guest-pill">Guest</span>
           )}
         </div>
       </header>
