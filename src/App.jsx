@@ -736,6 +736,52 @@ function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const navigate = useCallback((path, replace = false) => {
+    if (replace) {
+      window.history.replaceState({ path }, '', path)
+    } else {
+      window.history.pushState({ path }, '', path)
+    }
+
+    setShowProfileMenu(false)
+    setShowNotifications(false)
+
+    if (path === '/admin-dashboard') {
+      setShowAdminPanel(true)
+      setShowProfile(false)
+      setShowComposer(false)
+      setActivePostId(null)
+    } else if (path === '/profile') {
+      setShowProfile(true)
+      setShowAdminPanel(false)
+      setShowComposer(false)
+      setActivePostId(null)
+    } else {
+      setShowAdminPanel(false)
+      setShowProfile(false)
+      // Note: we intentionally do not blindly override activePostId or showComposer here,
+      // as '/?post=xyz' relies on the home structure. The path is basically '/home' or '/'.
+    }
+  }, [])
+
+  useEffect(() => {
+    const handlePopState = (e) => {
+      const path = window.location.pathname
+      if (path === '/admin-dashboard') {
+        setShowAdminPanel(true)
+        setShowProfile(false)
+      } else if (path === '/profile') {
+        setShowProfile(true)
+        setShowAdminPanel(false)
+      } else {
+        setShowAdminPanel(false)
+        setShowProfile(false)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
   useEffect(() => {
     const postIdFromUrl = new URLSearchParams(window.location.search).get('post')
     if (postIdFromUrl) setActivePostId(postIdFromUrl)
@@ -1191,12 +1237,33 @@ function App() {
       }
 
       await refreshData(false, 'userPool')
+
+      const initialPath = window.location.pathname
+      if (initialPath === '/admin-dashboard') {
+        if (adminByGroup || adminByEmail) {
+          setShowAdminPanel(true)
+        } else {
+          navigate('/home', true)
+        }
+      } else if (initialPath === '/profile') {
+        setShowProfile(true)
+      } else if (initialPath === '/' || initialPath === '') {
+        navigate('/home', true)
+      }
+
     } catch {
       setCurrentUser(null)
       setUserAttrs({ email: '', name: '' })
       setIsAdmin(false)
       setModerations([])
       await refreshData(false, 'apiKey')
+
+      const path = window.location.pathname
+      if (path === '/admin-dashboard' || path === '/profile') {
+        navigate('/home', true)
+      } else if (path === '/' || path === '') {
+        navigate('/home', true)
+      }
     } finally {
       setLoading(false)
     }
@@ -1421,17 +1488,11 @@ function App() {
       }
       return
     }
-    goHomeView()
+    navigate('/home')
   }
 
   function goHomeView() {
-    setActivePostId(null)
-    setPostQueryParam('')
-    setShowAdminPanel(false)
-    setShowComposer(false)
-    setEditingPostId(null)
-    setShowProfile(false)
-    setShowNotifications(false)
+    navigate('/home')
   }
 
   const handleAuthSubmit = async (e) => {
@@ -2178,14 +2239,14 @@ function App() {
                 {showProfileMenu && (
                   <div className="notification-panel profile-menu-panel" style={{ width: '200px', right: 0, left: 'auto' }}>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('posts'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>My Posts</button></li>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('saved'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Saved Articles</button></li>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('messages'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Messages</button></li>
-                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowProfile(true); setProfileTab('settings'); setShowProfileMenu(false); setShowComposer(false); setShowAdminPanel(false); }}>Settings</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { navigate('/profile'); setProfileTab('posts'); }}>My Posts</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { navigate('/profile'); setProfileTab('saved'); }}>Saved Articles</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { navigate('/profile'); setProfileTab('messages'); }}>Messages</button></li>
+                      <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { navigate('/profile'); setProfileTab('settings'); }}>Settings</button></li>
                       {isAdmin && (
                         <>
                           <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
-                          <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => { setShowAdminPanel(true); setShowProfileMenu(false); setShowProfile(false); setShowComposer(false); }}>Admin Dashboard</button></li>
+                          <li><button className="ghost" style={{ width: '100%', textAlign: 'left', padding: '8px' }} onClick={() => navigate('/admin-dashboard')}>Admin Dashboard</button></li>
                         </>
                       )}
                       <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
