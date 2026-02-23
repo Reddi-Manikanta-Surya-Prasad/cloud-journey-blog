@@ -3123,13 +3123,85 @@ function FullPostView({
     speakNow()
   }
 
+  const renderActionBar = () => (
+    <div className="blog-action-bar">
+      <div className="action-bar-group">
+        <button
+          className={`action-btn ${postLiked ? 'active like' : ''}`}
+          onClick={onTogglePostLike}
+          disabled={!canInteract}
+          aria-label="Like post"
+          title="Like"
+        >
+          <span className="icon">{postLiked ? '\u2665' : '\u2661'}</span>
+          <span>{post.likes.length}</span>
+        </button>
+        <button
+          className="action-btn"
+          onClick={() => {
+            const el = document.getElementById(`comment-box-${post.id}`)
+            if (el) el.focus()
+          }}
+          disabled={!canInteract}
+          aria-label="Comment"
+          title="Comment"
+        >
+          <span className="icon">{'\u{1F4AC}'}</span>
+          <span>{post.comments.length}</span>
+        </button>
+      </div>
+
+      <div className="action-bar-group">
+        <button
+          className={`action-btn ${saved ? 'active save' : ''}`}
+          onClick={onToggleSavePost}
+          disabled={!canInteract}
+          aria-label="Save post"
+          title="Save"
+        >
+          <span className="icon">{saved ? '\u2605' : '\u2606'}</span>
+        </button>
+        <button
+          className={`action-btn ${speaking ? 'active listen' : ''}`}
+          onClick={handleListenToggle}
+          disabled={!canListen}
+          aria-label="Listen to post"
+          title="Listen"
+        >
+          <span className="icon">{speaking ? '\u23F9' : '\u25B6'}</span>
+        </button>
+        <button
+          className="action-btn"
+          onClick={onShare}
+          disabled={!canShare}
+          aria-label="Copy share link"
+          title="Copy link"
+        >
+          <span className="icon">{'\u{1F517}'}</span>
+        </button>
+        {canManagePost ? (
+          <button
+            className="action-btn"
+            onClick={onEdit}
+            aria-label="Edit post"
+            title="Edit Post"
+            style={{ fontWeight: 600, borderLeft: '1px solid var(--border)', paddingLeft: '16px', marginLeft: '6px' }}
+          >
+            <span className="icon">{"\u270E"}</span>
+            Write
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+
   return (
     <article className="card full-post" ref={postRef}>
       <div className="reading-progress">
         <span style={{ width: `${readProgress}%` }} />
       </div>
       <div className="full-post-top">
-        <button className="ghost" onClick={onBack}>Back</button>
+        <button className="ghost" onClick={onBack}>Back to Feed</button>
         <div className={`progress-pill ${progress.cls}`}>{progress.icon} {progress.label}</div>
       </div>
 
@@ -3163,6 +3235,8 @@ function FullPostView({
           </button>
         ) : null}
       </div>
+
+      {renderActionBar()}
 
       <div className="full-post-content">
         <div className="depth-toggle-row">
@@ -3307,59 +3381,8 @@ function FullPostView({
         ) : null}
       </div>
 
-      <div className="post-meta-actions">
-        <button
-          className={`ghost icon-action ${postLiked ? 'active-like' : ''}`}
-          onClick={onTogglePostLike}
-          disabled={!canInteract}
-          aria-label="Like post"
-          title="Like"
-        >
-          <span className="icon">{postLiked ? '\u2665' : '\u2661'}</span>
-          <span>{post.likes.length}</span>
-        </button>
-        <button
-          className="ghost icon-action"
-          onClick={() => {
-            const el = document.getElementById(`comment-box-${post.id}`)
-            if (el) el.focus()
-          }}
-          disabled={!canInteract}
-          aria-label="Comment"
-          title="Comment"
-        >
-          <span className="icon">{'\u{1F4AC}'}</span>
-          <span>{post.comments.length}</span>
-        </button>
-        <button
-          className="ghost icon-action"
-          onClick={onShare}
-          disabled={!canShare}
-          aria-label="Copy share link"
-          title="Copy link"
-        >
-          <span className="icon">{'\u{1F517}'}</span>
-        </button>
-        <button
-          className={`ghost icon-action ${saved ? 'saved-active' : ''}`}
-          onClick={onToggleSavePost}
-          disabled={!canInteract}
-          aria-label="Save post"
-          title="Save"
-        >
-          <span className="icon">{saved ? '\u2605' : '\u2606'}</span>
-        </button>
-        <button
-          className={`ghost icon-action ${speaking ? 'saved-active' : ''}`}
-          onClick={handleListenToggle}
-          disabled={!canListen}
-          aria-label="Listen to post"
-          title="Listen"
-        >
-          <span className="icon">{speaking ? '\u23F9' : '\u25B6'}</span>
-          <span>{speaking ? 'Stop' : 'Listen'}</span>
-        </button>
-      </div>
+      {renderActionBar()}
+
       {canInteract ? (
         <div className="phase2-row">
           <div className="phase2-block">

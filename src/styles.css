@@ -1042,37 +1042,72 @@ body::-webkit-scrollbar {
   color: #14508a !important;
 }
 
-.post-meta-actions .icon-action {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 4px 8px;
-  touch-action: manipulation;
-}
-
-.post-meta-actions .icon-action:hover {
-  transform: translateY(-1px);
-  box-shadow: none !important;
-}
-
-.post-meta-actions .icon-action[aria-label="Like post"] {
-  color: #d62839;
-}
-
-.post-meta-actions .icon-action[aria-label="Comment"] {
-  color: #2b6cb0;
-}
-
-.post-meta-actions .icon-action[aria-label="Copy share link"] {
-  color: #00a3c4;
-}
-
-.post-meta-actions .icon-action[aria-label="Save post"] {
-  color: #c28a00;
-}
-
 .post-meta-actions .icon-action[aria-label="Listen to post"] {
   color: #1f9d6a;
+}
+
+/* NEW: Horizontal Action Bar (Medium-inspired but original) */
+.blog-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.crazy .blog-action-bar {
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.action-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  color: var(--text);
+  opacity: 0.85;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  opacity: 1;
+  background: var(--bg-shell);
+}
+
+.action-btn .icon {
+  font-size: 1.1rem;
+}
+
+.action-btn.active.like {
+  color: #ef4444;
+  opacity: 1;
+}
+
+.action-btn.active.save {
+  color: #f59e0b;
+  opacity: 1;
+}
+
+.action-btn.active.listen {
+  color: #10b981;
+  opacity: 1;
 }
 
 .comments {
@@ -1448,7 +1483,8 @@ body::-webkit-scrollbar {
 }
 
 .auth-overlay .profile-modal-large {
-  display: none !important; /* Keep as safe fallback, should be stripped from App.js */
+  display: none !important;
+  /* Keep as safe fallback, should be stripped from App.js */
 }
 
 /* Active tab state in the header */
