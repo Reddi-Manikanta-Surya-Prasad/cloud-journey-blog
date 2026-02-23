@@ -2249,7 +2249,8 @@ function App() {
                     setShowNotifications(false)
                   }}
                 >
-                  {displayName}
+                  <span className="username-full">{displayName}</span>
+                  <span className="username-initial">{displayName ? displayName.charAt(0).toUpperCase() : ''}</span>
                 </button>
                 {showProfileMenu && (
                   <div className="notification-panel profile-menu-panel" style={{ width: '200px', right: 0, left: 'auto' }}>
