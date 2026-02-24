@@ -1387,6 +1387,13 @@ function App() {
           ) {
             inlinePaths.add(block.value)
           }
+          // Also scan HTML blocks for embedded media/ src attributes (rich-editor posts)
+          if (block.type === 'html' && block.value) {
+            const srcMatches = block.value.matchAll(/src=["'](media\/[^"']+)["']/gi)
+            for (const m of srcMatches) {
+              if (!cacheSnapshot[m[1]]) inlinePaths.add(m[1])
+            }
+          }
         })
       })
 
