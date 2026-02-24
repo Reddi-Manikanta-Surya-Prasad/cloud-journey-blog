@@ -22,7 +22,7 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-deploy-role-${AWS::AccountId}-${AWS::Region}",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-cfn-exec-role-${AWS::AccountId}-${AWS::Region}",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/97a9cf5b06c30fa5ed599f5c3ab6e7bfbe433566225f2bbecb9f86deecd46a8e.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/9bb5c4f08e39b12f4de6d26d0ebc41a15b9a279a7ade1fe3edb0453a1b8059ea.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
@@ -4239,54 +4239,6 @@
             "data": "Mutation.sendDeletionEmail"
           }
         ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/FnCrossPostLambdaDataSource": [
-          {
-            "type": "graphqltransformer:resourceName",
-            "data": "FnCrossPostLambdaDataSource"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/FnCrossPostLambdaDataSource/ServiceRole/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "FnCrossPostLambdaDataSourceServiceRole2DD2BDCF"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/FnCrossPostLambdaDataSource/ServiceRole/DefaultPolicy/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "FnCrossPostLambdaDataSourceServiceRoleDefaultPolicyA6F854FF"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/FnCrossPostLambdaDataSource/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "FnCrossPostLambdaDataSource"
-          },
-          {
-            "type": "graphqltransformer:resourceName",
-            "data": "FnCrossPostLambdaDataSource"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/InvokeFnCrossPostLambdaDataSource/InvokeFnCrossPostLambdaDataSource.AppSyncFunction": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "InvokeFnCrossPostLambdaDataSourceInvokeFnCrossPostLambdaDataSourceAppSyncFunction1057EC3E"
-          },
-          {
-            "type": "graphqltransformer:resourceName",
-            "data": "InvokeFnCrossPostLambdaDataSource"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/mutationCrossPostResolver": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "MutationcrossPostResolver"
-          },
-          {
-            "type": "graphqltransformer:resourceName",
-            "data": "Mutation.crossPost"
-          }
-        ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/FnListCognitoUsersLambdaDataSource": [
           {
             "type": "graphqltransformer:resourceName",
@@ -4345,16 +4297,6 @@
             "data": "MutationSendDeletionEmailAuthFN"
           }
         ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/MutationCrossPostAuthFN/MutationCrossPostAuthFN.AppSyncFunction": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "MutationCrossPostAuthFNMutationCrossPostAuthFNAppSyncFunction7577EAC4"
-          },
-          {
-            "type": "graphqltransformer:resourceName",
-            "data": "MutationCrossPostAuthFN"
-          }
-        ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/QueryListCognitoUsersAuthFN/QueryListCognitoUsersAuthFN.AppSyncFunction": [
           {
             "type": "aws:cdk:logicalId",
@@ -4405,12 +4347,6 @@
           {
             "type": "aws:cdk:logicalId",
             "data": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/reference-to-amplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputs.amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn"
           }
         ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/amplifyData/FunctionDirectiveStack/reference-to-amplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputs.amplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": [
@@ -4917,12 +4853,6 @@
             "data": "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Arn"
           }
         ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/reference-to-amplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputs.amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn"
-          }
-        ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/data/reference-to-amplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputs.amplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": [
           {
             "type": "aws:cdk:logicalId",
@@ -4995,18 +4925,6 @@
             "data": "senddeletionemaillambdaBDD8FBCD"
           }
         ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function/cross-post-lambda/ServiceRole/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "crosspostlambdaServiceRole1ABD9F73"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function/cross-post-lambda/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "crosspostlambdaEC56AA37"
-          }
-        ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function/CDKMetadata/Default": [
           {
             "type": "aws:cdk:logicalId",
@@ -5023,12 +4941,6 @@
           {
             "type": "aws:cdk:logicalId",
             "data": "amplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Arn"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function/amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn"
           }
         ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function/amplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": [
@@ -5059,12 +4971,6 @@
           {
             "type": "aws:cdk:logicalId",
             "data": "amplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Ref"
-          }
-        ],
-        "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function/amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCRef": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCRef"
           }
         ],
         "/amplify-blogapp-Pirate-sandbox-6e2bfb59f0/function.NestedStack/function.NestedStackResource": [

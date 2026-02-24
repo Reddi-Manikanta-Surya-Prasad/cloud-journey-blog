@@ -3261,7 +3261,7 @@ function FullPostView({
   const depthSummary =
     depthMode === 'pro' ? (post.proSummary || post.beginnerSummary || '') : (post.beginnerSummary || post.proSummary || '')
   const hasInlineMedia = useMemo(
-    () => contentBlocks.some((block) => block.type === 'image' || block.type === 'video'),
+    () => contentBlocks.some((block) => block.type === 'image' || block.type === 'video' || block.type === 'html'),
     [contentBlocks],
   )
   const coverSource = post.mediaPath || post.mediaUrl || ''

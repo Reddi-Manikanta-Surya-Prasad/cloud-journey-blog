@@ -191,13 +191,6 @@
         "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Ref"
        ]
       },
-      "\",\"",
-      {
-       "Fn::GetAtt": [
-        "function1351588B",
-        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCRef"
-       ]
-      },
       "\"]"
      ]
     ]
@@ -387,12 +380,6 @@
        "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Arn"
       ]
      },
-     "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": {
-      "Fn::GetAtt": [
-       "function1351588B",
-       "Outputs.amplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn"
-      ]
-     },
      "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": {
       "Fn::GetAtt": [
        "function1351588B",
@@ -426,7 +413,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/96f847c1ea9bd4ac09e3212693a20f5ab29ddd6cdbb06f39e5cee9ea36daf538.json"
+       "/98b20287a4fa4c85f69f2c801d580dc4c2918630ac84ca2edbaba22cca99a04f.json"
       ]
      ]
     }
@@ -482,7 +469,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/51647d10ab26e6982aca6f8548f6818c9bb884a1d0aaf554e54a40cfef18d341.json"
+       "/108819f704dc08d958f0ea301f047a42c07279c24cda5424b5a9ec9530a728ba.json"
       ]
      ]
     }

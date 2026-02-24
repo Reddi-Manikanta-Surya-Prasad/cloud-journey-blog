@@ -54,7 +54,7 @@
      ]
     },
     "DefinitionS3Location": {
-     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1cfff3175d18057e9cd8fba9ef5237434ddbc41de7b794de4ca83f9699bbd8a6.graphql"
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/579d426c995ae8bf63605dcb2c79682088c1302bd222320f56a51ddf91eaa01c.graphql"
     }
    },
    "UpdateReplacePolicy": "Delete",
@@ -72,7 +72,7 @@
       "ApiId"
      ]
     },
-    "Expires": 1774471896
+    "Expires": 1774472274
    },
    "UpdateReplacePolicy": "Delete",
    "DeletionPolicy": "Delete",
@@ -825,9 +825,6 @@
      "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref": {
       "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0authNestedStackauthNestedStackResource59FB2688OutputsamplifyblogappPiratesandbox6e2bfb59f0authamplifyAuthIdentityPool8B40A7A2Ref"
      },
-     "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": {
-      "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn"
-     },
      "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": {
       "Ref": "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn"
      },
@@ -868,7 +865,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/b713f3fe805c43ec6ba4e6398270f9218c7ee359f88b185757d2c9e77967eb06.json"
+       "/12242a245941656eb5e43815aea1ea18beec5f44ed3ef672d968c7a52c747936.json"
       ]
      ]
     }
@@ -1181,7 +1178,7 @@
      }
     ],
     "SourceObjectKeys": [
-     "1156d7e1f8eeccd3f4e939ced7580e34182496b2d8dffb9b4565e21efa036c44.zip"
+     "0582d9146b12d7d2125abe6fa8996a4dce5b54b09c7e07407949ea258cf71473.zip"
     ],
     "SourceMarkers": [
      {}
@@ -1686,7 +1683,7 @@
      }
     ],
     "SourceObjectKeys": [
-     "d2a7fae358d6b0a0a98c7873e9e49f1a465e9d75e42f04f78884a9ff07492d19.zip"
+     "b43ce516ad364872b8175cb97ecbdd612117f3d9ed8004fb2df226f398723aa0.zip"
     ],
     "SourceMarkers": [
      {}
@@ -1841,9 +1838,6 @@
    "Type": "String"
   },
   "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionsenddeletionemaillambdaD5075975Arn": {
-   "Type": "String"
-  },
-  "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functioncrosspostlambda0809EDCCArn": {
    "Type": "String"
   },
   "referencetoamplifyblogappPiratesandbox6e2bfb59f0functionNestedStackfunctionNestedStackResourceB09835AFOutputsamplifyblogappPiratesandbox6e2bfb59f0functionlistuserslambda733A7426Arn": {
