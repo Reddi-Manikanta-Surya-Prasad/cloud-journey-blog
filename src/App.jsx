@@ -3260,12 +3260,20 @@ function FullPostView({
   const progress = progressMeta(progressStatus || 'read')
   const depthSummary =
     depthMode === 'pro' ? (post.proSummary || post.beginnerSummary || '') : (post.beginnerSummary || post.proSummary || '')
-  const hasInlineMedia = useMemo(
-    () => contentBlocks.some((block) => block.type === 'image' || block.type === 'video' || block.type === 'html'),
-    [contentBlocks],
-  )
   const coverSource = post.mediaPath || post.mediaUrl || ''
   const coverType = post.mediaType === 'video' ? 'video' : 'image'
+  const hasInlineMedia = useMemo(
+    () => contentBlocks.some((block) => {
+      if (block.type === 'image' || block.type === 'video') return true
+      // For HTML posts, only treat as "has inline media" if the HTML body already
+      // contains the cover image/video URL — prevents both duplication AND loss of cover.
+      if (block.type === 'html' && coverSource) {
+        return block.value?.includes(coverSource)
+      }
+      return false
+    }),
+    [contentBlocks, coverSource],
+  )
 
   useEffect(() => {
     const handleProgress = () => {
