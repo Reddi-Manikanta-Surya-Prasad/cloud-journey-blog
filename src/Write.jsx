@@ -40,6 +40,14 @@ function sanitizeEditorHtml(html) {
         wrap.remove()
         return
       }
+      // Swap blob preview URL back to storage path for persistence
+      if (media.tagName === 'VIDEO') {
+        const storagePath = media.getAttribute('data-media-path')
+        if (storagePath) {
+          media.setAttribute('src', storagePath)
+          media.removeAttribute('data-media-path')
+        }
+      }
       const p = document.createElement('p')
       p.innerHTML = media.outerHTML
       wrap.replaceWith(p)
@@ -388,6 +396,8 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
   const [showPainter, setShowPainter] = useState(false)
   const [showDiagram, setShowDiagram] = useState(false)
   const [activeTarget, setActiveTarget] = useState('content')
+  const [showVideoUrl, setShowVideoUrl] = useState(false)
+  const [videoUrlInput, setVideoUrlInput] = useState('')
   const [diagramCode, setDiagramCode] = useState(
     'flowchart TD\n  A[User] --> B[Amplify Hosting]\n  B --> C[App]\n  C --> D[Cognito]\n  C --> E[Data]\n  C --> F[Storage]',
   )
@@ -521,15 +531,36 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
     runCommand('insertHTML', '<pre><code>// Write code here</code></pre><p><br></p>', 'content')
   }
 
+  const insertVideoFromUrl = () => {
+    const url = videoUrlInput.trim()
+    if (!url) return
+    // Accept direct video file links or common streaming-compatible URLs
+    const isLikelyVideo = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url) || url.startsWith('http')
+    if (!isLikelyVideo) {
+      alert('Please enter a direct video URL (e.g. ending in .mp4, .webm, .ogg)')
+      return
+    }
+    runCommand(
+      'insertHTML',
+      `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${url}"><source src="${url}" />Your browser does not support the video tag.</video></div><p><br></p>`,
+      'content',
+    )
+    setVideoUrlInput('')
+    setShowVideoUrl(false)
+  }
+
   const insertUploadedFile = async (file, kind) => {
     if (!file || !onInlineUpload) return
     setInlineBusy(true)
+    // Create a local blob URL for immediate playback in the editor preview
+    const blobUrl = kind === 'vid' ? URL.createObjectURL(file) : null
     try {
       const source = await onInlineUpload(file)
       if (kind === 'vid') {
+        const mimeType = file.type || 'video/mp4'
         runCommand(
           'insertHTML',
-          `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${source}"></video></div><p><br></p>`,
+          `<div class="inline-media-block" contenteditable="false"><button type="button" class="inline-media-delete" aria-label="Delete media" title="Delete media">×</button><video data-inline-media="1" controls playsinline preload="metadata" src="${blobUrl || source}" data-media-path="${source}"><source src="${blobUrl || source}" type="${mimeType}" /></video></div><p><br></p>`,
           'content',
         )
       } else {
@@ -540,6 +571,7 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
         )
       }
     } catch {
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
       alert('Could not upload file for inline insertion.')
     } finally {
       setInlineBusy(false)
@@ -1105,8 +1137,19 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
 
               <div className="ribbon-group">
                 <button type="button" className="ghost icon-tool media-tool-icon" onClick={insertCodeTemplate} disabled={inlineBusy || busy} title="Insert code block" aria-label="Insert code block"><Code size={18} /></button>
-                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => inlineInsertInputRef.current?.click()} disabled={inlineBusy || busy} title="Insert image or video at cursor" aria-label="Insert image or video at cursor"><ImagePlus size={18} /></button>
-                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video below editor" aria-label="Attach image or video below editor"><Paperclip size={18} /></button>
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => inlineInsertInputRef.current?.click()} disabled={inlineBusy || busy} title="Insert image or video file at cursor" aria-label="Insert image or video at cursor"><ImagePlus size={18} /></button>
+                <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => attachInputRef.current?.click()} disabled={inlineBusy || busy} title="Attach image or video file below editor" aria-label="Attach image or video below editor"><Paperclip size={18} /></button>
+                <button
+                  type="button"
+                  className={`ghost icon-tool media-tool-icon${showVideoUrl ? ' active' : ''}`}
+                  onClick={() => setShowVideoUrl((v) => !v)}
+                  disabled={inlineBusy || busy}
+                  title="Insert video from URL (plays inline)"
+                  aria-label="Insert video from URL"
+                  style={{ fontSize: '0.82rem', fontWeight: 700, letterSpacing: '-0.5px' }}
+                >
+                  ▶ URL
+                </button>
                 <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowPainter(true)} disabled={inlineBusy || busy} title="Open painter tool" aria-label="Open painter tool"><Palette size={18} /></button>
                 <button type="button" className="ghost icon-tool media-tool-icon" onClick={() => setShowDiagram(true)} disabled={inlineBusy || busy} title="Open architecture diagram tool" aria-label="Open architecture diagram tool"><LayoutTemplate size={18} /></button>
                 <input
@@ -1125,6 +1168,27 @@ function Write({ onSubmit, onCancel, initialValue, submitLabel, busy, onInlineUp
                 />
                 <span className="ribbon-caption">Media & Diagrams</span>
               </div>
+              {showVideoUrl ? (
+                <div className="video-url-row">
+                  <input
+                    type="url"
+                    className="video-url-input"
+                    placeholder="Paste direct video URL (.mp4, .webm, .ogg, .mov…)"
+                    value={videoUrlInput}
+                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); insertVideoFromUrl() }
+                      if (e.key === 'Escape') { setShowVideoUrl(false); setVideoUrlInput('') }
+                    }}
+                    autoFocus
+                  />
+                  <button type="button" className="ghost" onClick={insertVideoFromUrl} disabled={!videoUrlInput.trim()}
+                  >
+                    Embed Video
+                  </button>
+                  <button type="button" className="ghost" onClick={() => { setShowVideoUrl(false); setVideoUrlInput('') }}>✕</button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

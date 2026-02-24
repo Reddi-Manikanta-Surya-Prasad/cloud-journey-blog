@@ -1844,6 +1844,49 @@ body::-webkit-scrollbar {
   font-size: 1.1rem;
 }
 
+.video-url-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #c3d9ff;
+  border-radius: 10px;
+  background: #f0f7ff;
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.video-url-input {
+  flex: 1;
+  min-width: 220px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #b7d2f7;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.9rem;
+  color: #1e3a5f;
+  box-sizing: border-box;
+  width: auto;
+}
+
+.video-url-input:focus {
+  outline: none;
+  border-color: #5aaeff;
+  box-shadow: 0 0 0 3px rgba(90, 174, 255, 0.2);
+}
+
+.video-url-row .ghost {
+  min-height: 42px;
+  height: 42px;
+  padding: 0 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: auto;
+}
+
 .icon-glyph {
   display: inline-flex;
   align-items: center;
