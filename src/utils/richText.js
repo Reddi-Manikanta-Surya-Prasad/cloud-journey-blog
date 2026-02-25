@@ -124,8 +124,16 @@ export function sanitizePublishedHtml(html) {
 export function isLikelyHtmlContent(content) {
     const source = String(content || '').trim()
     if (!source) return false
-    // Treat as HTML if the first non-empty line opens any HTML block element
-    // (including figure, section, article etc. used by the rich-text editor)
+
+    // 1) Rich-text editor fingerprints — present anywhere in the content
+    //    These are set by the composer's attachment/inline-media system
+    if (/data-post-attachment|data-inline-media|class="post-attachment-block"/.test(source)) return true
+
+    // 2) Block-level HTML tags that only appear in rich-text / HTML output
+    //    (not normally written inline in markdown prose)
+    if (/<(figure|section|article|aside|main|blockquote|iframe|audio)\b/i.test(source)) return true
+
+    // 3) First non-empty line starts with a block-level HTML opening tag
     const firstLine = source.split('\n').find(l => l.trim()) || ''
     return /^\s*<(p|div|span|strong|em|b|i|u|mark|font|figure|section|article|aside|main|blockquote|table|thead|tbody|tr|td|th|ul|ol|li|pre|code|h[1-6]|img|video|audio|source|iframe|br)\b/i.test(firstLine)
 }
