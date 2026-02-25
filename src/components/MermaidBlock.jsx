@@ -15,24 +15,28 @@ function loadLogosIcons() {
 }
 
 /**
- * Convert architecture-beta diagram to a reliable flowchart LR.
- *
- * Steps:
- *  1. Collapse any bare newlines inside [...] and (...) regions using the
- *     dotAll [^] trick, so "S3 Object Lock\nCOMPLIANCE" becomes one line.
- *  2. Parse service & connection lines from the normalised code.
- *  3. Emit a clean "flowchart LR" string.
+ * Collapse bare newlines inside [...] and (...) regions.
+ * Uses [^]*? (dotAll-equivalent) so it crosses line boundaries.
  */
-function convertArchBetaToFlowchart(raw) {
-    // 1. Collapse newlines inside [...] (lazy, dotAll via [^]*?)
-    let code = raw.replace(/\[([^]*?)\]/g, (_, inner) =>
-        `[${inner.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim()}]`
-    )
-    // Collapse newlines inside (...) too
-    code = code.replace(/\(([^)]*?\r?\n[^)]*?)\)/g, (_, inner) =>
-        `(${inner.replace(/\r?\n/g, ' ').trim()})`
-    )
+function collapseMultilineLabels(code) {
+    // Collapse newlines inside [...] 
+    let result = code.replace(/\[([^]*?)\]/g, (_, inner) => {
+        if (!/\r?\n/.test(inner)) return `[${inner}]`
+        return `[${inner.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim()}]`
+    })
+    // Collapse newlines inside (...) 
+    result = result.replace(/\(([^)]*)\)/g, (_, inner) => {
+        if (!/\r?\n/.test(inner)) return `(${inner})`
+        return `(${inner.replace(/\r?\n/g, ' ').trim()})`
+    })
+    return result
+}
 
+/**
+ * Convert architecture-beta diagram to a standard flowchart LR.
+ * Called AFTER collapseMultilineLabels so all labels are single-line.
+ */
+function convertArchBetaToFlowchart(code) {
     const lines = code.split('\n')
     const nodes = []
     const edges = []
@@ -43,13 +47,12 @@ function convertArchBetaToFlowchart(raw) {
         // service id(icon)[Label]  or  service id(icon)[Label] in group
         const svc = trimmed.match(/^service\s+(\w+)\s*\([^)]*\)\s*\[([^\]]+)\]/)
         if (svc) {
-            // sanitise label: replace " with '
             const label = svc[2].trim().replace(/"/g, "'")
             nodes.push({ id: svc[1], label })
             continue
         }
 
-        // id:Direction --> Direction:id
+        // id:Direction --> Direction:id  (architecture-beta connection syntax)
         const conn = trimmed.match(/^(\w+):[LRTB]\s*-->\s*[LRTB]:(\w+)/)
         if (conn) {
             edges.push(`    ${conn[1]} --> ${conn[2]}`)
@@ -60,39 +63,22 @@ function convertArchBetaToFlowchart(raw) {
     if (nodes.length === 0) {
         return 'flowchart LR\n    A["Architecture Diagram"]'
     }
-
     const nodeDefs = nodes.map(n => `    ${n.id}["${n.label}"]`).join('\n')
     return ['flowchart LR', nodeDefs, ...edges].join('\n')
 }
 
 /**
- * General pre-processing for any mermaid diagram:
- * – architecture-beta → flowchart LR
- * – collapse bare newlines in node labels for standard graph/flowchart diagrams
+ * Pre-process mermaid code:
+ *  1. Collapse multiline labels in [...] / (...)
+ *  2. Convert architecture-beta → flowchart LR (architecture-beta needs
+ *     specific icon packs that are often unavailable, causing render failures)
  */
 function sanitizeMermaidCode(raw) {
-    const trimmed = raw.trim()
-
-    if (/^architecture-beta/i.test(trimmed)) {
-        return convertArchBetaToFlowchart(trimmed)
+    const normalised = collapseMultilineLabels(raw.trim())
+    if (/^architecture-beta/i.test(normalised)) {
+        return convertArchBetaToFlowchart(normalised)
     }
-
-    // For other diagram types: collapse newlines inside [...] labels
-    return trimmed.replace(/\[([^]*?)\]/g, (_, inner) => {
-        if (!/\r?\n/.test(inner)) return `[${inner}]`
-        return `["${inner.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim()}"]`
-    })
-}
-
-/** True if mermaid rendered an error SVG rather than a diagram */
-function isMermaidErrorSvg(svg) {
-    return (
-        svg.includes('Syntax error') ||
-        svg.includes('error-icon') ||
-        svg.includes('class="error"') ||
-        svg.includes('Parse error') ||
-        svg.includes('mermaid-error')
-    )
+    return normalised
 }
 
 export default function MermaidBlock({ code }) {
@@ -106,7 +92,8 @@ export default function MermaidBlock({ code }) {
         const renderDiagram = async () => {
             try {
                 const mermaidModule = await import('mermaid')
-                const mermaid = mermaidModule.default
+                // Support both default export and CJS-wrapped modules
+                const mermaid = mermaidModule.default ?? mermaidModule
 
                 if (!iconsLoaded.current) {
                     const icons = await loadLogosIcons()
@@ -119,30 +106,20 @@ export default function MermaidBlock({ code }) {
                 mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' })
 
                 const cleanCode = sanitizeMermaidCode(code)
-
-                // Validate syntax first — mermaid.parse() throws on invalid code.
-                // Guard with typeof check for version compatibility.
-                if (typeof mermaid.parse === 'function') {
-                    try {
-                        await mermaid.parse(cleanCode)
-                    } catch {
-                        if (!cancelled) setError('diagram')
-                        return
-                    }
-                }
-
                 const id = `mmd-${Math.random().toString(36).slice(2, 10)}`
+
+                // In mermaid v11, render() throws on error — the try/catch IS the validation.
+                // Do NOT check svg content for error strings: the embedded CSS stylesheet
+                // in every valid mermaid SVG contains class names like .error-icon, .error {}
+                // which would cause false-positive "error detected" results.
                 const out = await mermaid.render(id, cleanCode)
 
-                if (cancelled) return
-
-                if (isMermaidErrorSvg(out.svg)) {
-                    setError('diagram')
-                } else {
+                if (!cancelled) {
                     setSvg(out.svg)
                     setError('')
                 }
-            } catch {
+            } catch (err) {
+                console.error('[MermaidBlock] render failed:', err)
                 if (!cancelled) setError('diagram')
             }
         }
