@@ -17,7 +17,6 @@ export default defineConfig({
           if (id.includes('react')) return 'react-vendor'
           if (id.includes('mermaid')) return 'mermaid-vendor'
           if (id.includes('highlight.js')) return 'highlight-vendor'
-          return 'vendor'
         },
       },
     },

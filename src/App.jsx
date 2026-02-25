@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Amplify } from 'aws-amplify'
 import {
   confirmSignUp,
@@ -14,659 +14,27 @@ import {
 } from 'aws-amplify/auth'
 import { generateClient } from 'aws-amplify/data'
 import { getUrl, uploadData } from 'aws-amplify/storage'
-import { Users, FileText, MessageSquare, ShieldAlert } from 'lucide-react'
 import Write from './Write'
 import outputs from '../amplify_outputs.json'
 import cloudTechIcon from './assets/cloud-tech.svg'
+import PostPreviewCard from './components/PostPreviewCard'
+import FullPostView from './components/FullPostView'
+import ProfilePage from './views/ProfilePage'
+import AdminPanel from './views/AdminPanel'
+import {
+  toStorageSafeName,
+  deriveFriendlyUserName,
+  toTitleCaseName,
+  deriveCoverMedia,
+  parseContentBlocks,
+  stripReadableText,
+  isOwnedByCurrentUser,
+} from './utils/richText'
 
 Amplify.configure(outputs)
 const client = generateClient()
 window.client = client
 const ADMIN_EMAILS = ['reddimani14@gmail.com']
-
-function toStorageSafeName(name) {
-  return name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '')
-}
-
-function toTitleCaseName(text) {
-  return String(text || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-function deriveFriendlyUserName(user, attrs) {
-  const explicitName = toTitleCaseName(attrs?.name)
-  if (explicitName) return explicitName
-
-  const given = toTitleCaseName(attrs?.given_name)
-  const family = toTitleCaseName(attrs?.family_name)
-  const full = `${given} ${family}`.trim()
-  if (full) return full
-
-  const email = String(attrs?.email || '')
-  if (email.includes('@')) {
-    const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim()
-    const fromEmail = toTitleCaseName(localPart)
-    if (fromEmail) return fromEmail
-  }
-
-  const username = String(user?.username || '')
-  if (/^google[_-]/i.test(username)) return 'Google User'
-  return toTitleCaseName(username) || 'User'
-}
-
-function buildReadableParagraphs(rawText) {
-  const text = (rawText || '').replace(/\r\n/g, '\n').trim()
-  if (!text) return []
-
-  const manualParagraphs = text
-    .split(/\n\s*\n/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-  if (manualParagraphs.length > 1) return manualParagraphs
-
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-  if (sentences.length <= 3) return [text]
-
-  const grouped = []
-  for (let i = 0; i < sentences.length; i += 3) {
-    grouped.push(sentences.slice(i, i + 3).join(' '))
-  }
-  return grouped
-}
-
-function sanitizeHandTagsForRender(text) {
-  let next = String(text || '')
-  next = next.replace(/\[(\/?)hand\]/g, (_, slash) => `[${slash}hand1]`)
-
-  const re = /\[(\/?)hand(10|[1-9])\]/g
-  const chunks = []
-  const stack = []
-  let last = 0
-  let m
-  while ((m = re.exec(next)) !== null) {
-    chunks.push(next.slice(last, m.index))
-    const closing = m[1] === '/'
-    const style = `hand${m[2]}`
-    if (!closing) {
-      const marker = { style, text: m[0], keep: true }
-      chunks.push(marker)
-      stack.push(marker)
-    } else if (stack.length && stack[stack.length - 1].style === style) {
-      stack.pop()
-      chunks.push(m[0])
-    }
-    last = re.lastIndex
-  }
-  chunks.push(next.slice(last))
-  stack.forEach((marker) => {
-    marker.keep = false
-  })
-  return chunks
-    .map((part) => (typeof part === 'string' ? part : part.keep ? part.text : ''))
-    .join('')
-}
-
-function renderInlineRichText(text, keyPrefix = 'rt') {
-  const source = sanitizeHandTagsForRender(text)
-  if (!source) return null
-
-  const patterns = [
-    {
-      re: /\[color=([#a-zA-Z0-9(),.\s%-]+)\]([\s\S]*?)\[\/color\]/,
-      render: (match, children, key) => (
-        <span key={key} style={{ color: match[1].trim() }}>
-          {children}
-        </span>
-      ),
-    },
-    {
-      re: /\[bg=([#a-zA-Z0-9(),.\s%-]+)\]([\s\S]*?)\[\/bg\]/,
-      render: (match, children, key) => (
-        <span key={key} style={{ background: match[1].trim(), padding: '0 2px', borderRadius: '4px' }}>
-          {children}
-        </span>
-      ),
-    },
-    {
-      re: /\[(hand(?:10|[1-9])?)\]([\s\S]*?)\[\/\1\]/,
-      render: (match, children, key) => (
-        <span key={key} className={match[1] === 'hand' ? 'hand1' : match[1]}>
-          {children}
-        </span>
-      ),
-    },
-    {
-      re: /\*\*([^*]+)\*\*/,
-      render: (_match, children, key) => <strong key={key}>{children}</strong>,
-    },
-    {
-      re: /_([^_]+)_/,
-      render: (_match, children, key) => <em key={key}>{children}</em>,
-    },
-  ]
-
-  for (let i = 0; i < patterns.length; i += 1) {
-    const { re, render } = patterns[i]
-    const m = source.match(re)
-    if (!m || m.index === undefined) continue
-    const start = m.index
-    const end = start + m[0].length
-    const before = source.slice(0, start)
-    const after = source.slice(end)
-    const inner = m[2] ?? m[1]
-    return [
-      ...(before ? renderInlineRichText(before, `${keyPrefix}-b-${i}`) : []),
-      render(m, renderInlineRichText(inner, `${keyPrefix}-m-${i}`), `${keyPrefix}-v-${i}`),
-      ...(after ? renderInlineRichText(after, `${keyPrefix}-a-${i}`) : []),
-    ]
-  }
-
-  return [source]
-}
-
-function sanitizePublishedHtml(html) {
-  let next = String(html || '')
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-    .replace(/javascript:/gi, '')
-
-  // Normalize legacy <font color="..."> tags safely using DOM if available
-  if (typeof document !== 'undefined') {
-    const root = document.createElement('div')
-    root.innerHTML = next
-    root.querySelectorAll('font').forEach((el) => {
-      const span = document.createElement('span')
-      span.innerHTML = el.innerHTML
-      if (el.color) span.style.color = el.color
-      if (el.getAttribute('style')) {
-        span.style.cssText += ';' + el.getAttribute('style')
-      }
-      if (el.size) span.style.fontSize = el.size
-      if (el.face) span.style.fontFamily = el.face
-      el.replaceWith(span)
-    })
-    next = root.innerHTML
-  } else {
-    // Basic fallback for SSR
-    next = next.replace(
-      /<font[^>]*color=(['"]?)([^"']+)\1[^>]*>([\s\S]*?)<\/font>/gi,
-      '<span style="color:$2">$3</span>',
-    )
-  }
-
-  return next
-}
-
-function isLikelyHtmlContent(content) {
-  const source = String(content || '').trim()
-  if (!source) return false
-  return /<(p|div|span|strong|em|b|i|u|mark|font|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(source)
-}
-
-function renderRichTitle(title, keyPrefix = 'title') {
-  const source = String(title || '')
-  if (!source.trim()) return null
-  if (isLikelyHtmlContent(source)) {
-    return (
-      <span
-        className="rich-title"
-        dangerouslySetInnerHTML={{ __html: sanitizePublishedHtml(source) }}
-      />
-    )
-  }
-  return renderInlineRichText(source, keyPrefix)
-}
-
-function renderStyledTextBlock(text, keyPrefix = 'txt') {
-  const lines = String(text || '').split('\n')
-  const blocks = []
-  let paraLines = []
-  let listMode = null
-  let listStart = 1
-  let listItems = []
-
-  const flushParagraph = (suffix) => {
-    if (!paraLines.length) return
-    const paragraphText = paraLines.join('\n')
-    blocks.push(
-      <p key={`${keyPrefix}-p-${suffix}`} style={{ whiteSpace: 'pre-wrap' }}>
-        {renderInlineRichText(paragraphText, `${keyPrefix}-p-${suffix}`)}
-      </p>,
-    )
-    paraLines = []
-  }
-
-  const flushList = (suffix) => {
-    if (!listItems.length || !listMode) return
-    if (listMode === 'ol') {
-      blocks.push(
-        <ol key={`${keyPrefix}-ol-${suffix}`} start={listStart}>
-          {listItems.map((item, idx) => (
-            <li key={`${keyPrefix}-oli-${suffix}-${idx}`}>
-              {renderInlineRichText(item, `${keyPrefix}-oli-${suffix}-${idx}`)}
-            </li>
-          ))}
-        </ol>,
-      )
-    } else {
-      blocks.push(
-        <ul key={`${keyPrefix}-ul-${suffix}`}>
-          {listItems.map((item, idx) => (
-            <li key={`${keyPrefix}-uli-${suffix}-${idx}`}>
-              {renderInlineRichText(item, `${keyPrefix}-uli-${suffix}-${idx}`)}
-            </li>
-          ))}
-        </ul>,
-      )
-    }
-    listMode = null
-    listItems = []
-  }
-
-  lines.forEach((rawLine, index) => {
-    const line = rawLine.trimEnd()
-    if (!line.trim()) {
-      flushParagraph(index)
-      flushList(index)
-      return
-    }
-
-    const ordered = line.match(/^\s*(\d+)[.)]\s+(.+)$/)
-    const unordered = line.match(/^\s*([-*•●◦○])\s+(.+)$/)
-    if (ordered || unordered) {
-      flushParagraph(index)
-      const nextMode = ordered ? 'ol' : 'ul'
-      if (listMode && listMode !== nextMode) flushList(index)
-      if (!listMode) {
-        listMode = nextMode
-        listStart = ordered ? Number(ordered[1]) || 1 : 1
-      }
-      listItems.push((ordered ? ordered[2] : unordered[2]).trim())
-      return
-    }
-
-    if (listMode) flushList(index)
-
-    const h3 = line.match(/^###\s+(.+)/)
-    const h2 = line.match(/^##\s+(.+)/)
-    const h1 = line.match(/^#\s+(.+)/)
-    if (h1 || h2 || h3) {
-      flushParagraph(index)
-      flushList(index)
-      const headingText = (h1?.[1] || h2?.[1] || h3?.[1] || '').trim()
-      const className = h1 ? 'rich-h1' : h2 ? 'rich-h2' : 'rich-h3'
-      blocks.push(
-        <div className={className} key={`${keyPrefix}-h-${index}`}>
-          {renderInlineRichText(headingText, `${keyPrefix}-h-${index}`)}
-        </div>,
-      )
-      return
-    }
-
-    paraLines.push(line)
-  })
-
-  flushParagraph('last')
-  flushList('last')
-  return blocks
-}
-
-const INLINE_MEDIA_RE = /^\[\[(img|vid):(.+)\]\]$/
-const MD_IMAGE_RE = /^!\[[^\]]*]\(([^)]+)\)$/
-
-function codeLineScore(line) {
-  const trimmed = (line || '').trim()
-  if (!trimmed) return 0
-  let score = 0
-
-  if (/^<\/?[a-zA-Z][\w:-]*[^>]*>$/.test(trimmed) || /^<!doctype/i.test(trimmed)) score += 3
-  if (/^<([a-zA-Z][\w:-]*)\b[^>]*>.*<\/\1>$/.test(trimmed)) score += 3
-  if (/^(import|export|const|let|var|function|class|return|def)\b/.test(trimmed)) score += 3
-  if (/^(if|for|while|switch)\s*\(/.test(trimmed)) score += 3
-  if (/=>|[{}()[\]]/.test(trimmed)) score += 1
-  if (/;\s*$/.test(trimmed)) score += 1
-  if (/^\s*["'][^"']+["']\s*:\s*/.test(trimmed)) score += 2
-  if (/^(\/\/|\/\*|\*\/)/.test(trimmed)) score += 2
-  if (/^[\w.-]+\.(tf|tfvars|js|jsx|ts|tsx|py|java|go|rb|php|json|yml|yaml|xml|html|css|sh)\b/.test(trimmed)) score += 2
-  if (/^[|`~\-_/\\]{2,}/.test(trimmed) || /[|`~]{2,}/.test(trimmed)) score += 2
-
-  return score
-}
-
-function isCodeContinuationLine(line) {
-  const trimmed = (line || '').trim()
-  if (!trimmed) return true
-  if (codeLineScore(line) >= 2) return true
-  if (/^<\/?[a-zA-Z][\w:-]*[^>]*>/.test(trimmed)) return true
-  if (/^<([a-zA-Z][\w:-]*)\b[^>]*>.*<\/\1>$/.test(trimmed)) return true
-  if (/=>|[{()}[\];]/.test(trimmed)) return true
-  return false
-}
-
-function splitMixedTextIntoBlocks(text) {
-  const lines = (text || '').split('\n')
-  const blocks = []
-  let textBuffer = []
-
-  const flushText = () => {
-    const value = textBuffer.join('\n').trim()
-    if (value) blocks.push({ type: 'text', value })
-    textBuffer = []
-  }
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]
-    const score = codeLineScore(line)
-
-    if (!line.trim() || score < 3) {
-      // If this line starts with an HTML tag, treat it as an html block not plain text
-      if (/^<(h[1-6]|div|p|ul|ol|section|article|blockquote|table|figure|span|strong|em|font|mark)\b/i.test(line.trim())) {
-        flushText()
-        blocks.push({ type: 'html', value: line })
-        continue
-      }
-      textBuffer.push(line)
-      continue
-    }
-
-    let j = i
-    let nonEmptyCodeLines = 0
-    let strongLineFound = false
-    let totalScore = 0
-
-    while (j < lines.length) {
-      const current = lines[j]
-      const currentScore = codeLineScore(current)
-      if (!isCodeContinuationLine(current)) break
-      if (!current.trim()) {
-        j += 1
-        continue
-      }
-      nonEmptyCodeLines += 1
-      totalScore += currentScore
-      if (currentScore >= 4) strongLineFound = true
-      j += 1
-    }
-
-    const avgScore = nonEmptyCodeLines ? totalScore / nonEmptyCodeLines : 0
-    const shouldTreatAsCode =
-      nonEmptyCodeLines >= 2
-        ? strongLineFound || avgScore >= 2.8
-        : nonEmptyCodeLines === 1 && strongLineFound
-    if (!shouldTreatAsCode) {
-      textBuffer.push(line)
-      continue
-    }
-
-    flushText()
-    const code = lines.slice(i, j).join('\n').trimEnd()
-    if (code) blocks.push({ type: 'code', lang: 'auto', code })
-    i = j - 1
-  }
-
-  flushText()
-  return blocks
-}
-
-function parseContentBlocks(content) {
-  if (isLikelyHtmlContent(content)) {
-    return [{ type: 'html', value: sanitizePublishedHtml(content) }]
-  }
-
-  const lines = (content || '').split('\n')
-  const blocks = []
-  let textBuffer = []
-
-  const flushText = () => {
-    const text = textBuffer.join('\n')
-    splitMixedTextIntoBlocks(text).forEach((block) => blocks.push(block))
-    textBuffer = []
-  }
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]
-    const trimmed = line.trim()
-
-    if (trimmed.toLowerCase().startsWith('codestart')) {
-      flushText()
-      const lang = trimmed.slice('codestart'.length).trim().toLowerCase() || 'auto'
-      const codeLines = []
-      i += 1
-      while (i < lines.length && lines[i].trim().toLowerCase() !== 'codeend') {
-        codeLines.push(lines[i])
-        i += 1
-      }
-      const code = codeLines.join('\n').trimEnd()
-      if (code) {
-        blocks.push({ type: 'code', lang, code })
-      }
-      continue
-    }
-
-    if (trimmed.startsWith('```')) {
-      flushText()
-      const lang = trimmed.slice(3).trim().toLowerCase()
-      const codeLines = []
-      i += 1
-      while (i < lines.length && !lines[i].trim().startsWith('```')) {
-        codeLines.push(lines[i])
-        i += 1
-      }
-      const code = codeLines.join('\n').trim()
-      if (code) {
-        if (lang === 'mermaid') {
-          blocks.push({ type: 'mermaid', code })
-        } else {
-          blocks.push({ type: 'code', lang: lang || 'text', code })
-        }
-      }
-      continue
-    }
-
-    const match = trimmed.match(INLINE_MEDIA_RE)
-    if (match) {
-      flushText()
-      blocks.push({ type: match[1] === 'img' ? 'image' : 'video', value: match[2].trim() })
-    } else if (MD_IMAGE_RE.test(trimmed)) {
-      flushText()
-      const mdSrc = trimmed.match(MD_IMAGE_RE)?.[1]?.trim() || ''
-      if (mdSrc) {
-        const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(mdSrc)
-        blocks.push({ type: isVideo ? 'video' : 'image', value: mdSrc })
-      }
-    } else {
-      textBuffer.push(line)
-    }
-  }
-  flushText()
-  return blocks
-}
-
-function deriveCoverMedia(content) {
-  if (isLikelyHtmlContent(content)) {
-    const source = String(content || '')
-    const img = source.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1]
-    if (img) {
-      return {
-        mediaType: 'image',
-        mediaUrl: img.startsWith('media/') ? null : img,
-        mediaPath: img.startsWith('media/') ? img : null,
-      }
-    }
-    const vid =
-      source.match(/<video[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1] ||
-      source.match(/<source[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1]
-    if (vid) {
-      return {
-        mediaType: 'video',
-        mediaUrl: vid.startsWith('media/') ? null : vid,
-        mediaPath: vid.startsWith('media/') ? vid : null,
-      }
-    }
-    return { mediaType: null, mediaUrl: null, mediaPath: null }
-  }
-
-  const firstMedia = parseContentBlocks(content).find(
-    (block) => block.type === 'image' || block.type === 'video',
-  )
-  if (!firstMedia) {
-    return { mediaType: null, mediaUrl: null, mediaPath: null }
-  }
-  const isPath = firstMedia.value.startsWith('media/')
-  return {
-    mediaType: firstMedia.type === 'image' ? 'image' : 'video',
-    mediaUrl: isPath ? null : firstMedia.value,
-    mediaPath: isPath ? firstMedia.value : null,
-  }
-}
-
-function stripReadableText(content) {
-  if (isLikelyHtmlContent(content)) {
-    return String(content || '')
-      .replace(/<pre[\s\S]*?<\/pre>/gi, ' ')
-      .replace(/<code[\s\S]*?<\/code>/gi, ' ')
-      .replace(/<img[^>]*>/gi, ' ')
-      .replace(/<video[\s\S]*?<\/video>/gi, ' ')
-      .replace(/<source[^>]*>/gi, ' ')
-      .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-  }
-
-  return (content || '')
-    .replace(/\[\[(img|vid):.+?\]\]/g, ' ')
-    .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[^\n]*\n?/g, ' '))
-    .replace(/^\s*codestart[^\n]*$/gim, ' ')
-    .replace(/^\s*codeend\s*$/gim, ' ')
-}
-
-function estimateReadMinutes(content) {
-  const words = stripReadableText(content)
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean).length
-  return Math.max(1, Math.ceil(words / 220))
-}
-
-function skillMeta(level) {
-  const normalized = String(level || '').toLowerCase()
-  if (normalized === 'advanced') {
-    return { label: 'Advanced', icon: '\u{1F534}', cls: 'skill-advanced' }
-  }
-  if (normalized === 'intermediate') {
-    return { label: 'Intermediate', icon: '\u{1F7E1}', cls: 'skill-intermediate' }
-  }
-  return { label: 'Beginner friendly', icon: '\u{1F7E2}', cls: 'skill-beginner' }
-}
-
-function progressMeta(status) {
-  const normalized = String(status || '').toLowerCase()
-  if (normalized === 'mastered') return { label: 'Mastered', icon: '\u2B50', cls: 'progress-mastered' }
-  if (normalized === 'revisit') return { label: 'Revisit', icon: '\u{1F516}', cls: 'progress-revisit' }
-  return { label: 'Read', icon: '\u2705', cls: 'progress-read' }
-}
-
-function detectCodeRuntimeHint(lang, code) {
-  const lower = String(lang || '').toLowerCase()
-  const sample = String(code || '').trim()
-  if (lower.includes('bash') || lower.includes('shell') || lower.includes('sh')) {
-    return {
-      windows: 'PowerShell: .\\script.ps1 or bash script.sh',
-      linux: 'bash script.sh',
-      mac: 'bash script.sh',
-    }
-  }
-  if (lower.includes('python') || /^def\s+\w+\(/m.test(sample)) {
-    return {
-      windows: 'python main.py',
-      linux: 'python3 main.py',
-      mac: 'python3 main.py',
-    }
-  }
-  if (lower.includes('javascript') || lower.includes('js') || /console\.log\(/.test(sample)) {
-    return {
-      windows: 'node app.js',
-      linux: 'node app.js',
-      mac: 'node app.js',
-    }
-  }
-  if (lower.includes('typescript') || /\.ts\b/m.test(sample)) {
-    return {
-      windows: 'npx tsx app.ts',
-      linux: 'npx tsx app.ts',
-      mac: 'npx tsx app.ts',
-    }
-  }
-  if (lower.includes('terraform') || /^provider\s+"/m.test(sample) || /^resource\s+"/m.test(sample)) {
-    return {
-      windows: 'terraform init && terraform plan',
-      linux: 'terraform init && terraform plan',
-      mac: 'terraform init && terraform plan',
-    }
-  }
-  return null
-}
-
-function contentToSpeechText(content) {
-  const plain = stripReadableText(content || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return plain
-}
-
-function isOwnedByCurrentUser(currentUser, record) {
-  if (!currentUser || !record) return false
-  const userId = String(currentUser.userId || '')
-  const username = String(currentUser.username || '')
-  const authorSub = String(record.authorSub || '')
-  if (authorSub && (authorSub === userId || authorSub === username)) return true
-
-  const owner = String(record.owner || '')
-  if (!owner) return false
-  const ownerParts = owner.split('::').filter(Boolean)
-  const candidates = [owner, ...ownerParts]
-  return candidates.some((value) => value === userId || value === username)
-}
-
-function isLikelyCode(text) {
-  const sample = (text || '').trim()
-  if (!sample) return false
-  const lines = sample.split('\n')
-  const signalPatterns = [
-    /\b(import|export|const|let|var|function|class|return|await|async)\b/,
-    /\b(def|public|private|void|if|else|for|while|try|catch)\b/,
-    /\b(from\s+['"`].+['"`])\b/,
-    /=>|[{()}[\];]/,
-    /^\s*[.#]?[a-zA-Z0-9_-]+\s*:\s*.+$/m,
-  ]
-
-  const signalHits = signalPatterns.reduce(
-    (count, re) => count + (re.test(sample) ? 1 : 0),
-    0,
-  )
-
-  const punctuation = (sample.match(/[{}()[\];=<>]/g) || []).length
-  const likelyByDensity = punctuation >= 5 && sample.length <= 500
-
-  if (lines.length >= 2) {
-    return signalHits >= 1 || likelyByDensity
-  }
-
-  return signalHits >= 2 || likelyByDensity
-}
-
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [userAttrs, setUserAttrs] = useState({ email: '', name: '' })
@@ -1180,8 +548,8 @@ function App() {
 
     postsBySub.forEach((count, sub) => {
       const badges = []
-      if (count >= 5) badges.push({ id: 'prolific', label: 'Prolific Writer', icon: '✍️' })
-      if ((likesBySub.get(sub) || 0) >= 50) badges.push({ id: 'top', label: 'Top Contributor', icon: '🎯' })
+      if (count >= 5) badges.push({ id: 'prolific', label: 'Prolific Writer', icon: 'âœï¸' })
+      if ((likesBySub.get(sub) || 0) >= 50) badges.push({ id: 'top', label: 'Top Contributor', icon: 'ðŸŽ¯' })
       if (badges.length > 0) badgesMap.set(sub, badges)
     })
 
@@ -1507,9 +875,9 @@ function App() {
 
     // Provide fun visual feedback
     const msgs = {
-      confusing: '🤯 Thanks for the feedback! We\'ll try to make it clearer.',
-      aha: '💡 Awesome! Glad it clicked for you.',
-      useful: '🔥 Fantastic! Thanks for reading.'
+      confusing: 'ðŸ¤¯ Thanks for the feedback! We\'ll try to make it clearer.',
+      aha: 'ðŸ’¡ Awesome! Glad it clicked for you.',
+      useful: 'ðŸ”¥ Fantastic! Thanks for reading.'
     }
     showToast(msgs[reactionCode] || 'Feedback received.')
   }
@@ -2218,7 +1586,7 @@ function App() {
                 className="theme-toggle-btn"
                 onClick={() => setTheme(theme === 'interactive-canvas' ? 'crazy' : 'interactive-canvas')}
               >
-                {theme === 'interactive-canvas' ? '🌞' : '👾'}
+                {theme === 'interactive-canvas' ? '\ud83c\udf1e' : '\ud83d\udc7e'}
               </button>
 
               <div className="notification-wrap" ref={notificationWrapRef}>
@@ -2334,7 +1702,7 @@ function App() {
                 className="theme-toggle-btn"
                 onClick={() => setTheme(theme === 'interactive-canvas' ? 'crazy' : 'interactive-canvas')}
               >
-                {theme === 'interactive-canvas' ? '🌞' : '👾'}
+                {theme === 'interactive-canvas' ? '\ud83c\udf1e' : '\ud83d\udc7e'}
               </button>
               <button
                 className="ghost"
@@ -2415,415 +1783,54 @@ function App() {
         ) : null}
 
         {showProfile && currentUser ? (
-          <section ref={profileRef} className="card profile-page" style={{ minHeight: '600px', border: 'none', background: 'transparent', boxShadow: 'none' }}>
-            <div className="profile-tab-content" style={{ marginTop: '20px' }}>
-              {profileTab === 'posts' && (
-                <div className="profile-post-list">
-                  <h3 style={{ marginTop: 0 }}>My Posts</h3>
-                  {posts.filter(p => p.authorSub === currentUser.userId).length === 0 ? <p>You haven't published any posts yet.</p> : null}
-                  {posts.filter(p => p.authorSub === currentUser.userId).map(p => (
-                    <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
-                      <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
-                      <small>{new Date(p.createdAt).toLocaleDateString()} • {p.likes.length} Likes • {p.comments.length} Comments</small>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {profileTab === 'saved' && (
-                <div className="profile-post-list">
-                  <h3 style={{ marginTop: 0 }}>Saved Articles</h3>
-                  {posts.filter(p => savedPostIds.includes(p.id)).length === 0 ? <p>You haven't saved any posts yet.</p> : null}
-                  {posts.filter(p => savedPostIds.includes(p.id)).map(p => (
-                    <div key={p.id} className="card preview-card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => { setShowProfile(false); setActivePostId(p.id); setPostQueryParam(p.id); }}>
-                      <h4 style={{ margin: '0 0 8px 0' }}>{stripReadableText(p.title).slice(0, 50)}...</h4>
-                      <small>By {p.authorName} • {new Date(p.createdAt).toLocaleDateString()}</small>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {profileTab === 'messages' && (
-                <div className="profile-messages">
-                  <h3 style={{ marginTop: 0 }}>Community Messages</h3>
-                  <div className="message-history" style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {communityMessages.filter(m => m.userSub === currentUser.userId).length === 0 ? <p>No messages sent to admin yet.</p> : null}
-                    {communityMessages.filter(m => m.userSub === currentUser.userId).map(m => (
-                      <div key={m.id} className="card" style={{ padding: '16px', border: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <strong style={{ fontSize: '1.1rem' }}>{m.subject}</strong>
-                          <span className={`status-badge ${m.status.toLowerCase()}`}>{m.status}</span>
-                        </div>
-                        <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>{m.text}</p>
-                        {m.replyText && (
-                          <div style={{ padding: '12px', background: 'var(--bg-shell)', borderRadius: '6px', borderLeft: '3px solid var(--accent)' }}>
-                            <strong style={{ fontSize: '0.9rem' }}>Admin Reply:</strong>
-                            <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>{m.replyText}</p>
-                            <small style={{ display: 'block', marginTop: '8px', opacity: 0.7 }}>{new Date(m.repliedAt).toLocaleString()}</small>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <form className="card" style={{ border: '2px solid var(--border)' }} onSubmit={submitCommunityMessage}>
-                    <h4 style={{ marginTop: 0 }}>Send a new message to Admin</h4>
-                    <input placeholder="Subject" value={newMessageSubject} onChange={e => setNewMessageSubject(e.target.value)} required style={{ marginBottom: '12px' }} />
-                    <textarea rows="3" placeholder="How can we help?" value={newMessageText} onChange={e => setNewMessageText(e.target.value)} required style={{ marginBottom: '12px' }} />
-                    <button type="submit" disabled={!newMessageSubject || !newMessageText}>Send Message</button>
-                  </form>
-                </div>
-              )}
-              {profileTab === 'settings' && (
-                <form className="profile-settings-form" onSubmit={(e) => { e.preventDefault(); saveProfile(e); }}>
-                  <h3 style={{ marginTop: 0 }}>Profile & Account Setup</h3>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                    <div>
-                      <label>Username *</label>
-                      <input value={profileForm.username} onChange={e => setProfileForm(prev => ({ ...prev, username: e.target.value }))} required />
-                    </div>
-                    <div>
-                      <label>Email Address *</label>
-                      <input type="email" value={profileForm.email} onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))} required />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                    <div>
-                      <label>Full Name</label>
-                      <input placeholder="e.g. John Doe" value={profileForm.fullName} onChange={e => setProfileForm(prev => ({ ...prev, fullName: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label>Profession / Title</label>
-                      <input placeholder="e.g. Cloud Architect" value={profileForm.profession} onChange={e => setProfileForm(prev => ({ ...prev, profession: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                    <div>
-                      <label>LinkedIn URL</label>
-                      <input type="url" placeholder="https://linkedin.com/in/..." value={profileForm.linkedIn} onChange={e => setProfileForm(prev => ({ ...prev, linkedIn: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label>Years of Experience</label>
-                      <input type="number" min="0" placeholder="e.g. 5" value={profileForm.yearsOfExperience} onChange={e => setProfileForm(prev => ({ ...prev, yearsOfExperience: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                    <div>
-                      <label>Credly / Certification URL</label>
-                      <input type="url" placeholder="https://www.credly.com/badges/..." value={profileForm.credlyUrl} onChange={e => setProfileForm(prev => ({ ...prev, credlyUrl: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <hr style={{ margin: '32px 0 16px 0', borderColor: 'var(--border)' }} />
-                  <h4 style={{ marginTop: 0 }}>API Tokens for Cross-Posting</h4>
-                  <p style={{ fontSize: '0.9rem', marginBottom: '16px', opacity: 0.8 }}>Securely store your tokens to instantly publish blogs across Dev.to, Hashnode, Medium, and LinkedIn.</p>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                    <div>
-                      <label>Dev.to API Key</label>
-                      <input type="password" placeholder="Dev.to Token" value={profileForm.devToToken} onChange={e => setProfileForm(prev => ({ ...prev, devToToken: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label>Hashnode PAT</label>
-                      <input type="password" placeholder="Hashnode Token" value={profileForm.hashnodeToken} onChange={e => setProfileForm(prev => ({ ...prev, hashnodeToken: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
-                    <div>
-                      <label>Medium Integration Token</label>
-                      <input type="password" placeholder="Medium Token" value={profileForm.mediumToken} onChange={e => setProfileForm(prev => ({ ...prev, mediumToken: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label>LinkedIn Access Token</label>
-                      <input type="password" placeholder="LinkedIn Access Token" value={profileForm.linkedInToken} onChange={e => setProfileForm(prev => ({ ...prev, linkedInToken: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label>LinkedIn App Client ID</label>
-                      <input type="text" placeholder="e.g. 865kzlkgfobq9k (from Auth tab in Developer Portal)" value={profileForm.linkedInClientId} onChange={e => setProfileForm(prev => ({ ...prev, linkedInClientId: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label>LinkedIn App Client Secret</label>
-                      <input type="password" placeholder="Primary Client Secret (from Auth tab in Developer Portal)" value={profileForm.linkedInClientSecret} onChange={e => setProfileForm(prev => ({ ...prev, linkedInClientSecret: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <label>Bio (Short Introduction)</label>
-                  <textarea rows={3} placeholder="Tell the community about yourself..." value={profileForm.bio} onChange={e => setProfileForm(prev => ({ ...prev, bio: e.target.value }))} style={{ marginBottom: '12px', marginTop: '16px' }} />
-                  <div className="button-row" style={{ marginTop: '16px' }}>
-                    <button type="submit">Update Profile Details</button>
-                  </div>
-
-                  <hr style={{ margin: '32px 0', borderColor: 'var(--border)' }} />
-                  <div className="danger-zone card" style={{ borderColor: '#ef4444' }}>
-                    <h4 style={{ color: '#ef4444', marginTop: 0 }}> Danger Zone</h4>
-                    <p style={{ fontSize: '0.9rem' }}>Permanently delete your account and all associated data.</p>
-                    <button type="button" className="danger" onClick={() => setShowDeleteWarning(true)}>Request Account Deletion</button>
-                  </div>
-                </form>
-              )}
-            </div>
-          </section>
+          <ProfilePage
+            currentUser={currentUser}
+            posts={allDisplayPosts}
+            savedPostIds={savedPostIds}
+            communityMessages={communityMessages}
+            newMessageSubject={newMessageSubject}
+            newMessageText={newMessageText}
+            setNewMessageSubject={setNewMessageSubject}
+            setNewMessageText={setNewMessageText}
+            submitCommunityMessage={submitCommunityMessage}
+            profileTab={profileTab}
+            profileForm={profileForm}
+            setProfileForm={setProfileForm}
+            saveProfile={saveProfile}
+            showDeleteWarning={showDeleteWarning}
+            setShowDeleteWarning={setShowDeleteWarning}
+            deletionReason={deletionReason}
+            setDeletionReason={setDeletionReason}
+            requestDeletion={requestDeletion}
+            onOpenPost={(id) => { setShowProfile(false); setActivePostId(id); setPostQueryParam(id) }}
+            profileRef={profileRef}
+          />
         ) : null}
 
         {showAdminPanel && isAdmin ? (
-          <section className="card admin-panel">
-            <h3>Admin Dashboard</h3>
-            <div className="admin-metrics">
-              <div className="admin-metric">
-                <small>Total Users (known)</small>
-                <strong>{cognitoUsers.length > 0 ? cognitoUsers.length : registeredUsers.length}</strong>
-              </div>
-              <div className="admin-metric">
-                <small>Total Posts</small>
-                <strong>{posts.length}</strong>
-              </div>
-              <div className="admin-metric">
-                <small>Total Comments</small>
-                <strong>{comments.length}</strong>
-              </div>
-              <div className="admin-metric">
-                <small>Blocked Users</small>
-                <strong>{blockedUserSubs.size}</strong>
-              </div>
-            </div>
-
-            <h4>Active Users Per Day (last 14 days)</h4>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Active Users</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeUsersByDay.map((item) => (
-                    <tr key={item.day}>
-                      <td>{item.day}</td>
-                      <td>{item.users}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="admin-tabs" style={{ marginBottom: '24px', display: 'flex', gap: '8px' }}>
-              <button className={`ghost ${adminTab === 'users' ? 'active-tab' : ''}`} onClick={() => setAdminTab('users')}>Users & Stats</button>
-              <button className={`ghost ${adminTab === 'messages' ? 'active-tab' : ''}`} onClick={() => setAdminTab('messages')}>Community Messages</button>
-            </div>
-
-            {adminTab === 'users' ? (
-              <div className="admin-section">
-                <h3>Registered Users</h3>
-                <div className="table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Profile ID</th>
-                        <th>Registration (IST)</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cognitoUsers.length === 0 ? <tr><td colSpan="7">No registered users found.</td></tr> : null}
-                      {cognitoUsers.map((u) => {
-                        const blocked = blockedUserSubs.has(u.sub)
-                        let formattedIST = '-'
-                        if (u.createdAt) {
-                          try {
-                            const d = new Date(u.createdAt)
-                            formattedIST = d.toLocaleString('en-IN', {
-                              timeZone: 'Asia/Kolkata',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: false
-                            })
-                          } catch (_) { }
-                        }
-                        return (
-                          <tr key={`reg-${u.sub}`}>
-                            <td>{u.name || 'User'}</td>
-                            <td>{u.email || '-'}</td>
-                            <td>{u.sub}</td>
-                            <td>{formattedIST}</td>
-                            <td>
-                              {blocked ? 'Blocked' : u.status === 'UNCONFIRMED' ? 'Unconfirmed' : u.status === 'EXTERNAL_PROVIDER' ? 'Google SSO' : 'Active'}
-                            </td>
-                            <td className="admin-actions">
-                              <button className="ghost" onClick={() => adminEditUser(u)}>Edit</button>
-                              <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>Password Reset</button>
-                              {blocked ? (
-                                <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>Unblock</button>
-                              ) : (
-                                <button className="danger" onClick={() => adminDeleteUser(u)}>Delete</button>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <h3 style={{ marginTop: '30px' }}>Active Content Creators (Posts/Comments/Likes)</h3>
-                <div className="table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Profile ID</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeUsers.length === 0 ? <tr><td colSpan="5">No active users.</td></tr> : null}
-                      {activeUsers.map((u) => {
-                        const blocked = blockedUserSubs.has(u.sub)
-                        return (
-                          <tr key={`act-${u.sub}`}>
-                            <td>{u.name || 'User'}</td>
-                            <td>{u.email || '-'}</td>
-                            <td>{u.sub}</td>
-                            <td>{blocked ? 'Blocked' : 'Active'}</td>
-                            <td className="admin-actions">
-                              <button className="ghost" onClick={() => adminTriggerPasswordReset(u)}>Reset Password</button>
-                              <button className="ghost" onClick={() => adminResetAccount(u)}>Reset Account</button>
-                              {blocked ? (
-                                <button className="ghost" onClick={() => setUserBlocked(u.sub, false)}>Unblock</button>
-                              ) : (
-                                <button className="danger" onClick={() => setUserBlocked(u.sub, true, 'Blocked by admin')}>Block</button>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <h4>Posts Moderation</h4>
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Title</th>
-                        <th>Author</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {posts.map((p) => (
-                        <tr key={p.id}>
-                          <td>{p.title}</td>
-                          <td>{p.authorName}</td>
-                          <td>{p.hidden ? 'Hidden' : 'Visible'}</td>
-                          <td className="admin-actions">
-                            <button className="ghost" onClick={() => togglePostHidden(p.id, !p.hidden)}>
-                              {p.hidden ? 'Unhide' : 'Hide'}
-                            </button>
-                            <button className="danger" onClick={() => deletePost(p.id)}>
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <h4>Comments Moderation</h4>
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Post</th>
-                        <th>Comment</th>
-                        <th>Author</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {comments.map((c) => (
-                        <tr key={c.id}>
-                          <td>{posts.find((p) => p.id === c.postId)?.title || 'Post'}</td>
-                          <td>{c.text}</td>
-                          <td>{c.authorName}</td>
-                          <td>
-                            <button className="danger" onClick={() => deleteComment(c.postId, c.id)}>
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
-
-            {adminTab === 'messages' ? (
-              <div className="admin-section">
-                <h3>Community Messages</h3>
-                <div className="table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>User</th>
-                        <th>Subject</th>
-                        <th>Message</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {communityMessages.length === 0 ? <tr><td colSpan="5">No messages yet.</td></tr> : null}
-                      {communityMessages.map((msg) => (
-                        <tr key={msg.id}>
-                          <td>{msg.userName}<br /><small>{msg.userSub}</small></td>
-                          <td><strong>{msg.subject}</strong><br /><small>{new Date(msg.createdAt).toLocaleDateString()}</small></td>
-                          <td style={{ maxWidth: '300px' }}>
-                            <p style={{ margin: 0, fontSize: '0.9rem' }}>{msg.text}</p>
-                            {msg.replyText && (
-                              <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg-card)', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
-                                <small><strong>Reply:</strong> {msg.replyText}</small>
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            <span className={`status-badge ${msg.status.toLowerCase()}`}>{msg.status}</span>
-                          </td>
-                          <td className="admin-actions">
-                            {msg.status !== 'RESOLVED' ? (
-                              <button className="ghost" onClick={() => {
-                                const reply = window.prompt(`Reply to ${msg.userName}:`)
-                                if (reply) replyToCommunityMessage(msg.id, reply)
-                              }}>Reply / Resolve</button>
-                            ) : null}
-                            <button className="danger" onClick={async () => {
-                              if (window.confirm('Delete this message?')) {
-                                await client.models.CommunityMessage.delete({ id: msg.id })
-                                refreshData()
-                              }
-                            }}>Delete</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
-          </section>
+          <AdminPanel
+            posts={allDisplayPosts}
+            comments={comments}
+            communityMessages={communityMessages}
+            cognitoUsers={cognitoUsers}
+            activeUsers={activeUsers}
+            registeredUsers={registeredUsers}
+            blockedUserSubs={blockedUserSubs}
+            activeUsersByDay={activeUsersByDay}
+            adminTab={adminTab}
+            setAdminTab={setAdminTab}
+            deletePost={deletePost}
+            deleteComment={deleteComment}
+            togglePostHidden={togglePostHidden}
+            setUserBlocked={setUserBlocked}
+            adminEditUser={adminEditUser}
+            adminTriggerPasswordReset={adminTriggerPasswordReset}
+            adminDeleteUser={adminDeleteUser}
+            adminResetAccount={adminResetAccount}
+            replyToCommunityMessage={replyToCommunityMessage}
+            client={client}
+            refreshData={refreshData}
+          />
         ) : null}
 
         {!showAdminPanel && (showComposer || editingPostId) && currentUser ? (
@@ -2843,79 +1850,84 @@ function App() {
             />
 
           </section>
-        ) : null}
+        ) : null
+        }
 
-        {!showAdminPanel && !showProfile && !activePost ? (
-          <section className="posts-section">
-            <div className="preview-grid">
-              {displayPosts.map((post, index) => (
-                <PostPreviewCard
-                  key={post.id}
-                  post={post}
-                  progressStatus={postProgressMap[post.id] || ''}
-                  featured={index === 0 && !searchQuery.trim()}
-                  saved={savedPostIds.includes(post.id)}
-                  currentUser={currentUser}
-                  isFollowing={followedAuthorSubs.includes(post.authorSub)}
-                  onToggleFollow={toggleFollowAuthor}
-                  resolveMediaSource={resolveMediaSource}
-                  userBadges={userBadgesBySub.get(post.authorSub) || []}
-                  onOpen={() => {
-                    setActivePostId(post.id)
-                    setPostQueryParam(post.id)
-                    setShowComposer(false)
-                    setEditingPostId(null)
-                  }}
-                />
-              ))}
-            </div>
-            {!displayPosts.length ? (
-              <div className="card empty-state">
-                <h3>No posts found</h3>
-                <p>Try a different search keyword or clear filters.</p>
+        {
+          !showAdminPanel && !showProfile && !activePost ? (
+            <section className="posts-section">
+              <div className="preview-grid">
+                {displayPosts.map((post, index) => (
+                  <PostPreviewCard
+                    key={post.id}
+                    post={post}
+                    progressStatus={postProgressMap[post.id] || ''}
+                    featured={index === 0 && !searchQuery.trim()}
+                    saved={savedPostIds.includes(post.id)}
+                    currentUser={currentUser}
+                    isFollowing={followedAuthorSubs.includes(post.authorSub)}
+                    onToggleFollow={toggleFollowAuthor}
+                    resolveMediaSource={resolveMediaSource}
+                    userBadges={userBadgesBySub.get(post.authorSub) || []}
+                    onOpen={() => {
+                      setActivePostId(post.id)
+                      setPostQueryParam(post.id)
+                      setShowComposer(false)
+                      setEditingPostId(null)
+                    }}
+                  />
+                ))}
               </div>
-            ) : null}
-          </section>
-        ) : null}
-        {!showAdminPanel && !showProfile && activePost ? (
-          <FullPostView
-            post={activePost}
-            currentUser={currentUser}
-            resolveMediaSource={resolveMediaSource}
-            onBack={() => {
-              setActivePostId(null)
-              setPostQueryParam('')
-            }}
-            onEdit={() => {
-              setEditingPostId(activePost.id)
-              setComposerStep('config')
-              setComposerConfig({
-                level: activePost.level || '', topic: activePost.topic || '',
-                postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
-              })
-              setShowComposer(true)
-              setActivePostId(null)
-              setPostQueryParam('')
-            }}
-            onDelete={() => deletePost(activePost.id)}
-            onTogglePostLike={() => togglePostLike(activePost.id)}
-            onToggleSavePost={() => toggleSavePost(activePost.id)}
-            saved={savedPostIds.includes(activePost.id)}
-            isFollowing={followedAuthorSubs.includes(activePost.authorSub)}
-            onToggleFollow={toggleFollowAuthor}
-            onShare={() => sharePost(activePost)}
-            onAddComment={addComment}
-            onUpdateComment={updateComment}
-            onDeleteComment={deleteComment}
-            onToggleCommentLike={toggleCommentLike}
-            progressStatus={postProgressMap[activePost.id] || ''}
-            onSetProgress={setPostProgress}
-            readerReaction={postReactionMap[activePost.id] || ''}
-            onSetReaction={setPostReaction}
-            userBadges={userBadgesBySub.get(activePost.authorSub) || []}
-          />
-        ) : null}
-      </main>
+              {!displayPosts.length ? (
+                <div className="card empty-state">
+                  <h3>No posts found</h3>
+                  <p>Try a different search keyword or clear filters.</p>
+                </div>
+              ) : null}
+            </section>
+          ) : null
+        }
+        {
+          !showAdminPanel && !showProfile && activePost ? (
+            <FullPostView
+              post={activePost}
+              currentUser={currentUser}
+              resolveMediaSource={resolveMediaSource}
+              onBack={() => {
+                setActivePostId(null)
+                setPostQueryParam('')
+              }}
+              onEdit={() => {
+                setEditingPostId(activePost.id)
+                setComposerStep('config')
+                setComposerConfig({
+                  level: activePost.level || '', topic: activePost.topic || '',
+                  postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
+                })
+                setShowComposer(true)
+                setActivePostId(null)
+                setPostQueryParam('')
+              }}
+              onDelete={() => deletePost(activePost.id)}
+              onTogglePostLike={() => togglePostLike(activePost.id)}
+              onToggleSavePost={() => toggleSavePost(activePost.id)}
+              saved={savedPostIds.includes(activePost.id)}
+              isFollowing={followedAuthorSubs.includes(activePost.authorSub)}
+              onToggleFollow={toggleFollowAuthor}
+              onShare={() => sharePost(activePost)}
+              onAddComment={addComment}
+              onUpdateComment={updateComment}
+              onDeleteComment={deleteComment}
+              onToggleCommentLike={toggleCommentLike}
+              progressStatus={postProgressMap[activePost.id] || ''}
+              onSetProgress={setPostProgress}
+              readerReaction={postReactionMap[activePost.id] || ''}
+              onSetReaction={setPostReaction}
+              userBadges={userBadgesBySub.get(activePost.authorSub) || []}
+            />
+          ) : null
+        }
+      </main >
 
       <footer className="site-footer">
         <p>
@@ -2930,28 +1942,30 @@ function App() {
         </p>
       </footer>
 
-      {showDeleteWarning && (
-        <div className="auth-overlay" onClick={() => setShowDeleteWarning(false)}>
-          <div className="card auth-modal" style={{ maxWidth: '500px', border: '2px solid #ef4444' }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ color: '#ef4444', marginTop: 0 }}>Request Account Deletion</h3>
-            <p style={{ margin: '12px 0' }}>
-              We're sorry to see you go. Deleting your account will permanently erase all your progress, posts, and saved articles.
-            </p>
-            <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Please let us know why you are leaving (Optional):</p>
-            <textarea
-              rows="3"
-              placeholder="Your feedback helps us improve..."
-              value={deletionReason}
-              onChange={(e) => setDeletionReason(e.target.value)}
-              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)', marginBottom: '24px' }}
-            />
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
-              <button type="button" className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
-              <button type="button" className="danger" onClick={requestDeletion}>Confirm Deletion</button>
+      {
+        showDeleteWarning && (
+          <div className="auth-overlay" onClick={() => setShowDeleteWarning(false)}>
+            <div className="card auth-modal" style={{ maxWidth: '500px', border: '2px solid #ef4444' }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ color: '#ef4444', marginTop: 0 }}>Request Account Deletion</h3>
+              <p style={{ margin: '12px 0' }}>
+                We're sorry to see you go. Deleting your account will permanently erase all your progress, posts, and saved articles.
+              </p>
+              <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Please let us know why you are leaving (Optional):</p>
+              <textarea
+                rows="3"
+                placeholder="Your feedback helps us improve..."
+                value={deletionReason}
+                onChange={(e) => setDeletionReason(e.target.value)}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)', marginBottom: '24px' }}
+              />
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <button type="button" className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
+                <button type="button" className="danger" onClick={requestDeletion}>Confirm Deletion</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {
         showAuth ? (
@@ -3086,7 +2100,7 @@ function App() {
         showDeleteWarning && (
           <div className="auth-overlay delete-warning-overlay" style={{ zIndex: 3000 }}>
             <div className="card modal-warning" style={{ border: '2px solid #ef4444' }}>
-              <h3 style={{ color: '#ef4444', marginTop: 0 }}>⚠️ Delete Account</h3>
+              <h3 style={{ color: '#ef4444', marginTop: 0 }}>âš ï¸ Delete Account</h3>
               <p>Are you sure you want to permanently delete your account?</p>
               <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>This action will permanently erase your posts, comments, progress, and profile information.</p>
               <p style={{ fontSize: '0.9rem', background: 'var(--bg-shell)', padding: '12px', borderRadius: '6px' }}>
@@ -3110,830 +2124,6 @@ function App() {
   )
 }
 
-function RichHtml({ html, resolveMediaSource }) {
-  const [resolvedHtml, setResolvedHtml] = useState(html)
-
-  useEffect(() => {
-    let active = true
-    const resolveAll = async () => {
-      if (typeof DOMParser === 'undefined') return
-      const doc = new DOMParser().parseFromString(html, 'text/html')
-      const mediaElements = Array.from(doc.querySelectorAll('[src^="media/"]'))
-
-      if (mediaElements.length === 0) {
-        if (active) setResolvedHtml(html)
-        return
-      }
-
-      await Promise.all(
-        mediaElements.map(async (el) => {
-          const url = await resolveMediaSource(el.getAttribute('src'))
-          if (url) el.setAttribute('src', url)
-        })
-      )
-
-      if (active) setResolvedHtml(doc.body.innerHTML)
-    }
-    resolveAll()
-    return () => { active = false }
-  }, [html, resolveMediaSource])
-
-  return (
-    <div
-      className="rich-html"
-      dangerouslySetInnerHTML={{ __html: resolvedHtml }}
-    />
-  )
-}
-
-function PostPreviewCard({
-  post,
-  onOpen,
-  progressStatus = '',
-  featured = false,
-  saved = false,
-  currentUser,
-  isFollowing = false,
-  onToggleFollow,
-  resolveMediaSource,
-  userBadges = [],
-}) {
-  const readMinutes = estimateReadMinutes(post.content)
-  const practiceMins = Number(post.timeToPracticeMins || 0)
-  const skill = skillMeta(post.skillLevel)
-  const progress = progressStatus ? progressMeta(progressStatus) : null
-  const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
-  const coverSource = post.mediaPath || post.mediaUrl || ''
-  const coverType = post.mediaType === 'video' ? 'video' : 'image'
-  const previewSnippet = stripReadableText(post.content).replace(/\s+/g, ' ').trim().slice(0, 160)
-  return (
-    <article
-      className={`card preview-card ${featured ? 'featured' : ''}`}
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-    >
-      {coverSource ? (
-        <InlineMedia
-          type={coverType}
-          source={coverSource}
-          alt={post.title}
-          resolveMediaSource={resolveMediaSource}
-        />
-      ) : (
-        <div className="preview-placeholder preview-text-cover">
-          <strong>{stripReadableText(post.title).replace(/\s+/g, ' ').trim().slice(0, 72) || 'Untitled'}</strong>
-          <span>{previewSnippet || 'Open post to read details.'}</span>
-        </div>
-      )}
-      <h4>{renderRichTitle(post.title, `card-title-${post.id}`)}</h4>
-      <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
-      {progress ? <div className={`progress-pill ${progress.cls}`}>{progress.icon} {progress.label}</div> : null}
-      <div className="by-follow-row">
-        <small style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          By {post.authorName}
-          {userBadges.map(b => (
-            <span key={b.id} title={b.label} style={{ fontSize: '0.85em', padding: '2px 6px', background: 'var(--accent)', color: 'white', borderRadius: '12px' }}>
-              {b.icon} {b.label}
-            </span>
-          ))}
-        </small>
-        {canFollowAuthor ? (
-          <button
-            type="button"
-            className={`ghost follow-pill ${isFollowing ? 'is-following' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleFollow?.(post.authorSub)
-            }}
-          >
-            {isFollowing ? 'Following' : '+ Follow'}
-          </button>
-        ) : null}
-      </div>
-      {saved ? <span className="saved-chip">Saved</span> : null}
-      <div className="preview-meta">
-        <span>{readMinutes} min read</span>
-        {practiceMins > 0 ? <span>{practiceMins} min practice</span> : null}
-        <span>{post.likes.length} likes</span>
-        <span>{post.comments.length} comments</span>
-      </div>
-    </article>
-  )
-}
-
-function FullPostView({
-  post,
-  currentUser,
-  resolveMediaSource,
-  onBack,
-  onEdit,
-  onDelete,
-  onTogglePostLike,
-  onToggleSavePost,
-  saved,
-  isFollowing,
-  onToggleFollow,
-  onShare,
-  onAddComment,
-  onUpdateComment,
-  onDeleteComment,
-  onToggleCommentLike,
-  progressStatus = '',
-  onSetProgress,
-  readerReaction = '',
-  onSetReaction,
-  userBadges = [],
-}) {
-  const [commentText, setCommentText] = useState('')
-  const [editingCommentId, setEditingCommentId] = useState(null)
-  const [editingCommentText, setEditingCommentText] = useState('')
-  const [openCommentMenuId, setOpenCommentMenuId] = useState(null)
-  const [speaking, setSpeaking] = useState(false)
-  const [depthMode, setDepthMode] = useState('beginner')
-  const postRef = useRef(null)
-  const [readProgress, setReadProgress] = useState(0)
-
-  const canManagePost = currentUser?.userId === post.authorSub
-  const canFollowAuthor = currentUser && currentUser.userId !== post.authorSub
-  const canInteract = !!currentUser
-  const canShare = true
-  const canListen = true
-  const postLiked = currentUser ? post.likes.includes(currentUser.userId) : false
-  const contentBlocks = useMemo(() => parseContentBlocks(post.content), [post.content])
-  const readMinutes = useMemo(() => estimateReadMinutes(post.content), [post.content])
-  const practiceMins = Number(post.timeToPracticeMins || 0)
-  const skill = skillMeta(post.skillLevel)
-  const progress = progressMeta(progressStatus || 'read')
-  const depthSummary =
-    depthMode === 'pro' ? (post.proSummary || post.beginnerSummary || '') : (post.beginnerSummary || post.proSummary || '')
-  const coverSource = post.mediaPath || post.mediaUrl || ''
-  const coverType = post.mediaType === 'video' ? 'video' : 'image'
-  const hasInlineMedia = useMemo(
-    () => contentBlocks.some((block) => {
-      if (block.type === 'image' || block.type === 'video') return true
-      // For HTML posts, only treat as "has inline media" if the HTML body already
-      // contains the cover image/video URL — prevents both duplication AND loss of cover.
-      if (block.type === 'html' && coverSource) {
-        return block.value?.includes(coverSource)
-      }
-      return false
-    }),
-    [contentBlocks, coverSource],
-  )
-
-  useEffect(() => {
-    const handleProgress = () => {
-      const el = postRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const viewport = window.innerHeight || 1
-      const total = Math.max(el.scrollHeight + viewport, 1)
-      const viewed = Math.min(Math.max(viewport - rect.top, 0), total)
-      setReadProgress(Math.round((viewed / total) * 100))
-    }
-
-    handleProgress()
-    window.addEventListener('scroll', handleProgress, { passive: true })
-    window.addEventListener('resize', handleProgress)
-    return () => {
-      window.removeEventListener('scroll', handleProgress)
-      window.removeEventListener('resize', handleProgress)
-    }
-  }, [post.id])
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    const handleClickOutsideMenu = (event) => {
-      if (event.target.closest('.comment-menu-wrap')) return
-      setOpenCommentMenuId(null)
-    }
-    document.addEventListener('mousedown', handleClickOutsideMenu)
-    return () => document.removeEventListener('mousedown', handleClickOutsideMenu)
-  }, [])
-
-  const handleListenToggle = () => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      alert('Speech is not supported in this browser.')
-      return
-    }
-    const synth = window.speechSynthesis
-    if (speaking || synth.speaking) {
-      synth.cancel()
-      setSpeaking(false)
-      return
-    }
-    const text = contentToSpeechText(post.content)
-    if (!text) {
-      alert('No readable text found for audio mode.')
-      return
-    }
-
-    const speakNow = () => {
-      const plainTitle = stripReadableText ? stripReadableText(post.title) : post.title.replace(/<[^>]+>/g, '')
-      const utterance = new SpeechSynthesisUtterance(`${plainTitle}. ${text}`)
-      utterance.rate = 1
-      utterance.pitch = 1
-
-      const voices = synth.getVoices ? synth.getVoices() : []
-      if (voices.length) {
-        const preferred =
-          voices.find((v) => v.lang?.toLowerCase().startsWith((navigator.language || 'en').toLowerCase().split('-')[0])) ||
-          voices.find((v) => v.default) ||
-          voices[0]
-        if (preferred) {
-          utterance.voice = preferred
-          utterance.lang = preferred.lang || navigator.language || 'en-US'
-        }
-      } else {
-        utterance.lang = navigator.language || 'en-US'
-      }
-
-      utterance.onend = () => setSpeaking(false)
-      utterance.onerror = () => setSpeaking(false)
-
-      setSpeaking(true)
-      synth.cancel()
-      synth.resume?.()
-      synth.speak(utterance)
-
-      // Some mobile browsers ignore the first request; retry once if needed.
-      setTimeout(() => {
-        if (!synth.speaking && !synth.pending) {
-          synth.speak(utterance)
-        }
-      }, 180)
-    }
-
-    speakNow()
-  }
-
-  const renderActionBar = () => (
-    <div className="blog-action-bar">
-      <div className="action-bar-group">
-        <button
-          className={`action-btn ${postLiked ? 'active like' : ''}`}
-          onClick={onTogglePostLike}
-          disabled={!canInteract}
-          aria-label="Like post"
-          title="Like"
-        >
-          <span className="icon">{postLiked ? '\u2665' : '\u2661'}</span>
-          <span>{post.likes.length}</span>
-        </button>
-        <button
-          className="action-btn"
-          onClick={() => {
-            const el = document.getElementById(`comment-box-${post.id}`)
-            if (el) el.focus()
-          }}
-          disabled={!canInteract}
-          aria-label="Comment"
-          title="Comment"
-        >
-          <span className="icon">{'\u{1F4AC}'}</span>
-          <span>{post.comments.length}</span>
-        </button>
-      </div>
-
-      <div className="action-bar-group">
-        <button
-          className={`action-btn ${saved ? 'active save' : ''}`}
-          onClick={onToggleSavePost}
-          disabled={!canInteract}
-          aria-label="Save post"
-          title="Save"
-        >
-          <span className="icon">{saved ? '\u2605' : '\u2606'}</span>
-        </button>
-        <button
-          className={`action-btn ${speaking ? 'active listen' : ''}`}
-          onClick={handleListenToggle}
-          disabled={!canListen}
-          aria-label="Listen to post"
-          title="Listen"
-        >
-          <span className="icon">{speaking ? '\u23F9' : '\u25B6'}</span>
-        </button>
-        <button
-          className="action-btn"
-          onClick={onShare}
-          disabled={!canShare}
-          aria-label="Copy share link"
-          title="Copy link"
-        >
-          <span className="icon">{'\u{1F517}'}</span>
-        </button>
-        {canManagePost ? (
-          <button
-            className="action-btn"
-            onClick={onEdit}
-            aria-label="Edit post"
-            title="Edit Post"
-            style={{ fontWeight: 600, borderLeft: '1px solid var(--border)', paddingLeft: '16px', marginLeft: '6px' }}
-          >
-            <span className="icon">{"\u270E"}</span>
-            Write
-          </button>
-        ) : null}
-      </div>
-    </div>
-  )
-
-  return (
-    <article className="card full-post" ref={postRef}>
-      <div className="reading-progress">
-        <span style={{ width: `${readProgress}%` }} />
-      </div>
-      <div className="full-post-top">
-        <button className="ghost" onClick={onBack}>Back to Feed</button>
-        <div className={`progress-pill ${progress.cls}`}>{progress.icon} {progress.label}</div>
-      </div>
-
-      <div className="post-head">
-        <div>
-          <h2>{renderRichTitle(post.title, `full-title-${post.id}`)}</h2>
-          <small>
-            Owner: {post.authorName} | Created: {new Date(post.createdAt).toLocaleString()} | Updated: {new Date(post.updatedAt).toLocaleString()}
-          </small>
-          <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
-          {post.versionLabel ? <div className="version-pill">Updated: {post.versionLabel}</div> : null}
-          <div className="post-insights">
-            <span>{readMinutes} min read</span>
-            {practiceMins > 0 ? <span>{practiceMins} min practice</span> : null}
-            <span>{post.likes.length} likes</span>
-            <span>{post.comments.length} comments</span>
-          </div>
-        </div>
-        {canManagePost ? (
-          <div className="button-row">
-            <button className="ghost" onClick={onEdit}>Edit</button>
-            <button className="danger" onClick={onDelete}>Delete</button>
-          </div>
-        ) : canFollowAuthor ? (
-          <button
-            type="button"
-            className={`ghost follow-pill header-follow ${isFollowing ? 'is-following' : ''}`}
-            onClick={() => onToggleFollow?.(post.authorSub)}
-          >
-            {isFollowing ? 'Following' : '+ Follow'}
-          </button>
-        ) : null}
-      </div>
-
-      {renderActionBar()}
-
-      <div className="full-post-content">
-        <div className="depth-toggle-row">
-          <small>Explain mode:</small>
-          {canInteract ? (
-            <div className={`depth-toggle ${depthMode}`}>
-              <button
-                className={`ghost ${depthMode === 'beginner' ? 'active' : ''}`}
-                onClick={() => setDepthMode('beginner')}
-              >
-                Beginner
-              </button>
-              <button
-                className={`ghost ${depthMode === 'pro' ? 'active' : ''}`}
-                onClick={() => setDepthMode('pro')}
-              >
-                Pro
-              </button>
-            </div>
-          ) : null}
-        </div>
-
-        {(() => {
-          const isOnline = post.authorSub.charCodeAt(0) % 2 === 0 || post.authorSub === currentUser?.userId
-          return (
-            <div className="author-meta">
-              <span className="author-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                {post.authorName || 'Unknown'}
-                {userBadges.map(b => (
-                  <span key={b.id} title={b.label} style={{ fontSize: '0.8em', padding: '2px 6px', background: 'var(--accent)', color: 'white', borderRadius: '12px', fontWeight: '500' }}>
-                    {b.icon} {b.label}
-                  </span>
-                ))}
-                <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} title={isOnline ? 'Online' : 'Offline'} style={{ marginLeft: '4px' }} />
-              </span>
-              <span className="post-date">{new Date(post.createdAt || '').toLocaleDateString()}</span>
-              {canManagePost ? (
-                <div className="managed-actions">
-                  <button className="ghost" onClick={onEdit}>
-                    Edit
-                  </button>
-                  <button className="ghost text-danger" onClick={onDelete}>
-                    Delete
-                  </button>
-                </div>
-              ) : null}
-              {canFollowAuthor ? (
-                <button
-                  className={`ghost follow-btn ${isFollowing ? 'following' : ''}`}
-                  onClick={() => onToggleFollow(post.authorSub)}
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
-              ) : null}
-            </div>
-          )
-        })()}
-        {post.tldr ? (
-          <section className="phase1-callout tldr">
-            <h4>If You're Short on Time</h4>
-            <p>{post.tldr}</p>
-          </section>
-        ) : null}
-        {depthSummary ? (
-          <section className="phase1-callout mode-summary">
-            <h4>{depthMode === 'pro' ? 'Pro Mode Summary' : 'Beginner Mode Summary'}</h4>
-            <p>{depthSummary}</p>
-          </section>
-        ) : null}
-        {post.whyMatters ? (
-          <section className="phase1-callout why-matters">
-            <h4>Why This Matters in Real Life</h4>
-            <p>{post.whyMatters}</p>
-          </section>
-        ) : null}
-        {post.commonMistakes ? (
-          <section className="phase1-callout gotchas">
-            <h4>Mistakes & Gotchas</h4>
-            <p>{post.commonMistakes}</p>
-          </section>
-        ) : null}
-        {!hasInlineMedia && coverSource ? (
-          <InlineMedia
-            type={coverType}
-            source={coverSource}
-            alt={post.title}
-            resolveMediaSource={resolveMediaSource}
-          />
-        ) : null}
-        {contentBlocks.map((block, index) => {
-          if (block.type === 'html') {
-            return (
-              <RichHtml
-                key={`${post.id}-full-html-${index}`}
-                html={block.value}
-                resolveMediaSource={resolveMediaSource}
-              />
-            )
-          }
-          if (block.type === 'image') {
-            return (
-              <InlineMedia
-                key={`${post.id}-full-image-${index}`}
-                type="image"
-                source={block.value}
-                alt={post.title}
-                resolveMediaSource={resolveMediaSource}
-              />
-            )
-          }
-          if (block.type === 'video') {
-            return (
-              <InlineMedia
-                key={`${post.id}-full-video-${index}`}
-                type="video"
-                source={block.value}
-                alt={post.title}
-                resolveMediaSource={resolveMediaSource}
-              />
-            )
-          }
-          if (block.type === 'mermaid') {
-            return <MermaidBlock key={`${post.id}-full-mermaid-${index}`} code={block.code} />
-          }
-          if (block.type === 'code') {
-            return <CodeBlock key={`${post.id}-full-code-${index}`} code={block.code} lang={block.lang} />
-          }
-          return renderStyledTextBlock(block.value, `${post.id}-full-text-${index}`)
-        })}
-        {post.nextTopicTitle || post.nextTopicUrl || post.roadmapUrl ? (
-          <section className="phase1-callout next-path">
-            <h4>What to Learn Next</h4>
-            {post.nextTopicTitle ? <p>{post.nextTopicTitle}</p> : null}
-            <div className="next-links">
-              {post.nextTopicUrl ? (
-                <a href={post.nextTopicUrl} target="_blank" rel="noreferrer">
-                  Next Blog
-                </a>
-              ) : null}
-              {post.roadmapUrl ? (
-                <a href={post.roadmapUrl} target="_blank" rel="noreferrer">
-                  Roadmap
-                </a>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-      </div>
-
-      {renderActionBar()}
-
-      {canInteract ? (
-        <div className="phase2-row">
-          <div className="phase2-block">
-            <small>Progress tracker</small>
-            <div className="button-row">
-              <button className="ghost" onClick={() => onSetProgress?.(post.id, 'read')}>{'\u2705'} Read</button>
-              <button className="ghost" onClick={() => onSetProgress?.(post.id, 'revisit')}>{'\u{1F516}'} Revisit</button>
-              <button className="ghost" onClick={() => onSetProgress?.(post.id, 'mastered')}>{'\u2B50'} Mastered</button>
-            </div>
-          </div>
-          <div className="phase2-block">
-            <small>How was this post?</small>
-            <div className="button-row">
-              <button
-                className={`ghost ${readerReaction === 'confusing' ? 'saved-active' : ''}`}
-                onClick={() => onSetReaction?.(post.id, 'confusing')}
-              >
-                {'\u{1F92F}'} Confusing
-              </button>
-              <button
-                className={`ghost ${readerReaction === 'aha' ? 'saved-active' : ''}`}
-                onClick={() => onSetReaction?.(post.id, 'aha')}
-              >
-                {'\u{1F4A1}'} Aha!
-              </button>
-              <button
-                className={`ghost ${readerReaction === 'useful' ? 'saved-active' : ''}`}
-                onClick={() => onSetReaction?.(post.id, 'useful')}
-              >
-                {'\u{1F525}'} Useful
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {!canInteract ? (
-        <p className="guest-action-hint">Login to like, comment, and save posts.</p>
-      ) : null}
-
-      <section className="comments">
-        <h4>Comments</h4>
-
-        {post.comments.map((comment) => {
-          const mine = isOwnedByCurrentUser(currentUser, comment)
-          const editing = editingCommentId === comment.id
-
-          return (
-            <div className="comment" id={`comment-${comment.id}`} key={comment.id}>
-              <div className="comment-head">
-                <strong>{comment.authorName}</strong>
-                <div className="comment-menu-wrap">
-                  <button
-                    type="button"
-                    className="ghost comment-menu-trigger"
-                    aria-label="Comment options"
-                    disabled={!canInteract}
-                    onClick={() =>
-                      setOpenCommentMenuId((prev) =>
-                        prev === comment.id ? null : comment.id,
-                      )
-                    }
-                  >
-                    ...
-                  </button>
-                  {openCommentMenuId === comment.id ? (
-                    <div className="comment-menu">
-                      <button
-                        type="button"
-                        className="ghost"
-                        disabled={!canInteract}
-                        onClick={async () => {
-                          const url = new URL(window.location.href)
-                          url.searchParams.set('post', post.id)
-                          url.hash = `comment-${comment.id}`
-                          try {
-                            await navigator.clipboard.writeText(url.toString())
-                            alert('Comment link copied.')
-                          } catch {
-                            alert('Could not copy comment link.')
-                          }
-                          setOpenCommentMenuId(null)
-                        }}
-                      >
-                        Copy link to comment
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost"
-                        disabled={!canInteract || !mine}
-                        title={mine ? 'Edit comment' : 'Only comment owner can edit'}
-                        onClick={() => {
-                          setEditingCommentId(comment.id)
-                          setEditingCommentText(comment.text)
-                          setOpenCommentMenuId(null)
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost danger-lite"
-                        disabled={!canInteract || !mine}
-                        title={mine ? 'Delete comment' : 'Only comment owner can delete'}
-                        onClick={() => {
-                          onDeleteComment(post.id, comment.id)
-                          setOpenCommentMenuId(null)
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              {editing ? (
-                <>
-                  <textarea
-                    rows={3}
-                    value={editingCommentText}
-                    onChange={(e) => setEditingCommentText(e.target.value)}
-                  />
-                  <div className="button-row">
-                    <button
-                      onClick={() => {
-                        if (!editingCommentText.trim()) return
-                        onUpdateComment(post.id, comment.id, editingCommentText)
-                        setEditingCommentId(null)
-                        setEditingCommentText('')
-                      }}
-                    >
-                      Update
-                    </button>
-                    <button
-                      className="ghost"
-                      onClick={() => {
-                        setEditingCommentId(null)
-                        setEditingCommentText('')
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p>{comment.text}</p>
-              )}
-
-            </div>
-          )
-        })}
-
-        <div className="comment-box">
-          <textarea
-            id={`comment-box-${post.id}`}
-            rows={3}
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Add a comment"
-          />
-          <button
-            onClick={() => {
-              onAddComment(post.id, commentText)
-              setCommentText('')
-            }}
-            disabled={!currentUser}
-          >
-            Comment
-          </button>
-        </div>
-      </section>
-    </article>
-  )
-}
-
-function InlineMedia({ type, source, alt, resolveMediaSource }) {
-  const [src, setSrc] = useState(() => resolveMediaSource(source))
-
-  useEffect(() => {
-    const resolved = resolveMediaSource(source)
-    if (resolved) {
-      setSrc(resolved)
-      return
-    }
-
-    if (!source?.startsWith('media/')) {
-      setSrc(source || '')
-      return
-    }
-
-    // For signed storage paths, wait for cache hydration from refreshData().
-    setSrc('')
-  }, [source, resolveMediaSource])
-
-  if (!src) return null
-  if (type === 'video') {
-    return <video className="media media-full" controls preload="metadata" playsInline src={src} />
-  }
-  return <img className="media media-full" src={src} alt={alt} loading="lazy" decoding="async" />
-}
-
-function CodeBlock({ code, lang }) {
-  const [html, setHtml] = useState('')
-  const [copied, setCopied] = useState(false)
-  const runHint = useMemo(() => detectCodeRuntimeHint(lang, code), [lang, code])
-
-  useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      try {
-        const mod = await import('highlight.js/lib/common')
-        const hljs = mod.default
-        const highlighted =
-          lang && lang !== 'auto'
-            ? hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
-            : hljs.highlightAuto(code).value
-        if (!cancelled) setHtml(highlighted)
-      } catch {
-        if (!cancelled) setHtml(code.replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch])))
-      }
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [code, lang])
-
-  return (
-    <div className="code-block-shell">
-      <div className="code-head">
-        <span className="dot red" />
-        <span className="dot yellow" />
-        <span className="dot green" />
-        <small>{lang || 'code'}</small>
-        <button
-          type="button"
-          className="ghost code-copy-btn"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(code)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1200)
-            } catch {
-              // no-op
-            }
-          }}
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre className="code-block">
-        <code className="hljs" dangerouslySetInnerHTML={{ __html: html }} />
-      </pre>
-      {runHint ? (
-        <div className="code-run-hints">
-          <span>Windows: <code>{runHint.windows}</code></span>
-          <span>Linux: <code>{runHint.linux}</code></span>
-          <span>Mac: <code>{runHint.mac}</code></span>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function MermaidBlock({ code }) {
-  const [svg, setSvg] = useState('')
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    let cancelled = false
-    const renderDiagram = async () => {
-      try {
-        const mermaidModule = await import('mermaid')
-        const mermaid = mermaidModule.default
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' })
-        const id = `mmd-${Math.random().toString(36).slice(2, 10)}`
-        const out = await mermaid.render(id, code)
-        if (!cancelled) {
-          setSvg(out.svg)
-          setError('')
-        }
-      } catch {
-        if (!cancelled) setError('Mermaid diagram failed to render.')
-      }
-    }
-    renderDiagram()
-    return () => {
-      cancelled = true
-    }
-  }, [code])
-
-  if (error) return <p className="error">{error}</p>
-  if (!svg) return <p>Rendering diagram...</p>
-  return <div className="mermaid-block" dangerouslySetInnerHTML={{ __html: svg }} />
-}
-
 export default App
+
 
