@@ -15,36 +15,36 @@ function loadLogosIcons() {
 }
 
 /**
- * Pre-process mermaid code before passing to the renderer.
- * Mermaid 11 rejects bare newlines inside node labels.
- * Also converts unsupported architecture-beta to a plain flowchart.
+ * Collapse bare newlines inside [...] and (...) regions first,
+ * so that multiline node labels become single-line before any further parsing.
+ * Uses a state-machine approach to handle nested content correctly.
  */
-function sanitizeMermaidCode(raw) {
-    let code = raw.trim()
+function collapseMultilineLabels(code) {
+    let result = ''
+    let depth = 0
+    let inBracket = false  // inside [...]
+    let inParen = false    // inside (...)
 
-    // architecture-beta is unreliable (requires specific registered icon packs).
-    // Convert to a standard flowchart so it always renders.
-    if (/^architecture-beta/i.test(code)) {
-        return convertArchBetaToFlowchart(code)
+    for (let i = 0; i < code.length; i++) {
+        const ch = code[i]
+        if (ch === '[' && !inParen) { inBracket = true; depth++; result += ch; continue }
+        if (ch === '(' && !inBracket) { inParen = true; depth++; result += ch; continue }
+        if (ch === ']' && inBracket) { depth--; if (depth === 0) inBracket = false; result += ch; continue }
+        if (ch === ')' && inParen) { depth--; if (depth === 0) inParen = false; result += ch; continue }
+
+        // Inside a label region: replace newlines with space
+        if ((inBracket || inParen) && ch === '\n') {
+            result += ' '
+            continue
+        }
+        result += ch
     }
-
-    // Replace bare newlines inside square-bracket node labels
-    code = code.replace(/\[([^\]]*)\]/g, (match, inner) => {
-        if (!/\n/.test(inner)) return match
-        return `["${inner.replace(/\n+/g, ' ').trim()}"]`
-    })
-    // Replace bare newlines inside round-bracket labels
-    code = code.replace(/\(([^)]*)\)/g, (match, inner) => {
-        if (!/\n/.test(inner)) return match
-        return `("${inner.replace(/\n+/g, ' ').trim()}")`
-    })
-
-    return code
+    return result
 }
 
 /**
  * Convert architecture-beta diagram to a standard flowchart LR.
- * Extracts service names and connections so the diagram renders.
+ * Call AFTER collapseMultilineLabels so all labels are single-line.
  */
 function convertArchBetaToFlowchart(code) {
     const lines = code.split('\n')
@@ -57,7 +57,7 @@ function convertArchBetaToFlowchart(code) {
         // service id(icon)[Label] in group  OR  service id(icon)[Label]
         const svc = trimmed.match(/^service\s+(\w+)\s*\([^)]*\)\s*\[([^\]]+)\]/)
         if (svc) {
-            nodes.push({ id: svc[1], label: svc[2].replace(/\n/g, ' ') })
+            nodes.push({ id: svc[1], label: svc[2].trim() })
             continue
         }
 
@@ -69,10 +69,25 @@ function convertArchBetaToFlowchart(code) {
         }
     }
 
-    if (nodes.length === 0) return 'flowchart LR\n    A[Diagram unavailable]'
+    if (nodes.length === 0) return 'flowchart LR\n    A["Architecture Diagram"]'
 
-    const nodeDefs = nodes.map(n => `    ${n.id}["${n.label}"]`).join('\n')
+    const nodeDefs = nodes.map(n => `    ${n.id}["${n.label.replace(/"/g, "'")}"]`).join('\n')
     return `flowchart LR\n${nodeDefs}\n${edges.join('\n')}`
+}
+
+/**
+ * Pre-process mermaid code before passing to the renderer.
+ */
+function sanitizeMermaidCode(raw) {
+    // Step 1: collapse multiline labels inside [...] and (...)
+    let code = collapseMultilineLabels(raw.trim())
+
+    // Step 2: architecture-beta → standard flowchart
+    if (/^architecture-beta/i.test(code)) {
+        return convertArchBetaToFlowchart(code)
+    }
+
+    return code
 }
 
 /** True if mermaid rendered an error SVG instead of a real diagram */
@@ -109,10 +124,10 @@ export default function MermaidBlock({ code }) {
 
                 mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' })
 
-                // Pre-process: fix multiline labels, convert architecture-beta
+                // Pre-process: collapse multiline labels + convert architecture-beta
                 const cleanCode = sanitizeMermaidCode(code)
 
-                // Validate syntax before rendering (mermaid.parse throws on invalid syntax)
+                // Validate syntax before rendering
                 try {
                     await mermaid.parse(cleanCode)
                 } catch {
@@ -125,7 +140,6 @@ export default function MermaidBlock({ code }) {
 
                 if (cancelled) return
 
-                // Belt-and-suspenders: also check if mermaid rendered an error SVG
                 if (isMermaidErrorSvg(out.svg)) {
                     setError('diagram')
                 } else {
