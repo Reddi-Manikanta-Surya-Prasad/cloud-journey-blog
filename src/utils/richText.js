@@ -124,7 +124,21 @@ export function sanitizePublishedHtml(html) {
 export function isLikelyHtmlContent(content) {
     const source = String(content || '').trim()
     if (!source) return false
-    return /<(p|div|span|strong|em|b|i|u|mark|font|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(source)
+    // Only treat as HTML if the FIRST non-empty line starts with an HTML tag
+    // This prevents markdown content with inline <em> or <strong> from being
+    // treated as full HTML (which would bypass code/mermaid block parsing)
+    const firstLine = source.split('\n').find(l => l.trim()) || ''
+    return /^\s*<(p|div|span|strong|em|b|i|u|mark|font|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(firstLine)
+}
+
+// Convert inline markdown spans to HTML (used inside headings and paragraphs)
+export function inlineMarkdownToHtml(text) {
+    return String(text || '')
+        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:rgba(128,128,128,0.15);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:0.9em">$1</code>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
 }
 
 export const INLINE_MEDIA_RE = /^\[\[(img|vid):(.+)\]\]$/
@@ -242,6 +256,87 @@ export function parseContentBlocks(content) {
     for (let i = 0; i < lines.length; i += 1) {
         const line = lines[i]
         const trimmed = line.trim()
+
+        // ── Markdown headings: ## Heading → <h2>Heading</h2> ──────────────
+        const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/)
+        if (headingMatch) {
+            flushText()
+            const level = Math.min(headingMatch[1].length, 6)
+            const text = inlineMarkdownToHtml(headingMatch[2].replace(/#+$/, '').trim())
+            blocks.push({ type: 'html', value: `<h${level} style="margin:1.2em 0 0.4em">${text}</h${level}>` })
+            continue
+        }
+
+        // ── Horizontal rule: --- or *** or ___ ───────────────────────────
+        if (/^([-*_])\1{2,}$/.test(trimmed)) {
+            flushText()
+            blocks.push({ type: 'html', value: '<hr style="border:none;border-top:1px solid var(--border-card,#ccc);margin:1.2em 0">' })
+            continue
+        }
+
+        // ── Blockquote: > text ────────────────────────────────────────────
+        if (trimmed.startsWith('> ')) {
+            flushText()
+            blocks.push({ type: 'html', value: `<blockquote style="border-left:3px solid var(--accent,#4facfe);padding:4px 12px;margin:8px 0;opacity:0.85">${inlineMarkdownToHtml(trimmed.slice(2))}</blockquote>` })
+            continue
+        }
+
+        // ── Markdown table: | col | col | ────────────────────────────────
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+            // Collect all consecutive table lines
+            const tableLines = []
+            let j = i
+            while (j < lines.length && lines[j].trim().startsWith('|') && lines[j].trim().endsWith('|')) {
+                tableLines.push(lines[j].trim())
+                j++
+            }
+            if (tableLines.length >= 2) {
+                flushText()
+                const parseRow = (row) => row.slice(1, -1).split('|').map(c => c.trim())
+                const headers = parseRow(tableLines[0])
+                // tableLines[1] is the separator row (|---|---| etc)
+                const dataRows = tableLines.slice(2)
+                const th = headers.map(h => `<th style="padding:6px 10px;border:1px solid var(--border-card,#ccc);background:rgba(128,128,128,0.1)">${inlineMarkdownToHtml(h)}</th>`).join('')
+                const trs = dataRows.map(r => {
+                    const cells = parseRow(r).map(c => `<td style="padding:6px 10px;border:1px solid var(--border-card,#ccc)">${inlineMarkdownToHtml(c)}</td>`).join('')
+                    return `<tr>${cells}</tr>`
+                }).join('')
+                blocks.push({ type: 'html', value: `<table style="border-collapse:collapse;width:100%;margin:10px 0"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>` })
+                i = j - 1
+                continue
+            }
+        }
+
+        // ── Unordered list item: - item or * item ────────────────────────
+        if (/^[-*+]\s+/.test(trimmed)) {
+            // Collect consecutive list items
+            const items = []
+            let j = i
+            while (j < lines.length && /^[-*+]\s+/.test(lines[j].trim())) {
+                items.push(lines[j].trim().replace(/^[-*+]\s+/, ''))
+                j++
+            }
+            flushText()
+            const lis = items.map(it => `<li style="margin:3px 0">${inlineMarkdownToHtml(it)}</li>`).join('')
+            blocks.push({ type: 'html', value: `<ul style="padding-left:1.4em;margin:8px 0">${lis}</ul>` })
+            i = j - 1
+            continue
+        }
+
+        // ── Ordered list item: 1. item ────────────────────────────────────
+        if (/^\d+\.\s+/.test(trimmed)) {
+            const items = []
+            let j = i
+            while (j < lines.length && /^\d+\.\s+/.test(lines[j].trim())) {
+                items.push(lines[j].trim().replace(/^\d+\.\s+/, ''))
+                j++
+            }
+            flushText()
+            const lis = items.map(it => `<li style="margin:3px 0">${inlineMarkdownToHtml(it)}</li>`).join('')
+            blocks.push({ type: 'html', value: `<ol style="padding-left:1.4em;margin:8px 0">${lis}</ol>` })
+            i = j - 1
+            continue
+        }
 
         if (trimmed.toLowerCase().startsWith('codestart')) {
             flushText()
