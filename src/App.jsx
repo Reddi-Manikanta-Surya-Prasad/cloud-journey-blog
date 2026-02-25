@@ -35,6 +35,58 @@ Amplify.configure(outputs)
 const client = generateClient()
 window.client = client
 const ADMIN_EMAILS = ['reddimani14@gmail.com']
+
+// ── Topic extraction from post title ───────────────────────────────────────
+const AWS_SERVICE_MAP = [
+  { keys: ['EC2'], topic: 'EC2' },
+  { keys: ['S3'], topic: 'S3' },
+  { keys: ['Lambda'], topic: 'Lambda' },
+  { keys: ['EBS'], topic: 'EBS' },
+  { keys: ['EFS'], topic: 'EFS' },
+  { keys: ['FSx'], topic: 'FSx' },
+  { keys: ['Backup'], topic: 'Backup' },
+  { keys: ['VPC'], topic: 'VPC' },
+  { keys: ['Route 53', 'Route53'], topic: 'Route 53' },
+  { keys: ['CloudFront'], topic: 'CloudFront' },
+  { keys: ['API Gateway'], topic: 'API Gateway' },
+  { keys: ['Load Balancer', 'ALB'], topic: 'Load Balancer' },
+  { keys: ['IAM'], topic: 'IAM' },
+  { keys: ['KMS'], topic: 'KMS' },
+  { keys: ['Cognito'], topic: 'Cognito' },
+  { keys: ['WAF', 'GuardDuty'], topic: 'WAF & GuardDuty' },
+  { keys: ['Secrets Manager'], topic: 'Secrets Manager' },
+  { keys: ['RDS'], topic: 'RDS' },
+  { keys: ['Aurora'], topic: 'Aurora' },
+  { keys: ['DynamoDB'], topic: 'DynamoDB' },
+  { keys: ['ElastiCache'], topic: 'ElastiCache' },
+  { keys: ['DocumentDB'], topic: 'DocumentDB' },
+  { keys: ['ECS', 'Fargate'], topic: 'ECS / Fargate' },
+  { keys: ['EKS'], topic: 'EKS' },
+  { keys: ['ECR', 'CodePipeline'], topic: 'ECR & CodePipeline' },
+  { keys: ['CloudTrail', 'Organizations'], topic: 'CloudTrail & Org' },
+  { keys: ['CloudWatch'], topic: 'CloudWatch' },
+  { keys: ['CloudFormation'], topic: 'CloudFormation' },
+  { keys: ['SQS'], topic: 'SQS' },
+  { keys: ['SNS', 'EventBridge'], topic: 'SNS & EventBridge' },
+  { keys: ['Step Functions'], topic: 'Step Functions' },
+  { keys: ['SES'], topic: 'SES' },
+  { keys: ['Athena'], topic: 'Athena' },
+  { keys: ['Kinesis'], topic: 'Kinesis' },
+  { keys: ['Redshift'], topic: 'Redshift' },
+  { keys: ['QuickSight'], topic: 'QuickSight' },
+  { keys: ['SageMaker'], topic: 'SageMaker' },
+]
+function topicFromTitle(title) {
+  if (!title) return 'Other'
+  const lower = String(title).toLowerCase()
+  for (const { keys, topic } of AWS_SERVICE_MAP) {
+    if (keys.some(k => lower.includes(k.toLowerCase()))) return topic
+  }
+  return String(title)
+    .replace(/^(Amazon|AWS)\s+/i, '')
+    .split(/\s+([–—\-]|for\s|Advanced|Intermediate|Pro|Expert|Beginner)/i)[0]
+    .trim() || 'Other'
+}
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [userAttrs, setUserAttrs] = useState({ email: '', name: '' })
@@ -96,6 +148,8 @@ function App() {
   const profileRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortMode, setSortMode] = useState('latest')
+  const [topicFilter, setTopicFilter] = useState('')
+  const [levelFilter, setLevelFilter] = useState('')
   const [toasts, setToasts] = useState([])
   const [theme, setTheme] = useState(() => localStorage.getItem('blog_theme_v2') || 'interactive-canvas')
 
@@ -396,8 +450,18 @@ function App() {
     [allDisplayPosts, isAdmin],
   )
 
+  const availableTopics = useMemo(() => {
+    const seen = new Set()
+    const list = []
+    visiblePosts.forEach(p => {
+      const t = topicFromTitle(p.title)
+      if (!seen.has(t)) { seen.add(t); list.push(t) }
+    })
+    return list.sort()
+  }, [visiblePosts])
+
   const displayPosts = useMemo(() => {
-    const ordered = [...visiblePosts]
+    let ordered = [...visiblePosts]
     if (sortMode === 'mostLiked') {
       ordered.sort((a, b) => b.likes.length - a.likes.length)
     } else if (sortMode === 'mostCommented') {
@@ -405,14 +469,19 @@ function App() {
     } else {
       ordered.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
     }
-
+    if (levelFilter) {
+      ordered = ordered.filter(p => p.skillLevel === levelFilter)
+    }
+    if (topicFilter) {
+      ordered = ordered.filter(p => topicFromTitle(p.title) === topicFilter)
+    }
     const query = searchQuery.trim().toLowerCase()
     if (!query) return ordered
     return ordered.filter((post) => {
       const haystack = `${post.title} ${post.content} ${post.authorName}`.toLowerCase()
       return haystack.includes(query)
     })
-  }, [visiblePosts, sortMode, searchQuery])
+  }, [visiblePosts, sortMode, searchQuery, levelFilter, topicFilter])
 
   const progressStats = useMemo(() => {
     const total = visiblePosts.length
@@ -1753,6 +1822,58 @@ function App() {
               )}
             </div>
 
+            {/* ── Level Filter ─────────────────────────── */}
+            <div className="filter-row">
+              <span className="filter-label">Level</span>
+              <div className="filter-pills-wrap">
+                {[
+                  { value: '', label: 'All', icon: '\ud83d\udd0d' },
+                  { value: 'beginner', label: 'Beginner', icon: '\ud83d\udfe2' },
+                  { value: 'intermediate', label: 'Intermediate', icon: '\ud83d\udfe1' },
+                  { value: 'advanced', label: 'Advanced', icon: '\ud83d\udd34' },
+                  { value: 'pro', label: 'Pro', icon: '\u2b24' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`filter-pill level-pill level-${opt.value || 'all'} ${levelFilter === opt.value ? 'active' : ''}`}
+                    onClick={() => setLevelFilter(opt.value)}
+                  >
+                    {opt.icon} {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Topic Filter ──────────────────────────── */}
+            <div className="filter-row">
+              <span className="filter-label">Topic</span>
+              <div className="topic-pills-scroll">
+                <button
+                  type="button"
+                  className={`filter-pill topic-pill ${!topicFilter ? 'active' : ''}`}
+                  onClick={() => setTopicFilter('')}
+                >All Topics</button>
+                {availableTopics.map(topic => (
+                  <button
+                    key={topic}
+                    type="button"
+                    className={`filter-pill topic-pill ${topicFilter === topic ? 'active' : ''}`}
+                    onClick={() => setTopicFilter(topicFilter === topic ? '' : topic)}
+                  >
+                    {topic}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(topicFilter || levelFilter) ? (
+              <div className="filter-active-row">
+                <span>Active: {[levelFilter ? `Level: ${levelFilter}` : null, topicFilter ? `Topic: ${topicFilter}` : null].filter(Boolean).join(' · ')}</span>
+                <button type="button" className="ghost filter-clear-btn" onClick={() => { setTopicFilter(''); setLevelFilter('') }}>Clear ×</button>
+              </div>
+            ) : null}
+
             {currentUser ? (
               <div className="learning-progress-strip">
                 <span>Completed: {progressStats.mastered}/{progressStats.total || 0}</span>
@@ -1862,7 +1983,7 @@ function App() {
                     key={post.id}
                     post={post}
                     progressStatus={postProgressMap[post.id] || ''}
-                    featured={index === 0 && !searchQuery.trim()}
+                    featured={index === 0 && !searchQuery.trim() && !topicFilter && !levelFilter}
                     saved={savedPostIds.includes(post.id)}
                     currentUser={currentUser}
                     isFollowing={followedAuthorSubs.includes(post.authorSub)}
