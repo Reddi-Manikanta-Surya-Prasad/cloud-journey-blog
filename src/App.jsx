@@ -1822,425 +1822,415 @@ function App() {
               )}
             </div>
 
-            {/* ── Level Filter ─────────────────────────── */}
-            <div className="filter-row">
-              <span className="filter-label">Level</span>
-              <div className="filter-pills-wrap">
-                {[
-                  { value: '', label: 'All', icon: '\ud83d\udd0d' },
-                  { value: 'beginner', label: 'Beginner', icon: '\ud83d\udfe2' },
-                  { value: 'intermediate', label: 'Intermediate', icon: '\ud83d\udfe1' },
-                  { value: 'advanced', label: 'Advanced', icon: '\ud83d\udd34' },
-                  { value: 'pro', label: 'Pro', icon: '\u2b24' },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`filter-pill level-pill level-${opt.value || 'all'} ${levelFilter === opt.value ? 'active' : ''}`}
-                    onClick={() => setLevelFilter(opt.value)}
-                  >
-                    {opt.icon} {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* ── Level & Topic Filter dropdowns ─────── */}
+            <div className="filter-dropdowns-row">
+              <select
+                className="filter-select"
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+              >
+                <option value="">🔍 All Levels</option>
+                <option value="beginner">🟢 Beginner</option>
+                <option value="intermediate">🟡 Intermediate</option>
+                <option value="advanced">🔴 Advanced</option>
+                <option value="pro">⚫ Pro</option>
+              </select>
 
-            {/* ── Topic Filter ──────────────────────────── */}
-            <div className="filter-row">
-              <span className="filter-label">Topic</span>
-              <div className="topic-pills-scroll">
+              <select
+                className="filter-select"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+              >
+                <option value="">📚 All Topics</option>
+                {availableTopics.map(topic => (
+                  <option key={topic} value={topic}>{topic}</option>
+                ))}
+              </select>
+
+              {(topicFilter || levelFilter) ? (
                 <button
                   type="button"
-                  className={`filter-pill topic-pill ${!topicFilter ? 'active' : ''}`}
-                  onClick={() => setTopicFilter('')}
-                >All Topics</button>
-                {availableTopics.map(topic => (
-                  <button
-                    key={topic}
-                    type="button"
-                    className={`filter-pill topic-pill ${topicFilter === topic ? 'active' : ''}`}
-                    onClick={() => setTopicFilter(topicFilter === topic ? '' : topic)}
-                  >
-                    {topic}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {(topicFilter || levelFilter) ? (
-              <div className="filter-active-row">
-                <span>Active: {[levelFilter ? `Level: ${levelFilter}` : null, topicFilter ? `Topic: ${topicFilter}` : null].filter(Boolean).join(' · ')}</span>
-                <button type="button" className="ghost filter-clear-btn" onClick={() => { setTopicFilter(''); setLevelFilter('') }}>Clear ×</button>
-              </div>
-            ) : null}
-
-            {currentUser ? (
-              <div className="learning-progress-strip">
-                <span>Completed: {progressStats.mastered}/{progressStats.total || 0}</span>
-                <span>Read: {progressStats.read}</span>
-                <span>Revisit: {progressStats.revisit}</span>
-                <span>Mastered: {progressStats.mastered}</span>
-              </div>
-            ) : null}
-
-            <div className="button-row">
-              {refreshing ? <span>Syncing...</span> : null}
-
-              {activePost ? (
-                <button
-                  className="ghost"
-                  onClick={() => {
-                    setActivePostId(null)
-                    setPostQueryParam('')
-                    setShowComposer(false)
-                    setEditingPostId(null)
-                  }}
-                >
-                  Back to Blog Grid
-                </button>
+                  className="ghost filter-clear-btn"
+                  onClick={() => { setTopicFilter(''); setLevelFilter('') }}
+                >Clear ×</button>
               ) : null}
             </div>
-          </section>
-        ) : null}
 
-        {showProfile && currentUser ? (
-          <ProfilePage
-            currentUser={currentUser}
-            posts={allDisplayPosts}
-            savedPostIds={savedPostIds}
-            communityMessages={communityMessages}
-            newMessageSubject={newMessageSubject}
-            newMessageText={newMessageText}
-            setNewMessageSubject={setNewMessageSubject}
-            setNewMessageText={setNewMessageText}
-            submitCommunityMessage={submitCommunityMessage}
-            profileTab={profileTab}
-            profileForm={profileForm}
-            setProfileForm={setProfileForm}
-            saveProfile={saveProfile}
-            showDeleteWarning={showDeleteWarning}
-            setShowDeleteWarning={setShowDeleteWarning}
-            deletionReason={deletionReason}
-            setDeletionReason={setDeletionReason}
-            requestDeletion={requestDeletion}
-            onOpenPost={(id) => { setShowProfile(false); setActivePostId(id); setPostQueryParam(id) }}
-            profileRef={profileRef}
-          />
-        ) : null}
+  {
+    currentUser ? (
+      <div className="learning-progress-strip">
+        <span>Completed: {progressStats.mastered}/{progressStats.total || 0}</span>
+        <span>Read: {progressStats.read}</span>
+        <span>Revisit: {progressStats.revisit}</span>
+        <span>Mastered: {progressStats.mastered}</span>
+      </div>
+    ) : null
+  }
 
-        {showAdminPanel && isAdmin ? (
-          <AdminPanel
-            posts={allDisplayPosts}
-            comments={comments}
-            communityMessages={communityMessages}
-            cognitoUsers={cognitoUsers}
-            activeUsers={activeUsers}
-            registeredUsers={registeredUsers}
-            blockedUserSubs={blockedUserSubs}
-            activeUsersByDay={activeUsersByDay}
-            adminTab={adminTab}
-            setAdminTab={setAdminTab}
-            deletePost={deletePost}
-            deleteComment={deleteComment}
-            togglePostHidden={togglePostHidden}
-            setUserBlocked={setUserBlocked}
-            adminEditUser={adminEditUser}
-            adminTriggerPasswordReset={adminTriggerPasswordReset}
-            adminDeleteUser={adminDeleteUser}
-            adminResetAccount={adminResetAccount}
-            replyToCommunityMessage={replyToCommunityMessage}
-            client={client}
-            refreshData={refreshData}
-          />
-        ) : null}
+  <div className="button-row">
+    {refreshing ? <span>Syncing...</span> : null}
 
-        {!showAdminPanel && (showComposer || editingPostId) && currentUser ? (
-          <section className="writer-shell">
-            <Write
-              key={editingPostId || 'new'}
-              submitLabel={editingPost ? 'Update Blog' : 'Publish Blog'}
-              initialValue={editingPost || null}
-              draftKey={`post-draft-${editingPostId || 'new'}`}
-              onSubmit={editingPost ? updatePost : createPost}
-              onInlineUpload={uploadInlineMediaSource}
-              onCancel={() => {
-                setEditingPostId(null)
-                setShowComposer(false)
-              }}
-              busy={savingPost}
-            />
-
-          </section>
+    {activePost ? (
+      <button
+        className="ghost"
+        onClick={() => {
+          setActivePostId(null)
+          setPostQueryParam('')
+          setShowComposer(false)
+          setEditingPostId(null)
+        }}
+      >
+        Back to Blog Grid
+      </button>
+    ) : null}
+  </div>
+          </section >
         ) : null
-        }
+}
 
-        {
-          !showAdminPanel && !showProfile && !activePost ? (
-            <section className="posts-section">
-              <div className="preview-grid">
-                {displayPosts.map((post, index) => (
-                  <PostPreviewCard
-                    key={post.id}
-                    post={post}
-                    progressStatus={postProgressMap[post.id] || ''}
-                    featured={index === 0 && !searchQuery.trim() && !topicFilter && !levelFilter}
-                    saved={savedPostIds.includes(post.id)}
-                    currentUser={currentUser}
-                    isFollowing={followedAuthorSubs.includes(post.authorSub)}
-                    onToggleFollow={toggleFollowAuthor}
-                    resolveMediaSource={resolveMediaSource}
-                    userBadges={userBadgesBySub.get(post.authorSub) || []}
-                    onOpen={() => {
-                      setActivePostId(post.id)
-                      setPostQueryParam(post.id)
-                      setShowComposer(false)
-                      setEditingPostId(null)
-                    }}
-                  />
-                ))}
-              </div>
-              {!displayPosts.length ? (
-                <div className="card empty-state">
-                  <h3>No posts found</h3>
-                  <p>Try a different search keyword or clear filters.</p>
-                </div>
-              ) : null}
-            </section>
-          ) : null
-        }
-        {
-          !showAdminPanel && !showProfile && activePost ? (
-            <FullPostView
-              post={activePost}
-              currentUser={currentUser}
-              resolveMediaSource={resolveMediaSource}
-              onBack={() => {
-                setActivePostId(null)
-                setPostQueryParam('')
-              }}
-              onEdit={() => {
-                setEditingPostId(activePost.id)
-                setComposerStep('config')
-                setComposerConfig({
-                  level: activePost.level || '', topic: activePost.topic || '',
-                  postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
-                })
-                setShowComposer(true)
-                setActivePostId(null)
-                setPostQueryParam('')
-              }}
-              onDelete={() => deletePost(activePost.id)}
-              onTogglePostLike={() => togglePostLike(activePost.id)}
-              onToggleSavePost={() => toggleSavePost(activePost.id)}
-              saved={savedPostIds.includes(activePost.id)}
-              isFollowing={followedAuthorSubs.includes(activePost.authorSub)}
-              onToggleFollow={toggleFollowAuthor}
-              onShare={() => sharePost(activePost)}
-              onAddComment={addComment}
-              onUpdateComment={updateComment}
-              onDeleteComment={deleteComment}
-              onToggleCommentLike={toggleCommentLike}
-              progressStatus={postProgressMap[activePost.id] || ''}
-              onSetProgress={setPostProgress}
-              readerReaction={postReactionMap[activePost.id] || ''}
-              onSetReaction={setPostReaction}
-              userBadges={userBadgesBySub.get(activePost.authorSub) || []}
-            />
-          ) : null
-        }
+{
+  showProfile && currentUser ? (
+    <ProfilePage
+      currentUser={currentUser}
+      posts={allDisplayPosts}
+      savedPostIds={savedPostIds}
+      communityMessages={communityMessages}
+      newMessageSubject={newMessageSubject}
+      newMessageText={newMessageText}
+      setNewMessageSubject={setNewMessageSubject}
+      setNewMessageText={setNewMessageText}
+      submitCommunityMessage={submitCommunityMessage}
+      profileTab={profileTab}
+      profileForm={profileForm}
+      setProfileForm={setProfileForm}
+      saveProfile={saveProfile}
+      showDeleteWarning={showDeleteWarning}
+      setShowDeleteWarning={setShowDeleteWarning}
+      deletionReason={deletionReason}
+      setDeletionReason={setDeletionReason}
+      requestDeletion={requestDeletion}
+      onOpenPost={(id) => { setShowProfile(false); setActivePostId(id); setPostQueryParam(id) }}
+      profileRef={profileRef}
+    />
+  ) : null
+}
+
+{
+  showAdminPanel && isAdmin ? (
+    <AdminPanel
+      posts={allDisplayPosts}
+      comments={comments}
+      communityMessages={communityMessages}
+      cognitoUsers={cognitoUsers}
+      activeUsers={activeUsers}
+      registeredUsers={registeredUsers}
+      blockedUserSubs={blockedUserSubs}
+      activeUsersByDay={activeUsersByDay}
+      adminTab={adminTab}
+      setAdminTab={setAdminTab}
+      deletePost={deletePost}
+      deleteComment={deleteComment}
+      togglePostHidden={togglePostHidden}
+      setUserBlocked={setUserBlocked}
+      adminEditUser={adminEditUser}
+      adminTriggerPasswordReset={adminTriggerPasswordReset}
+      adminDeleteUser={adminDeleteUser}
+      adminResetAccount={adminResetAccount}
+      replyToCommunityMessage={replyToCommunityMessage}
+      client={client}
+      refreshData={refreshData}
+    />
+  ) : null
+}
+
+{
+  !showAdminPanel && (showComposer || editingPostId) && currentUser ? (
+    <section className="writer-shell">
+      <Write
+        key={editingPostId || 'new'}
+        submitLabel={editingPost ? 'Update Blog' : 'Publish Blog'}
+        initialValue={editingPost || null}
+        draftKey={`post-draft-${editingPostId || 'new'}`}
+        onSubmit={editingPost ? updatePost : createPost}
+        onInlineUpload={uploadInlineMediaSource}
+        onCancel={() => {
+          setEditingPostId(null)
+          setShowComposer(false)
+        }}
+        busy={savingPost}
+      />
+
+    </section>
+  ) : null
+}
+
+{
+  !showAdminPanel && !showProfile && !activePost ? (
+    <section className="posts-section">
+      <div className="preview-grid">
+        {displayPosts.map((post, index) => (
+          <PostPreviewCard
+            key={post.id}
+            post={post}
+            progressStatus={postProgressMap[post.id] || ''}
+            featured={index === 0 && !searchQuery.trim() && !topicFilter && !levelFilter}
+            saved={savedPostIds.includes(post.id)}
+            currentUser={currentUser}
+            isFollowing={followedAuthorSubs.includes(post.authorSub)}
+            onToggleFollow={toggleFollowAuthor}
+            resolveMediaSource={resolveMediaSource}
+            userBadges={userBadgesBySub.get(post.authorSub) || []}
+            onOpen={() => {
+              setActivePostId(post.id)
+              setPostQueryParam(post.id)
+              setShowComposer(false)
+              setEditingPostId(null)
+            }}
+          />
+        ))}
+      </div>
+      {!displayPosts.length ? (
+        <div className="card empty-state">
+          <h3>No posts found</h3>
+          <p>Try a different search keyword or clear filters.</p>
+        </div>
+      ) : null}
+    </section>
+  ) : null
+}
+{
+  !showAdminPanel && !showProfile && activePost ? (
+    <FullPostView
+      post={activePost}
+      currentUser={currentUser}
+      resolveMediaSource={resolveMediaSource}
+      onBack={() => {
+        setActivePostId(null)
+        setPostQueryParam('')
+      }}
+      onEdit={() => {
+        setEditingPostId(activePost.id)
+        setComposerStep('config')
+        setComposerConfig({
+          level: activePost.level || '', topic: activePost.topic || '',
+          postToDevTo: false, postToHashnode: false, postToMedium: false, postToLinkedIn: false
+        })
+        setShowComposer(true)
+        setActivePostId(null)
+        setPostQueryParam('')
+      }}
+      onDelete={() => deletePost(activePost.id)}
+      onTogglePostLike={() => togglePostLike(activePost.id)}
+      onToggleSavePost={() => toggleSavePost(activePost.id)}
+      saved={savedPostIds.includes(activePost.id)}
+      isFollowing={followedAuthorSubs.includes(activePost.authorSub)}
+      onToggleFollow={toggleFollowAuthor}
+      onShare={() => sharePost(activePost)}
+      onAddComment={addComment}
+      onUpdateComment={updateComment}
+      onDeleteComment={deleteComment}
+      onToggleCommentLike={toggleCommentLike}
+      progressStatus={postProgressMap[activePost.id] || ''}
+      onSetProgress={setPostProgress}
+      readerReaction={postReactionMap[activePost.id] || ''}
+      onSetReaction={setPostReaction}
+      userBadges={userBadgesBySub.get(activePost.authorSub) || []}
+    />
+  ) : null
+}
       </main >
 
-      <footer className="site-footer">
-        <p>
-          &copy; 2026 All Rights Reserved{' '}
-          <a
-            href="https://www.linkedin.com/in/suryareddi/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            RMSP
-          </a>
+  <footer className="site-footer">
+    <p>
+      &copy; 2026 All Rights Reserved{' '}
+      <a
+        href="https://www.linkedin.com/in/suryareddi/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        RMSP
+      </a>
+    </p>
+  </footer>
+
+{
+  showDeleteWarning && (
+    <div className="auth-overlay" onClick={() => setShowDeleteWarning(false)}>
+      <div className="card auth-modal" style={{ maxWidth: '500px', border: '2px solid #ef4444' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ color: '#ef4444', marginTop: 0 }}>Request Account Deletion</h3>
+        <p style={{ margin: '12px 0' }}>
+          We're sorry to see you go. Deleting your account will permanently erase all your progress, posts, and saved articles.
         </p>
-      </footer>
+        <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Please let us know why you are leaving (Optional):</p>
+        <textarea
+          rows="3"
+          placeholder="Your feedback helps us improve..."
+          value={deletionReason}
+          onChange={(e) => setDeletionReason(e.target.value)}
+          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)', marginBottom: '24px' }}
+        />
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <button type="button" className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
+          <button type="button" className="danger" onClick={requestDeletion}>Confirm Deletion</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-      {
-        showDeleteWarning && (
-          <div className="auth-overlay" onClick={() => setShowDeleteWarning(false)}>
-            <div className="card auth-modal" style={{ maxWidth: '500px', border: '2px solid #ef4444' }} onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ color: '#ef4444', marginTop: 0 }}>Request Account Deletion</h3>
-              <p style={{ margin: '12px 0' }}>
-                We're sorry to see you go. Deleting your account will permanently erase all your progress, posts, and saved articles.
-              </p>
-              <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>Please let us know why you are leaving (Optional):</p>
-              <textarea
-                rows="3"
-                placeholder="Your feedback helps us improve..."
-                value={deletionReason}
-                onChange={(e) => setDeletionReason(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text)', marginBottom: '24px' }}
-              />
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                <button type="button" className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
-                <button type="button" className="danger" onClick={requestDeletion}>Confirm Deletion</button>
+{
+  showAuth ? (
+    <div className="auth-overlay" onClick={() => setShowAuth(false)}>
+      <form
+        className="card auth-modal"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={handleAuthSubmit}
+      >
+
+
+        <p className="auth-title">
+          {authMode === 'signup'
+            ? 'Create your account'
+            : authMode === 'confirm'
+              ? 'Enter email confirmation code'
+              : 'Login to continue'}
+        </p>
+
+        {authMode === 'signup' ? (
+          <>
+            <label>Username</label>
+            <input
+              value={authForm.username}
+              onChange={(e) => setAuthForm((prev) => ({ ...prev, username: e.target.value }))}
+            />
+          </>
+        ) : null}
+
+        {authMode !== 'confirm' ? (
+          <>
+            <label>Email</label>
+            <input
+              type="email"
+              value={authForm.email}
+              onChange={(e) => setAuthForm((prev) => ({ ...prev, email: e.target.value }))}
+            />
+
+            <label>Password</label>
+            <input
+              type="password"
+              value={authForm.password}
+              onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
+            />
+
+            {authMode === 'signup' ? (
+              <div className="password-meter">
+                <span className={passwordScore >= 1 ? 'on' : ''} />
+                <span className={passwordScore >= 2 ? 'on' : ''} />
+                <span className={passwordScore >= 3 ? 'on' : ''} />
+                <span className={passwordScore >= 4 ? 'on' : ''} />
               </div>
-            </div>
-          </div>
-        )
-      }
+            ) : null}
+          </>
+        ) : (
+          <>
+            <label>Confirmation Code</label>
+            <input
+              value={authForm.code}
+              onChange={(e) => setAuthForm((prev) => ({ ...prev, code: e.target.value }))}
+            />
+          </>
+        )}
 
-      {
-        showAuth ? (
-          <div className="auth-overlay" onClick={() => setShowAuth(false)}>
-            <form
-              className="card auth-modal"
-              onClick={(e) => e.stopPropagation()}
-              onSubmit={handleAuthSubmit}
-            >
+        {authError ? <p className="error">{authError}</p> : null}
 
+        <div className="button-row">
+          <button type="submit" className="auth-submit-btn">
+            {authMode === 'signup' ? 'Create Account' : authMode === 'confirm' ? 'Confirm' : 'Login'}
+          </button>
+          {authMode === 'confirm' ? (
+            <button className="ghost" type="button" onClick={() => setAuthMode('login')}>
+              Back
+            </button>
+          ) : (
+            <button className="ghost" type="button" onClick={() => setShowAuth(false)}>
+              Close
+            </button>
+          )}
+        </div>
 
-              <p className="auth-title">
-                {authMode === 'signup'
-                  ? 'Create your account'
-                  : authMode === 'confirm'
-                    ? 'Enter email confirmation code'
-                    : 'Login to continue'}
-              </p>
-
+        {authMode !== 'confirm' ? (
+          <div className="oauth-section">
+            <button type="button" className="google-auth-button" onClick={handleGoogleLogin}>
+              <svg viewBox="0 0 48 48" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+              </svg>
+              Continue with Google
+            </button>
+            <div className="auth-toggle-text">
               {authMode === 'signup' ? (
                 <>
-                  <label>Username</label>
-                  <input
-                    value={authForm.username}
-                    onChange={(e) => setAuthForm((prev) => ({ ...prev, username: e.target.value }))}
-                  />
-                </>
-              ) : null}
-
-              {authMode !== 'confirm' ? (
-                <>
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    value={authForm.email}
-                    onChange={(e) => setAuthForm((prev) => ({ ...prev, email: e.target.value }))}
-                  />
-
-                  <label>Password</label>
-                  <input
-                    type="password"
-                    value={authForm.password}
-                    onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
-                  />
-
-                  {authMode === 'signup' ? (
-                    <div className="password-meter">
-                      <span className={passwordScore >= 1 ? 'on' : ''} />
-                      <span className={passwordScore >= 2 ? 'on' : ''} />
-                      <span className={passwordScore >= 3 ? 'on' : ''} />
-                      <span className={passwordScore >= 4 ? 'on' : ''} />
-                    </div>
-                  ) : null}
+                  Already have an account?{' '}
+                  <span
+                    className="auth-link"
+                    onClick={() => {
+                      setAuthMode('login')
+                      setAuthError('')
+                    }}
+                  >
+                    Log in
+                  </span>
                 </>
               ) : (
                 <>
-                  <label>Confirmation Code</label>
-                  <input
-                    value={authForm.code}
-                    onChange={(e) => setAuthForm((prev) => ({ ...prev, code: e.target.value }))}
-                  />
+                  Don't have an account?{' '}
+                  <span
+                    className="auth-link"
+                    onClick={() => {
+                      setAuthMode('signup')
+                      setAuthError('')
+                    }}
+                  >
+                    Sign up
+                  </span>
                 </>
               )}
-
-              {authError ? <p className="error">{authError}</p> : null}
-
-              <div className="button-row">
-                <button type="submit" className="auth-submit-btn">
-                  {authMode === 'signup' ? 'Create Account' : authMode === 'confirm' ? 'Confirm' : 'Login'}
-                </button>
-                {authMode === 'confirm' ? (
-                  <button className="ghost" type="button" onClick={() => setAuthMode('login')}>
-                    Back
-                  </button>
-                ) : (
-                  <button className="ghost" type="button" onClick={() => setShowAuth(false)}>
-                    Close
-                  </button>
-                )}
-              </div>
-
-              {authMode !== 'confirm' ? (
-                <div className="oauth-section">
-                  <button type="button" className="google-auth-button" onClick={handleGoogleLogin}>
-                    <svg viewBox="0 0 48 48" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-                    </svg>
-                    Continue with Google
-                  </button>
-                  <div className="auth-toggle-text">
-                    {authMode === 'signup' ? (
-                      <>
-                        Already have an account?{' '}
-                        <span
-                          className="auth-link"
-                          onClick={() => {
-                            setAuthMode('login')
-                            setAuthError('')
-                          }}
-                        >
-                          Log in
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Don't have an account?{' '}
-                        <span
-                          className="auth-link"
-                          onClick={() => {
-                            setAuthMode('signup')
-                            setAuthError('')
-                          }}
-                        >
-                          Sign up
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </form>
-          </div>
-        ) : null
-      }
-
-
-
-      {
-        showDeleteWarning && (
-          <div className="auth-overlay delete-warning-overlay" style={{ zIndex: 3000 }}>
-            <div className="card modal-warning" style={{ border: '2px solid #ef4444' }}>
-              <h3 style={{ color: '#ef4444', marginTop: 0 }}>⚠️ Delete Account</h3>
-              <p>Are you sure you want to permanently delete your account?</p>
-              <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>This action will permanently erase your posts, comments, progress, and profile information.</p>
-              <p style={{ fontSize: '0.9rem', background: 'var(--bg-shell)', padding: '12px', borderRadius: '6px' }}>
-                Admin will review and process this request via: <br /><strong>cloudjourney@suryareddi.in</strong>
-              </p>
-              <div className="button-row" style={{ marginTop: '24px' }}>
-                <button className="danger" onClick={requestDeletion}>Yes, request deletion</button>
-                <button className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
-              </div>
             </div>
           </div>
-        )
-      }
+        ) : null}
+      </form>
+    </div>
+  ) : null
+}
 
-      <div className="toast-container">
-        {toasts.map((t) => (
-          <div key={t.id} className="toast">{t.msg}</div>
-        ))}
+
+
+{
+  showDeleteWarning && (
+    <div className="auth-overlay delete-warning-overlay" style={{ zIndex: 3000 }}>
+      <div className="card modal-warning" style={{ border: '2px solid #ef4444' }}>
+        <h3 style={{ color: '#ef4444', marginTop: 0 }}>⚠️ Delete Account</h3>
+        <p>Are you sure you want to permanently delete your account?</p>
+        <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>This action will permanently erase your posts, comments, progress, and profile information.</p>
+        <p style={{ fontSize: '0.9rem', background: 'var(--bg-shell)', padding: '12px', borderRadius: '6px' }}>
+          Admin will review and process this request via: <br /><strong>cloudjourney@suryareddi.in</strong>
+        </p>
+        <div className="button-row" style={{ marginTop: '24px' }}>
+          <button className="danger" onClick={requestDeletion}>Yes, request deletion</button>
+          <button className="ghost" onClick={() => setShowDeleteWarning(false)}>Cancel</button>
+        </div>
       </div>
+    </div>
+  )
+}
+
+<div className="toast-container">
+  {toasts.map((t) => (
+    <div key={t.id} className="toast">{t.msg}</div>
+  ))}
+</div>
     </div >
   )
 }
