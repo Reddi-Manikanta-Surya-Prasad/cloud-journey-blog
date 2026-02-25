@@ -4,9 +4,7 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 const ses = new SESClient()
 const SES_SOURCE_EMAIL = 'support.cloudjourney@suryareddi.in' // SES-verified sender
 const ADMIN_EMAILS = [
-    'cloudjourney.blog@gmail.com',
     'cloudjourney@suryareddi.in',
-    'support.cloudjourney@suryareddi.in',
 ]
 
 export const handler = async (event) => {
