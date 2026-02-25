@@ -2100,11 +2100,11 @@ function App() {
         showDeleteWarning && (
           <div className="auth-overlay delete-warning-overlay" style={{ zIndex: 3000 }}>
             <div className="card modal-warning" style={{ border: '2px solid #ef4444' }}>
-              <h3 style={{ color: '#ef4444', marginTop: 0 }}>âš ï¸ Delete Account</h3>
+              <h3 style={{ color: '#ef4444', marginTop: 0 }}>⚠️ Delete Account</h3>
               <p>Are you sure you want to permanently delete your account?</p>
               <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>This action will permanently erase your posts, comments, progress, and profile information.</p>
               <p style={{ fontSize: '0.9rem', background: 'var(--bg-shell)', padding: '12px', borderRadius: '6px' }}>
-                Admin will review and process this request via: <br /><strong>cloudjourney.blog@gmail.com</strong>
+                Admin will review and process this request via: <br /><strong>cloudjourney@suryareddi.in</strong>
               </p>
               <div className="button-row" style={{ marginTop: '24px' }}>
                 <button className="danger" onClick={requestDeletion}>Yes, request deletion</button>
