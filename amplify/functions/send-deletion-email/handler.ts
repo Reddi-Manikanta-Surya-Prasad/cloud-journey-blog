@@ -2,7 +2,7 @@ import { env } from '$amplify/env/send-deletion-email'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 
 const ses = new SESClient()
-const SES_SOURCE_EMAIL = 'cloudjourney.blog@gmail.com' // SES-verified sender
+const SES_SOURCE_EMAIL = 'support@cloudjourney.suryareddi.in' // SES-verified sender
 const ADMIN_EMAILS = [
     'cloudjourney.blog@gmail.com',
     'cloudjourney@suryareddi.in',
