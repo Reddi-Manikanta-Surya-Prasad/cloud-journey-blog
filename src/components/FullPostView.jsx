@@ -250,12 +250,25 @@ export default function FullPostView({
             <div className="post-head">
                 <div>
                     <h2>{renderRichTitle(post.title, `full-title-${post.id}`)}</h2>
-                    <small>
-                        Owner: {post.authorName} | Created: {new Date(post.createdAt).toLocaleString()} | Updated: {new Date(post.updatedAt).toLocaleString()}
-                    </small>
-                    <div className={`skill-pill ${skill.cls}`}>{skill.icon} {skill.label}</div>
-                    {post.versionLabel ? <div className="version-pill">Updated: {post.versionLabel}</div> : null}
-                    <div className="post-insights">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', margin: '10px 0 4px' }}>
+                        <div style={{
+                            width: 40, height: 40, borderRadius: '50%',
+                            background: 'linear-gradient(135deg,#4facfe,#00f2fe)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 700, color: '#fff', fontSize: '1rem', flexShrink: 0,
+                        }}>
+                            {(post.authorName || 'U')[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{post.authorName || 'Unknown'}</div>
+                            <div style={{ fontSize: '0.78rem', opacity: 0.55 }}>
+                                Published {new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                {post.versionLabel ? ` · v${post.versionLabel}` : ''}
+                            </div>
+                        </div>
+                        <div className={`skill-pill ${skill.cls}`} style={{ marginLeft: 4 }}>{skill.icon} {skill.label}</div>
+                    </div>
+                    <div className="post-insights" style={{ marginLeft: 2 }}>
                         <span>{readMinutes} min read</span>
                         {practiceMins > 0 ? <span>{practiceMins} min practice</span> : null}
                         <span>{post.likes.length} likes</span>
@@ -281,22 +294,32 @@ export default function FullPostView({
             {renderActionBar()}
 
             <div className="full-post-content">
-                <div className="depth-toggle-row">
-                    <small>Explain mode:</small>
+                <div className="depth-toggle-row" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 8px', flexWrap: 'wrap' }}>
+                    <small style={{ opacity: 0.6, fontWeight: 500, letterSpacing: '0.03em' }}>EXPLAIN MODE</small>
                     {canInteract ? (
-                        <div className={`depth-toggle ${depthMode}`}>
+                        <div style={{ display: 'flex', background: 'var(--bg-shell,#f0f0f0)', borderRadius: 99, padding: 3, gap: 2 }}>
                             <button
-                                className={`ghost ${depthMode === 'beginner' ? 'active' : ''}`}
                                 onClick={() => setDepthMode('beginner')}
-                            >
-                                Beginner
-                            </button>
+                                style={{
+                                    border: 'none', cursor: 'pointer', padding: '4px 16px',
+                                    borderRadius: 99, fontWeight: 600, fontSize: '0.82rem',
+                                    transition: 'all 0.2s',
+                                    background: depthMode === 'beginner' ? 'var(--accent,#4facfe)' : 'transparent',
+                                    color: depthMode === 'beginner' ? '#fff' : 'inherit',
+                                    boxShadow: depthMode === 'beginner' ? '0 2px 8px rgba(79,172,254,0.4)' : 'none',
+                                }}
+                            >🟢 Beginner</button>
                             <button
-                                className={`ghost ${depthMode === 'pro' ? 'active' : ''}`}
                                 onClick={() => setDepthMode('pro')}
-                            >
-                                Pro
-                            </button>
+                                style={{
+                                    border: 'none', cursor: 'pointer', padding: '4px 16px',
+                                    borderRadius: 99, fontWeight: 600, fontSize: '0.82rem',
+                                    transition: 'all 0.2s',
+                                    background: depthMode === 'pro' ? '#1a1a2e' : 'transparent',
+                                    color: depthMode === 'pro' ? '#fff' : 'inherit',
+                                    boxShadow: depthMode === 'pro' ? '0 2px 8px rgba(0,0,0,0.3)' : 'none',
+                                }}
+                            >⚫ Pro</button>
                         </div>
                     ) : null}
                 </div>
@@ -337,27 +360,47 @@ export default function FullPostView({
                     )
                 })()}
                 {post.tldr ? (
-                    <section className="phase1-callout tldr">
-                        <h4>If You're Short on Time</h4>
-                        <p>{post.tldr}</p>
+                    <section style={{
+                        background: 'linear-gradient(135deg, rgba(79,172,254,0.12), rgba(0,242,254,0.08))',
+                        border: '1px solid rgba(79,172,254,0.3)', borderRadius: 12,
+                        padding: '14px 18px', margin: '16px 0',
+                    }}>
+                        <h4 style={{ margin: '0 0 6px', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.65 }}>⚡ TL;DR</h4>
+                        <p style={{ margin: 0, fontWeight: 500 }}>{post.tldr}</p>
                     </section>
                 ) : null}
                 {depthSummary ? (
-                    <section className="phase1-callout mode-summary">
-                        <h4>{depthMode === 'pro' ? 'Pro Mode Summary' : 'Beginner Mode Summary'}</h4>
-                        <p>{depthSummary}</p>
+                    <section style={{
+                        background: depthMode === 'pro'
+                            ? 'linear-gradient(135deg, rgba(26,26,46,0.15), rgba(50,50,100,0.1))'
+                            : 'linear-gradient(135deg, rgba(52,211,153,0.1), rgba(16,185,129,0.08))',
+                        border: `1px solid ${depthMode === 'pro' ? 'rgba(100,100,200,0.3)' : 'rgba(52,211,153,0.3)'}`,
+                        borderRadius: 12, padding: '14px 18px', margin: '12px 0',
+                    }}>
+                        <h4 style={{ margin: '0 0 6px', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.65 }}>
+                            {depthMode === 'pro' ? '⚫ Pro Overview' : '🟢 Beginner Overview'}
+                        </h4>
+                        <p style={{ margin: 0 }}>{depthSummary}</p>
                     </section>
                 ) : null}
                 {post.whyMatters ? (
-                    <section className="phase1-callout why-matters">
-                        <h4>Why This Matters in Real Life</h4>
-                        <p>{post.whyMatters}</p>
+                    <section style={{
+                        background: 'linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.07))',
+                        border: '1px solid rgba(251,191,36,0.3)', borderRadius: 12,
+                        padding: '14px 18px', margin: '12px 0',
+                    }}>
+                        <h4 style={{ margin: '0 0 6px', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.65 }}>💡 Why This Matters</h4>
+                        <p style={{ margin: 0 }}>{post.whyMatters}</p>
                     </section>
                 ) : null}
                 {post.commonMistakes ? (
-                    <section className="phase1-callout gotchas">
-                        <h4>Mistakes &amp; Gotchas</h4>
-                        <p>{post.commonMistakes}</p>
+                    <section style={{
+                        background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(220,38,38,0.05))',
+                        border: '1px solid rgba(239,68,68,0.25)', borderRadius: 12,
+                        padding: '14px 18px', margin: '12px 0',
+                    }}>
+                        <h4 style={{ margin: '0 0 6px', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.65 }}>⚠️ Common Mistakes</h4>
+                        <p style={{ margin: 0 }}>{post.commonMistakes}</p>
                     </section>
                 ) : null}
                 {!hasInlineMedia && coverSource ? (

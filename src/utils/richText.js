@@ -531,10 +531,33 @@ export function detectCodeRuntimeHint(lang, code) {
 }
 
 export function contentToSpeechText(content) {
-    const plain = stripReadableText(content || '')
-        .replace(/\s+/g, ' ')
-        .trim()
-    return plain
+    // Parse into typed blocks and only speak prose — skip code/mermaid/diagram blocks
+    const blocks = parseContentBlocks(content || '')
+    const spoken = blocks
+        .filter((b) => b.type === 'text' || b.type === 'html')
+        .map((b) => {
+            if (b.type === 'html') {
+                // Strip HTML tags for clean spoken text
+                return String(b.value || '')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+            }
+            // For text blocks, strip residual markdown syntax
+            return String(b.value || '')
+                .replace(/^#{1,6}\s+/gm, '')
+                .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+                .replace(/\*\*(.+?)\*\*/g, '$1')
+                .replace(/\*(.+?)\*/g, '$1')
+                .replace(/`([^`]+)`/g, '$1')
+                .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+                .replace(/^[>\-*+]\s+/gm, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+        })
+        .filter(Boolean)
+        .join('. ')
+    return spoken
 }
 
 export function isOwnedByCurrentUser(currentUser, record) {
