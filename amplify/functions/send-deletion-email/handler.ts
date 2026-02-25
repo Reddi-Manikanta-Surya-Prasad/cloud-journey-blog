@@ -2,7 +2,11 @@ import { env } from '$amplify/env/send-deletion-email'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 
 const ses = new SESClient()
-const ADMIN_EMAIL = 'cloudjourney.blog@gmail.com' // Verified organizational email
+const SES_SOURCE_EMAIL = 'cloudjourney.blog@gmail.com' // SES-verified sender
+const ADMIN_EMAILS = [
+    'cloudjourney.blog@gmail.com',
+    'cloudjourney@suryareddi.in',
+]
 
 export const handler = async (event) => {
     const { subject, body, userEmail, reason, postCount, commentCount, savedCount } = event.arguments || {}
@@ -11,7 +15,7 @@ export const handler = async (event) => {
         throw new Error('Missing required arguments for sending deletion email')
     }
 
-    const logoUrl = 'https://raw.githubusercontent.com/Reddi-Manikanta-Surya-Prasad/cloud-journey-blog/main/public/cloud-tech-icon.png' // Or equivalent actual logo
+    const logoUrl = 'https://raw.githubusercontent.com/Reddi-Manikanta-Surya-Prasad/cloud-journey-blog/main/public/cloud-tech-icon.png'
     const appUrl = 'https://main.d2ngnlsst8rw85.amplifyapp.com/'
 
     const adminHtml = `
@@ -50,12 +54,13 @@ export const handler = async (event) => {
     `
 
     const adminParams = {
-        Destination: { ToAddresses: [ADMIN_EMAIL] },
+        Destination: { ToAddresses: ADMIN_EMAILS },
         Message: {
             Body: { Html: { Data: adminHtml } },
             Subject: { Data: `[ADMIN ALERT] ${subject}` }
         },
-        Source: ADMIN_EMAIL
+        Source: SES_SOURCE_EMAIL,
+        ReplyToAddresses: [userEmail],
     }
 
     const userParams = {
@@ -64,8 +69,8 @@ export const handler = async (event) => {
             Body: { Html: { Data: userHtml } },
             Subject: { Data: subject }
         },
-        Source: ADMIN_EMAIL,
-        ReplyToAddresses: [ADMIN_EMAIL]
+        Source: SES_SOURCE_EMAIL,
+        ReplyToAddresses: ADMIN_EMAILS,
     }
 
     let successCount = 0
