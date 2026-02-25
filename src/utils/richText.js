@@ -449,6 +449,17 @@ export function stripReadableText(content) {
         .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[^\n]*\n?/g, ' '))
         .replace(/^\s*codestart[^\n]*$/gim, ' ')
         .replace(/^\s*codeend\s*$/gim, ' ')
+        // strip markdown syntax from plain-text content
+        .replace(/^#{1,6}\s+/gm, '')        // ## headings
+        .replace(/\*\*\*(.+?)\*\*\*/g, '$1') // ***bold italic***
+        .replace(/\*\*(.+?)\*\*/g, '$1')    // **bold**
+        .replace(/\*(.+?)\*/g, '$1')        // *italic*
+        .replace(/`([^`]+)`/g, '$1')        // `code`
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // [link text](url) → link text
+        .replace(/^>\s+/gm, '')             // > blockquotes
+        .replace(/^[-*+]\s+/gm, '')         // - list items
+        .replace(/^\d+\.\s+/gm, '')         // 1. ordered lists
+        .replace(/^[|].*[|]$/gm, ' ')       // | table | rows |
 }
 
 export function estimateReadMinutes(content) {

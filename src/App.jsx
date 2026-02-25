@@ -1113,7 +1113,7 @@ function App() {
         console.error('Failed to dispatch SES email', emailErr)
       }
 
-      await refreshData()
+      refreshData(false) // silent background refresh — no Syncing... spinner
     } catch (err) {
       console.error(err)
       alert('Could not submit deletion request.')
