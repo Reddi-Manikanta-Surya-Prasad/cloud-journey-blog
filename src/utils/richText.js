@@ -124,11 +124,10 @@ export function sanitizePublishedHtml(html) {
 export function isLikelyHtmlContent(content) {
     const source = String(content || '').trim()
     if (!source) return false
-    // Only treat as HTML if the FIRST non-empty line starts with an HTML tag
-    // This prevents markdown content with inline <em> or <strong> from being
-    // treated as full HTML (which would bypass code/mermaid block parsing)
+    // Treat as HTML if the first non-empty line opens any HTML block element
+    // (including figure, section, article etc. used by the rich-text editor)
     const firstLine = source.split('\n').find(l => l.trim()) || ''
-    return /^\s*<(p|div|span|strong|em|b|i|u|mark|font|h1|h2|h3|ul|ol|li|pre|code|img|video|br)\b/i.test(firstLine)
+    return /^\s*<(p|div|span|strong|em|b|i|u|mark|font|figure|section|article|aside|main|blockquote|table|thead|tbody|tr|td|th|ul|ol|li|pre|code|h[1-6]|img|video|audio|source|iframe|br)\b/i.test(firstLine)
 }
 
 // Convert inline markdown spans to HTML (used inside headings and paragraphs)
@@ -537,13 +536,8 @@ export function contentToSpeechText(content) {
         .filter((b) => b.type === 'text' || b.type === 'html')
         .map((b) => {
             if (b.type === 'html') {
-                // Strip HTML tags for clean spoken text
-                return String(b.value || '')
-                    .replace(/<[^>]+>/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim()
+                return String(b.value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
             }
-            // For text blocks, strip residual markdown syntax
             return String(b.value || '')
                 .replace(/^#{1,6}\s+/gm, '')
                 .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
@@ -557,7 +551,12 @@ export function contentToSpeechText(content) {
         })
         .filter(Boolean)
         .join('. ')
+    // Strip emoji and non-verbal Unicode so TTS reads words only
     return spoken
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{265F}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267E}\u{267F}\u{2692}-\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}]/gu, '')
+        .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
 }
 
 export function isOwnedByCurrentUser(currentUser, record) {
