@@ -6,6 +6,7 @@ const SES_SOURCE_EMAIL = 'support.cloudjourney@suryareddi.in' // SES-verified se
 const ADMIN_EMAILS = [
     'cloudjourney.blog@gmail.com',
     'cloudjourney@suryareddi.in',
+    'support.cloudjourney@suryareddi.in',
 ]
 
 export const handler = async (event) => {
