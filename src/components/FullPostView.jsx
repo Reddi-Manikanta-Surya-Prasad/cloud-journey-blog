@@ -328,34 +328,41 @@ export default function FullPostView({
                     const isOnline = post.authorSub.charCodeAt(0) % 2 === 0 || post.authorSub === currentUser?.userId
                     return (
                         <div className="author-meta">
-                            <span className="author-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                {post.authorName || 'Unknown'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                {/* Name + dot tightly grouped so dot is always right next to name */}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                    <span className="author-name">{post.authorName || 'Unknown'}</span>
+                                    <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} title={isOnline ? 'Online' : 'Offline'} />
+                                </span>
                                 {userBadges.map(b => (
                                     <span key={b.id} title={b.label} style={{ fontSize: '0.8em', padding: '2px 6px', background: 'var(--accent)', color: 'white', borderRadius: '12px', fontWeight: '500' }}>
                                         {b.icon} {b.label}
                                     </span>
                                 ))}
-                                <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} title={isOnline ? 'Online' : 'Offline'} style={{ marginLeft: '4px' }} />
-                            </span>
+                            </div>
                             <span className="post-date">{new Date(post.createdAt || '').toLocaleDateString()}</span>
-                            {canManagePost ? (
-                                <div className="managed-actions">
-                                    <button className="ghost" onClick={onEdit}>
-                                        Edit
+                            {
+                                canManagePost ? (
+                                    <div className="managed-actions">
+                                        <button className="ghost" onClick={onEdit}>
+                                            Edit
+                                        </button>
+                                        <button className="ghost text-danger" onClick={onDelete}>
+                                            Delete
+                                        </button>
+                                    </div>
+                                ) : null
+                            }
+                            {
+                                canFollowAuthor ? (
+                                    <button
+                                        className={`ghost follow-btn ${isFollowing ? 'following' : ''}`}
+                                        onClick={() => onToggleFollow(post.authorSub)}
+                                    >
+                                        {isFollowing ? 'Following' : 'Follow'}
                                     </button>
-                                    <button className="ghost text-danger" onClick={onDelete}>
-                                        Delete
-                                    </button>
-                                </div>
-                            ) : null}
-                            {canFollowAuthor ? (
-                                <button
-                                    className={`ghost follow-btn ${isFollowing ? 'following' : ''}`}
-                                    onClick={() => onToggleFollow(post.authorSub)}
-                                >
-                                    {isFollowing ? 'Following' : 'Follow'}
-                                </button>
-                            ) : null}
+                                ) : null
+                            }
                         </div>
                     )
                 })()}
@@ -473,44 +480,48 @@ export default function FullPostView({
 
             {renderActionBar()}
 
-            {canInteract ? (
-                <div className="phase2-row">
-                    <div className="phase2-block">
-                        <small>Progress tracker</small>
-                        <div className="button-row">
-                            <button className="ghost" onClick={() => onSetProgress?.(post.id, 'read')}>{'\u2705'} Read</button>
-                            <button className="ghost" onClick={() => onSetProgress?.(post.id, 'revisit')}>{'\u{1F516}'} Revisit</button>
-                            <button className="ghost" onClick={() => onSetProgress?.(post.id, 'mastered')}>{'\u2B50'} Mastered</button>
+            {
+                canInteract ? (
+                    <div className="phase2-row">
+                        <div className="phase2-block">
+                            <small>Progress tracker</small>
+                            <div className="button-row">
+                                <button className="ghost" onClick={() => onSetProgress?.(post.id, 'read')}>{'\u2705'} Read</button>
+                                <button className="ghost" onClick={() => onSetProgress?.(post.id, 'revisit')}>{'\u{1F516}'} Revisit</button>
+                                <button className="ghost" onClick={() => onSetProgress?.(post.id, 'mastered')}>{'\u2B50'} Mastered</button>
+                            </div>
+                        </div>
+                        <div className="phase2-block">
+                            <small>How was this post?</small>
+                            <div className="button-row">
+                                <button
+                                    className={`ghost ${readerReaction === 'confusing' ? 'saved-active' : ''}`}
+                                    onClick={() => onSetReaction?.(post.id, 'confusing')}
+                                >
+                                    {'\u{1F92F}'} Confusing
+                                </button>
+                                <button
+                                    className={`ghost ${readerReaction === 'aha' ? 'saved-active' : ''}`}
+                                    onClick={() => onSetReaction?.(post.id, 'aha')}
+                                >
+                                    {'\u{1F4A1}'} Aha!
+                                </button>
+                                <button
+                                    className={`ghost ${readerReaction === 'useful' ? 'saved-active' : ''}`}
+                                    onClick={() => onSetReaction?.(post.id, 'useful')}
+                                >
+                                    {'\u{1F525}'} Useful
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div className="phase2-block">
-                        <small>How was this post?</small>
-                        <div className="button-row">
-                            <button
-                                className={`ghost ${readerReaction === 'confusing' ? 'saved-active' : ''}`}
-                                onClick={() => onSetReaction?.(post.id, 'confusing')}
-                            >
-                                {'\u{1F92F}'} Confusing
-                            </button>
-                            <button
-                                className={`ghost ${readerReaction === 'aha' ? 'saved-active' : ''}`}
-                                onClick={() => onSetReaction?.(post.id, 'aha')}
-                            >
-                                {'\u{1F4A1}'} Aha!
-                            </button>
-                            <button
-                                className={`ghost ${readerReaction === 'useful' ? 'saved-active' : ''}`}
-                                onClick={() => onSetReaction?.(post.id, 'useful')}
-                            >
-                                {'\u{1F525}'} Useful
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
-            {!canInteract ? (
-                <p className="guest-action-hint">Login to like, comment, and save posts.</p>
-            ) : null}
+                ) : null
+            }
+            {
+                !canInteract ? (
+                    <p className="guest-action-hint">Login to like, comment, and save posts.</p>
+                ) : null
+            }
 
             <section className="comments">
                 <h4>Comments</h4>
@@ -642,6 +653,6 @@ export default function FullPostView({
                     </button>
                 </div>
             </section>
-        </article>
+        </article >
     )
 }
