@@ -15,7 +15,7 @@ export const handler = async (event) => {
         throw new Error('Missing required arguments for sending deletion email')
     }
 
-    const logoUrl = 'https://raw.githubusercontent.com/Reddi-Manikanta-Surya-Prasad/cloud-journey-blog/main/public/cloud-tech-icon.png'
+    const logoUrl = 'https://main.d2ngnlsst8rw85.amplifyapp.com/cloud-journey-icon.svg'
     const appUrl = 'https://main.d2ngnlsst8rw85.amplifyapp.com/'
 
     const adminHtml = `
