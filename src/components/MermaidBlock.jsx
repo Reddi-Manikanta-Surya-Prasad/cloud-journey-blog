@@ -15,53 +15,41 @@ function loadLogosIcons() {
 }
 
 /**
- * Collapse bare newlines inside [...] and (...) regions first,
- * so that multiline node labels become single-line before any further parsing.
- * Uses a state-machine approach to handle nested content correctly.
+ * Convert architecture-beta diagram to a reliable flowchart LR.
+ *
+ * Steps:
+ *  1. Collapse any bare newlines inside [...] and (...) regions using the
+ *     dotAll [^] trick, so "S3 Object Lock\nCOMPLIANCE" becomes one line.
+ *  2. Parse service & connection lines from the normalised code.
+ *  3. Emit a clean "flowchart LR" string.
  */
-function collapseMultilineLabels(code) {
-    let result = ''
-    let depth = 0
-    let inBracket = false  // inside [...]
-    let inParen = false    // inside (...)
+function convertArchBetaToFlowchart(raw) {
+    // 1. Collapse newlines inside [...] (lazy, dotAll via [^]*?)
+    let code = raw.replace(/\[([^]*?)\]/g, (_, inner) =>
+        `[${inner.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim()}]`
+    )
+    // Collapse newlines inside (...) too
+    code = code.replace(/\(([^)]*?\r?\n[^)]*?)\)/g, (_, inner) =>
+        `(${inner.replace(/\r?\n/g, ' ').trim()})`
+    )
 
-    for (let i = 0; i < code.length; i++) {
-        const ch = code[i]
-        if (ch === '[' && !inParen) { inBracket = true; depth++; result += ch; continue }
-        if (ch === '(' && !inBracket) { inParen = true; depth++; result += ch; continue }
-        if (ch === ']' && inBracket) { depth--; if (depth === 0) inBracket = false; result += ch; continue }
-        if (ch === ')' && inParen) { depth--; if (depth === 0) inParen = false; result += ch; continue }
-
-        // Inside a label region: replace newlines with space
-        if ((inBracket || inParen) && ch === '\n') {
-            result += ' '
-            continue
-        }
-        result += ch
-    }
-    return result
-}
-
-/**
- * Convert architecture-beta diagram to a standard flowchart LR.
- * Call AFTER collapseMultilineLabels so all labels are single-line.
- */
-function convertArchBetaToFlowchart(code) {
     const lines = code.split('\n')
-    const nodes = []   // { id, label }
-    const edges = []   // "A --> B" strings
+    const nodes = []
+    const edges = []
 
     for (const line of lines) {
         const trimmed = line.trim()
 
-        // service id(icon)[Label] in group  OR  service id(icon)[Label]
+        // service id(icon)[Label]  or  service id(icon)[Label] in group
         const svc = trimmed.match(/^service\s+(\w+)\s*\([^)]*\)\s*\[([^\]]+)\]/)
         if (svc) {
-            nodes.push({ id: svc[1], label: svc[2].trim() })
+            // sanitise label: replace " with '
+            const label = svc[2].trim().replace(/"/g, "'")
+            nodes.push({ id: svc[1], label })
             continue
         }
 
-        // id:Direction --> Direction:id  (architecture-beta connection syntax)
+        // id:Direction --> Direction:id
         const conn = trimmed.match(/^(\w+):[LRTB]\s*-->\s*[LRTB]:(\w+)/)
         if (conn) {
             edges.push(`    ${conn[1]} --> ${conn[2]}`)
@@ -69,28 +57,34 @@ function convertArchBetaToFlowchart(code) {
         }
     }
 
-    if (nodes.length === 0) return 'flowchart LR\n    A["Architecture Diagram"]'
+    if (nodes.length === 0) {
+        return 'flowchart LR\n    A["Architecture Diagram"]'
+    }
 
-    const nodeDefs = nodes.map(n => `    ${n.id}["${n.label.replace(/"/g, "'")}"]`).join('\n')
-    return `flowchart LR\n${nodeDefs}\n${edges.join('\n')}`
+    const nodeDefs = nodes.map(n => `    ${n.id}["${n.label}"]`).join('\n')
+    return ['flowchart LR', nodeDefs, ...edges].join('\n')
 }
 
 /**
- * Pre-process mermaid code before passing to the renderer.
+ * General pre-processing for any mermaid diagram:
+ * – architecture-beta → flowchart LR
+ * – collapse bare newlines in node labels for standard graph/flowchart diagrams
  */
 function sanitizeMermaidCode(raw) {
-    // Step 1: collapse multiline labels inside [...] and (...)
-    let code = collapseMultilineLabels(raw.trim())
+    const trimmed = raw.trim()
 
-    // Step 2: architecture-beta → standard flowchart
-    if (/^architecture-beta/i.test(code)) {
-        return convertArchBetaToFlowchart(code)
+    if (/^architecture-beta/i.test(trimmed)) {
+        return convertArchBetaToFlowchart(trimmed)
     }
 
-    return code
+    // For other diagram types: collapse newlines inside [...] labels
+    return trimmed.replace(/\[([^]*?)\]/g, (_, inner) => {
+        if (!/\r?\n/.test(inner)) return `[${inner}]`
+        return `["${inner.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim()}"]`
+    })
 }
 
-/** True if mermaid rendered an error SVG instead of a real diagram */
+/** True if mermaid rendered an error SVG rather than a diagram */
 function isMermaidErrorSvg(svg) {
     return (
         svg.includes('Syntax error') ||
@@ -108,12 +102,12 @@ export default function MermaidBlock({ code }) {
 
     useEffect(() => {
         let cancelled = false
+
         const renderDiagram = async () => {
             try {
                 const mermaidModule = await import('mermaid')
                 const mermaid = mermaidModule.default
 
-                // Register logos icon pack once
                 if (!iconsLoaded.current) {
                     const icons = await loadLogosIcons()
                     if (icons) {
@@ -124,15 +118,17 @@ export default function MermaidBlock({ code }) {
 
                 mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' })
 
-                // Pre-process: collapse multiline labels + convert architecture-beta
                 const cleanCode = sanitizeMermaidCode(code)
 
-                // Validate syntax before rendering
-                try {
-                    await mermaid.parse(cleanCode)
-                } catch {
-                    if (!cancelled) setError('diagram')
-                    return
+                // Validate syntax first — mermaid.parse() throws on invalid code.
+                // Guard with typeof check for version compatibility.
+                if (typeof mermaid.parse === 'function') {
+                    try {
+                        await mermaid.parse(cleanCode)
+                    } catch {
+                        if (!cancelled) setError('diagram')
+                        return
+                    }
                 }
 
                 const id = `mmd-${Math.random().toString(36).slice(2, 10)}`
@@ -150,19 +146,28 @@ export default function MermaidBlock({ code }) {
                 if (!cancelled) setError('diagram')
             }
         }
+
         renderDiagram()
         return () => { cancelled = true }
     }, [code])
 
-    // Graceful fallback: show the diagram source in a readable box
     if (error === 'diagram') {
         return (
-            <div className="mermaid-block" style={{ background: 'rgba(128,128,128,0.08)', borderRadius: 8, padding: '12px 16px', border: '1px dashed rgba(128,128,128,0.3)' }}>
-                <p style={{ fontSize: '0.72rem', opacity: 0.45, margin: '0 0 8px', fontFamily: 'monospace' }}>⬡ Architecture Diagram (preview unavailable)</p>
-                <pre style={{ fontSize: '0.78rem', overflowX: 'auto', margin: 0, whiteSpace: 'pre-wrap', opacity: 0.8 }}>{code}</pre>
+            <div className="mermaid-block" style={{
+                background: 'rgba(128,128,128,0.08)', borderRadius: 8,
+                padding: '12px 16px', border: '1px dashed rgba(128,128,128,0.3)'
+            }}>
+                <p style={{ fontSize: '0.72rem', opacity: 0.45, margin: '0 0 8px', fontFamily: 'monospace' }}>
+                    ⬡ Architecture Diagram (preview unavailable)
+                </p>
+                <pre style={{ fontSize: '0.78rem', overflowX: 'auto', margin: 0, whiteSpace: 'pre-wrap', opacity: 0.8 }}>
+                    {code}
+                </pre>
             </div>
         )
     }
+
     if (!svg) return <p style={{ fontSize: '0.85rem', opacity: 0.45 }}>Rendering diagram…</p>
+
     return <div className="mermaid-block" dangerouslySetInnerHTML={{ __html: svg }} />
 }
