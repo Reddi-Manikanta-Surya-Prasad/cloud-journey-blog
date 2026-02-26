@@ -2,608 +2,733 @@
 // Extracted from App.jsx to reduce initial parse cost.
 
 export function toStorageSafeName(name) {
-    return name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '')
+  return name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
 }
 
 export function toTitleCaseName(text) {
-    return String(text || '')
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
+  return String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function deriveFriendlyUserName(user, attrs) {
-    const explicitName = toTitleCaseName(attrs?.name)
-    if (explicitName) return explicitName
+  const explicitName = toTitleCaseName(attrs?.name);
+  if (explicitName) return explicitName;
 
-    const given = toTitleCaseName(attrs?.given_name)
-    const family = toTitleCaseName(attrs?.family_name)
-    const full = `${given} ${family}`.trim()
-    if (full) return full
+  const given = toTitleCaseName(attrs?.given_name);
+  const family = toTitleCaseName(attrs?.family_name);
+  const full = `${given} ${family}`.trim();
+  if (full) return full;
 
-    const email = String(attrs?.email || '')
-    if (email.includes('@')) {
-        const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim()
-        const fromEmail = toTitleCaseName(localPart)
-        if (fromEmail) return fromEmail
-    }
+  const email = String(attrs?.email || "");
+  if (email.includes("@")) {
+    const localPart = email
+      .split("@")[0]
+      .replace(/[._-]+/g, " ")
+      .trim();
+    const fromEmail = toTitleCaseName(localPart);
+    if (fromEmail) return fromEmail;
+  }
 
-    const username = String(user?.username || '')
-    if (/^google[_-]/i.test(username)) return 'Google User'
-    return toTitleCaseName(username) || 'User'
+  const username = String(user?.username || "");
+  if (/^google[_-]/i.test(username)) return "Google User";
+  return toTitleCaseName(username) || "User";
 }
 
 export function buildReadableParagraphs(rawText) {
-    const text = (rawText || '').replace(/\r\n/g, '\n').trim()
-    if (!text) return []
+  const text = (rawText || "").replace(/\r\n/g, "\n").trim();
+  if (!text) return [];
 
-    const manualParagraphs = text
-        .split(/\n\s*\n/)
-        .map((part) => part.trim())
-        .filter(Boolean)
+  const manualParagraphs = text
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-    if (manualParagraphs.length > 1) return manualParagraphs
+  if (manualParagraphs.length > 1) return manualParagraphs;
 
-    const sentences = text
-        .split(/(?<=[.!?])\s+/)
-        .map((part) => part.trim())
-        .filter(Boolean)
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-    if (sentences.length <= 3) return [text]
+  if (sentences.length <= 3) return [text];
 
-    const grouped = []
-    for (let i = 0; i < sentences.length; i += 3) {
-        grouped.push(sentences.slice(i, i + 3).join(' '))
-    }
-    return grouped
+  const grouped = [];
+  for (let i = 0; i < sentences.length; i += 3) {
+    grouped.push(sentences.slice(i, i + 3).join(" "));
+  }
+  return grouped;
 }
 
 export function sanitizeHandTagsForRender(text) {
-    let next = String(text || '')
-    next = next.replace(/\[(\/?)\hand\]/g, (_, slash) => `[${slash}hand1]`)
+  let next = String(text || "");
+  next = next.replace(/\[(\/?)\hand\]/g, (_, slash) => `[${slash}hand1]`);
 
-    const re = /\[(\/?)\hand(10|[1-9])\]/g
-    const chunks = []
-    const stack = []
-    let last = 0
-    let m
-    while ((m = re.exec(next)) !== null) {
-        chunks.push(next.slice(last, m.index))
-        const closing = m[1] === '/'
-        const style = `hand${m[2]}`
-        if (!closing) {
-            const marker = { style, text: m[0], keep: true }
-            chunks.push(marker)
-            stack.push(marker)
-        } else if (stack.length && stack[stack.length - 1].style === style) {
-            stack.pop()
-            chunks.push(m[0])
-        }
-        last = re.lastIndex
+  const re = /\[(\/?)\hand(10|[1-9])\]/g;
+  const chunks = [];
+  const stack = [];
+  let last = 0;
+  let m;
+  while ((m = re.exec(next)) !== null) {
+    chunks.push(next.slice(last, m.index));
+    const closing = m[1] === "/";
+    const style = `hand${m[2]}`;
+    if (!closing) {
+      const marker = { style, text: m[0], keep: true };
+      chunks.push(marker);
+      stack.push(marker);
+    } else if (stack.length && stack[stack.length - 1].style === style) {
+      stack.pop();
+      chunks.push(m[0]);
     }
-    chunks.push(next.slice(last))
-    stack.forEach((marker) => {
-        marker.keep = false
-    })
-    return chunks
-        .map((part) => (typeof part === 'string' ? part : part.keep ? part.text : ''))
-        .join('')
+    last = re.lastIndex;
+  }
+  chunks.push(next.slice(last));
+  stack.forEach((marker) => {
+    marker.keep = false;
+  });
+  return chunks
+    .map((part) =>
+      typeof part === "string" ? part : part.keep ? part.text : "",
+    )
+    .join("");
 }
 
 export function sanitizePublishedHtml(html) {
-    let next = String(html || '')
-        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-        .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-        .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-        .replace(/javascript:/gi, '')
-    if (typeof document !== 'undefined') {
-        const root = document.createElement('div')
-        root.innerHTML = next
-        root.querySelectorAll('font').forEach((el) => {
-            const span = document.createElement('span')
-            span.innerHTML = el.innerHTML
-            if (el.color) span.style.color = el.color
-            if (el.getAttribute('style')) span.style.cssText += ';' + el.getAttribute('style')
-            if (el.size) span.style.fontSize = el.size
-            if (el.face) span.style.fontFamily = el.face
-            el.replaceWith(span)
-        })
-        next = root.innerHTML
-    } else {
-        next = next.replace(
-            /<font[^>]*color=(['"]?)([^"']+)\1[^>]*>([\s\S]*?)<\/font>/gi,
-            '<span style="color:$2">$3</span>',
-        )
-    }
-    return next
+  let next = String(html || "")
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, "")
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript:/gi, "");
+  if (typeof document !== "undefined") {
+    const root = document.createElement("div");
+    root.innerHTML = next;
+    root.querySelectorAll("font").forEach((el) => {
+      const span = document.createElement("span");
+      span.innerHTML = el.innerHTML;
+      if (el.color) span.style.color = el.color;
+      if (el.getAttribute("style"))
+        span.style.cssText += ";" + el.getAttribute("style");
+      if (el.size) span.style.fontSize = el.size;
+      if (el.face) span.style.fontFamily = el.face;
+      el.replaceWith(span);
+    });
+    next = root.innerHTML;
+  } else {
+    next = next.replace(
+      /<font[^>]*color=(['"]?)([^"']+)\1[^>]*>([\s\S]*?)<\/font>/gi,
+      '<span style="color:$2">$3</span>',
+    );
+  }
+  return next;
 }
 
 export function isLikelyHtmlContent(content) {
-    const source = String(content || '').trim()
-    if (!source) return false
+  const source = String(content || "").trim();
+  if (!source) return false;
 
-    // 1) Rich-text editor fingerprints — present anywhere in the content
-    //    These are set by the composer's attachment/inline-media system
-    if (/data-post-attachment|data-inline-media|class="post-attachment-block"/.test(source)) return true
+  // 1) Rich-text editor fingerprints — present anywhere in the content
+  //    These are set by the composer's attachment/inline-media system
+  if (
+    /data-post-attachment|data-inline-media|class="post-attachment-block"/.test(
+      source,
+    )
+  )
+    return true;
 
-    // 2) Block-level HTML tags that only appear in rich-text / HTML output
-    //    (not normally written inline in markdown prose)
-    if (/<(figure|section|article|aside|main|blockquote|iframe|audio)\b/i.test(source)) return true
+  // 2) Block-level HTML tags that only appear in rich-text / HTML output
+  //    (not normally written inline in markdown prose)
+  if (
+    /<(figure|section|article|aside|main|blockquote|iframe|audio)\b/i.test(
+      source,
+    )
+  )
+    return true;
 
-    // 3) First non-empty line starts with a block-level HTML opening tag
-    const firstLine = source.split('\n').find(l => l.trim()) || ''
-    return /^\s*<(p|div|span|strong|em|b|i|u|mark|font|figure|section|article|aside|main|blockquote|table|thead|tbody|tr|td|th|ul|ol|li|pre|code|h[1-6]|img|video|audio|source|iframe|br)\b/i.test(firstLine)
+  // 3) First non-empty line starts with a block-level HTML opening tag
+  const firstLine = source.split("\n").find((l) => l.trim()) || "";
+  return /^\s*<(p|div|span|strong|em|b|i|u|mark|font|figure|section|article|aside|main|blockquote|table|thead|tbody|tr|td|th|ul|ol|li|pre|code|h[1-6]|img|video|audio|source|iframe|br)\b/i.test(
+    firstLine,
+  );
 }
 
 // Convert inline markdown spans to HTML (used inside headings and paragraphs)
 export function inlineMarkdownToHtml(text) {
-    return String(text || '')
-        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code style="background:rgba(128,128,128,0.15);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:0.9em">$1</code>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+  return String(text || "")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*\n]+?)\*/g, "<em>$1</em>")
+    .replace(
+      /`([^`]+)`/g,
+      '<code style="background:rgba(128,128,128,0.15);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:0.9em">$1</code>',
+    )
+    .replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+    );
 }
 
-export const INLINE_MEDIA_RE = /^\[\[(img|vid):(.+)\]\]$/
-export const MD_IMAGE_RE = /^!\[[^\]]*]\(([^)]+)\)$/
-
+export const INLINE_MEDIA_RE = /^\[\[(img|vid):(.+)\]\]$/;
+export const MD_IMAGE_RE = /^!\[[^\]]*]\(([^)]+)\)$/;
 
 export function codeLineScore(line) {
-    const trimmed = (line || '').trim()
-    if (!trimmed) return 0
-    let score = 0
+  const trimmed = (line || "").trim();
+  if (!trimmed) return 0;
+  let score = 0;
 
-    if (/^<\/?[a-zA-Z][\w:-]*[^>]*>$/.test(trimmed) || /^<!doctype/i.test(trimmed)) score += 3
-    if (/^<([a-zA-Z][\w:-]*)\b[^>]*>.*<\/\1>$/.test(trimmed)) score += 3
-    if (/^(import|export|const|let|var|function|class|return|def)\b/.test(trimmed)) score += 3
-    if (/^(if|for|while|switch)\s*\(/.test(trimmed)) score += 3
-    if (/=>|[{}()[\]]/.test(trimmed)) score += 1
-    if (/;\s*$/.test(trimmed)) score += 1
-    if (/^\s*["'][^"']+["']\s*:\s*/.test(trimmed)) score += 2
-    if (/^(\/\/|\/\*|\*\/)/.test(trimmed)) score += 2
-    if (/^[\w.-]+\.(tf|tfvars|js|jsx|ts|tsx|py|java|go|rb|php|json|yml|yaml|xml|html|css|sh)\b/.test(trimmed)) score += 2
-    if (/^[|`~\-_/\\]{2,}/.test(trimmed) || /[|`~]{2,}/.test(trimmed)) score += 2
+  if (
+    /^<\/?[a-zA-Z][\w:-]*[^>]*>$/.test(trimmed) ||
+    /^<!doctype/i.test(trimmed)
+  )
+    score += 3;
+  if (/^<([a-zA-Z][\w:-]*)\b[^>]*>.*<\/\1>$/.test(trimmed)) score += 3;
+  if (
+    /^(import|export|const|let|var|function|class|return|def)\b/.test(trimmed)
+  )
+    score += 3;
+  if (/^(if|for|while|switch)\s*\(/.test(trimmed)) score += 3;
+  if (/=>|[{}()[\]]/.test(trimmed)) score += 1;
+  if (/;\s*$/.test(trimmed)) score += 1;
+  if (/^\s*["'][^"']+["']\s*:\s*/.test(trimmed)) score += 2;
+  if (/^(\/\/|\/\*|\*\/)/.test(trimmed)) score += 2;
+  if (
+    /^[\w.-]+\.(tf|tfvars|js|jsx|ts|tsx|py|java|go|rb|php|json|yml|yaml|xml|html|css|sh)\b/.test(
+      trimmed,
+    )
+  )
+    score += 2;
+  if (/^[|`~\-_/\\]{2,}/.test(trimmed) || /[|`~]{2,}/.test(trimmed)) score += 2;
 
-    return score
+  return score;
 }
 
 export function isCodeContinuationLine(line) {
-    const trimmed = (line || '').trim()
-    if (!trimmed) return true
-    if (codeLineScore(line) >= 2) return true
-    if (/^<\/?[a-zA-Z][\w:-]*[^>]*>/.test(trimmed)) return true
-    if (/^<([a-zA-Z][\w:-]*)\b[^>]*>.*<\/\1>$/.test(trimmed)) return true
-    if (/=>|[{()}[\];]/.test(trimmed)) return true
-    return false
+  const trimmed = (line || "").trim();
+  if (!trimmed) return true;
+  if (codeLineScore(line) >= 2) return true;
+  if (/^<\/?[a-zA-Z][\w:-]*[^>]*>/.test(trimmed)) return true;
+  if (/^<([a-zA-Z][\w:-]*)\b[^>]*>.*<\/\1>$/.test(trimmed)) return true;
+  if (/=>|[{()}[\];]/.test(trimmed)) return true;
+  return false;
 }
 
 export function splitMixedTextIntoBlocks(text) {
-    const lines = (text || '').split('\n')
-    const blocks = []
-    let textBuffer = []
+  const lines = (text || "").split("\n");
+  const blocks = [];
+  let textBuffer = [];
 
-    const flushText = () => {
-        const value = textBuffer.join('\n').trim()
-        if (value) blocks.push({ type: 'text', value })
-        textBuffer = []
+  const flushText = () => {
+    const value = textBuffer.join("\n").trim();
+    if (value) blocks.push({ type: "text", value });
+    textBuffer = [];
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const score = codeLineScore(line);
+
+    if (!line.trim() || score < 3) {
+      if (
+        /^<(h[1-6]|div|p|ul|ol|section|article|blockquote|table|figure|span|strong|em|font|mark)\b/i.test(
+          line.trim(),
+        )
+      ) {
+        flushText();
+        blocks.push({ type: "html", value: line });
+        continue;
+      }
+      textBuffer.push(line);
+      continue;
     }
 
-    for (let i = 0; i < lines.length; i += 1) {
-        const line = lines[i]
-        const score = codeLineScore(line)
+    let j = i;
+    let nonEmptyCodeLines = 0;
+    let strongLineFound = false;
+    let totalScore = 0;
 
-        if (!line.trim() || score < 3) {
-            if (/^<(h[1-6]|div|p|ul|ol|section|article|blockquote|table|figure|span|strong|em|font|mark)\b/i.test(line.trim())) {
-                flushText()
-                blocks.push({ type: 'html', value: line })
-                continue
-            }
-            textBuffer.push(line)
-            continue
-        }
-
-        let j = i
-        let nonEmptyCodeLines = 0
-        let strongLineFound = false
-        let totalScore = 0
-
-        while (j < lines.length) {
-            const current = lines[j]
-            const currentScore = codeLineScore(current)
-            if (!isCodeContinuationLine(current)) break
-            if (!current.trim()) {
-                j += 1
-                continue
-            }
-            nonEmptyCodeLines += 1
-            totalScore += currentScore
-            if (currentScore >= 4) strongLineFound = true
-            j += 1
-        }
-
-        const avgScore = nonEmptyCodeLines ? totalScore / nonEmptyCodeLines : 0
-        const shouldTreatAsCode =
-            nonEmptyCodeLines >= 2
-                ? strongLineFound || avgScore >= 2.8
-                : nonEmptyCodeLines === 1 && strongLineFound
-        if (!shouldTreatAsCode) {
-            textBuffer.push(line)
-            continue
-        }
-
-        flushText()
-        const code = lines.slice(i, j).join('\n').trimEnd()
-        if (code) blocks.push({ type: 'code', lang: 'auto', code })
-        i = j - 1
+    while (j < lines.length) {
+      const current = lines[j];
+      const currentScore = codeLineScore(current);
+      if (!isCodeContinuationLine(current)) break;
+      if (!current.trim()) {
+        j += 1;
+        continue;
+      }
+      nonEmptyCodeLines += 1;
+      totalScore += currentScore;
+      if (currentScore >= 4) strongLineFound = true;
+      j += 1;
     }
 
-    flushText()
-    return blocks
+    const avgScore = nonEmptyCodeLines ? totalScore / nonEmptyCodeLines : 0;
+    const shouldTreatAsCode =
+      nonEmptyCodeLines >= 2
+        ? strongLineFound || avgScore >= 2.8
+        : nonEmptyCodeLines === 1 && strongLineFound;
+    if (!shouldTreatAsCode) {
+      textBuffer.push(line);
+      continue;
+    }
+
+    flushText();
+    const code = lines.slice(i, j).join("\n").trimEnd();
+    if (code) blocks.push({ type: "code", lang: "auto", code });
+    i = j - 1;
+  }
+
+  flushText();
+  return blocks;
 }
 
 export function parseContentBlocks(content) {
-    if (isLikelyHtmlContent(content)) {
-        return [{ type: 'html', value: sanitizePublishedHtml(content) }]
+  if (isLikelyHtmlContent(content)) {
+    return [{ type: "html", value: sanitizePublishedHtml(content) }];
+  }
+
+  const lines = (content || "").split("\n");
+  const blocks = [];
+  let textBuffer = [];
+
+  const flushText = () => {
+    const text = textBuffer.join("\n");
+    splitMixedTextIntoBlocks(text).forEach((block) => blocks.push(block));
+    textBuffer = [];
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // ── Markdown headings: ## Heading → <h2>Heading</h2> ──────────────
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flushText();
+      const level = Math.min(headingMatch[1].length, 6);
+      const text = inlineMarkdownToHtml(
+        headingMatch[2].replace(/#+$/, "").trim(),
+      );
+      blocks.push({
+        type: "html",
+        value: `<h${level} style="margin:1.2em 0 0.4em">${text}</h${level}>`,
+      });
+      continue;
     }
 
-    const lines = (content || '').split('\n')
-    const blocks = []
-    let textBuffer = []
-
-    const flushText = () => {
-        const text = textBuffer.join('\n')
-        splitMixedTextIntoBlocks(text).forEach((block) => blocks.push(block))
-        textBuffer = []
+    // ── Horizontal rule: --- or *** or ___ ───────────────────────────
+    if (/^([-*_])\1{2,}$/.test(trimmed)) {
+      flushText();
+      blocks.push({
+        type: "html",
+        value:
+          '<hr style="border:none;border-top:1px solid var(--border-card,#ccc);margin:1.2em 0">',
+      });
+      continue;
     }
 
-    for (let i = 0; i < lines.length; i += 1) {
-        const line = lines[i]
-        const trimmed = line.trim()
+    // ── Blockquote: > text ────────────────────────────────────────────
+    if (trimmed.startsWith("> ")) {
+      flushText();
+      blocks.push({
+        type: "html",
+        value: `<blockquote style="border-left:3px solid var(--accent,#4facfe);padding:4px 12px;margin:8px 0;opacity:0.85">${inlineMarkdownToHtml(trimmed.slice(2))}</blockquote>`,
+      });
+      continue;
+    }
 
-        // ── Markdown headings: ## Heading → <h2>Heading</h2> ──────────────
-        const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/)
-        if (headingMatch) {
-            flushText()
-            const level = Math.min(headingMatch[1].length, 6)
-            const text = inlineMarkdownToHtml(headingMatch[2].replace(/#+$/, '').trim())
-            blocks.push({ type: 'html', value: `<h${level} style="margin:1.2em 0 0.4em">${text}</h${level}>` })
-            continue
-        }
+    // ── Markdown table: | col | col | ────────────────────────────────
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      // Collect all consecutive table lines
+      const tableLines = [];
+      let j = i;
+      while (
+        j < lines.length &&
+        lines[j].trim().startsWith("|") &&
+        lines[j].trim().endsWith("|")
+      ) {
+        tableLines.push(lines[j].trim());
+        j++;
+      }
+      if (tableLines.length >= 2) {
+        flushText();
+        const parseRow = (row) =>
+          row
+            .slice(1, -1)
+            .split("|")
+            .map((c) => c.trim());
+        const headers = parseRow(tableLines[0]);
+        // tableLines[1] is the separator row (|---|---| etc)
+        const dataRows = tableLines.slice(2);
+        const th = headers
+          .map(
+            (h) =>
+              `<th style="padding:6px 10px;border:1px solid var(--border-card,#ccc);background:rgba(128,128,128,0.1)">${inlineMarkdownToHtml(h)}</th>`,
+          )
+          .join("");
+        const trs = dataRows
+          .map((r) => {
+            const cells = parseRow(r)
+              .map(
+                (c) =>
+                  `<td style="padding:6px 10px;border:1px solid var(--border-card,#ccc)">${inlineMarkdownToHtml(c)}</td>`,
+              )
+              .join("");
+            return `<tr>${cells}</tr>`;
+          })
+          .join("");
+        blocks.push({
+          type: "html",
+          value: `<table style="border-collapse:collapse;width:100%;margin:10px 0"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>`,
+        });
+        i = j - 1;
+        continue;
+      }
+    }
 
-        // ── Horizontal rule: --- or *** or ___ ───────────────────────────
-        if (/^([-*_])\1{2,}$/.test(trimmed)) {
-            flushText()
-            blocks.push({ type: 'html', value: '<hr style="border:none;border-top:1px solid var(--border-card,#ccc);margin:1.2em 0">' })
-            continue
-        }
+    // ── Unordered list item: - item or * item ────────────────────────
+    if (/^[-*+]\s+/.test(trimmed)) {
+      // Collect consecutive list items
+      const items = [];
+      let j = i;
+      while (j < lines.length && /^[-*+]\s+/.test(lines[j].trim())) {
+        items.push(lines[j].trim().replace(/^[-*+]\s+/, ""));
+        j++;
+      }
+      flushText();
+      const lis = items
+        .map(
+          (it) => `<li style="margin:3px 0">${inlineMarkdownToHtml(it)}</li>`,
+        )
+        .join("");
+      blocks.push({
+        type: "html",
+        value: `<ul style="padding-left:1.4em;margin:8px 0">${lis}</ul>`,
+      });
+      i = j - 1;
+      continue;
+    }
 
-        // ── Blockquote: > text ────────────────────────────────────────────
-        if (trimmed.startsWith('> ')) {
-            flushText()
-            blocks.push({ type: 'html', value: `<blockquote style="border-left:3px solid var(--accent,#4facfe);padding:4px 12px;margin:8px 0;opacity:0.85">${inlineMarkdownToHtml(trimmed.slice(2))}</blockquote>` })
-            continue
-        }
+    // ── Ordered list item: 1. item ────────────────────────────────────
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items = [];
+      let j = i;
+      while (j < lines.length && /^\d+\.\s+/.test(lines[j].trim())) {
+        items.push(lines[j].trim().replace(/^\d+\.\s+/, ""));
+        j++;
+      }
+      flushText();
+      const lis = items
+        .map(
+          (it) => `<li style="margin:3px 0">${inlineMarkdownToHtml(it)}</li>`,
+        )
+        .join("");
+      blocks.push({
+        type: "html",
+        value: `<ol style="padding-left:1.4em;margin:8px 0">${lis}</ol>`,
+      });
+      i = j - 1;
+      continue;
+    }
 
-        // ── Markdown table: | col | col | ────────────────────────────────
-        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-            // Collect all consecutive table lines
-            const tableLines = []
-            let j = i
-            while (j < lines.length && lines[j].trim().startsWith('|') && lines[j].trim().endsWith('|')) {
-                tableLines.push(lines[j].trim())
-                j++
-            }
-            if (tableLines.length >= 2) {
-                flushText()
-                const parseRow = (row) => row.slice(1, -1).split('|').map(c => c.trim())
-                const headers = parseRow(tableLines[0])
-                // tableLines[1] is the separator row (|---|---| etc)
-                const dataRows = tableLines.slice(2)
-                const th = headers.map(h => `<th style="padding:6px 10px;border:1px solid var(--border-card,#ccc);background:rgba(128,128,128,0.1)">${inlineMarkdownToHtml(h)}</th>`).join('')
-                const trs = dataRows.map(r => {
-                    const cells = parseRow(r).map(c => `<td style="padding:6px 10px;border:1px solid var(--border-card,#ccc)">${inlineMarkdownToHtml(c)}</td>`).join('')
-                    return `<tr>${cells}</tr>`
-                }).join('')
-                blocks.push({ type: 'html', value: `<table style="border-collapse:collapse;width:100%;margin:10px 0"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>` })
-                i = j - 1
-                continue
-            }
-        }
+    if (trimmed.toLowerCase().startsWith("codestart")) {
+      flushText();
+      const lang =
+        trimmed.slice("codestart".length).trim().toLowerCase() || "auto";
+      const codeLines = [];
+      i += 1;
+      while (i < lines.length && lines[i].trim().toLowerCase() !== "codeend") {
+        codeLines.push(lines[i]);
+        i += 1;
+      }
+      const code = codeLines.join("\n").trimEnd();
+      if (code) {
+        blocks.push({ type: "code", lang, code });
+      }
+      continue;
+    }
 
-        // ── Unordered list item: - item or * item ────────────────────────
-        if (/^[-*+]\s+/.test(trimmed)) {
-            // Collect consecutive list items
-            const items = []
-            let j = i
-            while (j < lines.length && /^[-*+]\s+/.test(lines[j].trim())) {
-                items.push(lines[j].trim().replace(/^[-*+]\s+/, ''))
-                j++
-            }
-            flushText()
-            const lis = items.map(it => `<li style="margin:3px 0">${inlineMarkdownToHtml(it)}</li>`).join('')
-            blocks.push({ type: 'html', value: `<ul style="padding-left:1.4em;margin:8px 0">${lis}</ul>` })
-            i = j - 1
-            continue
-        }
-
-        // ── Ordered list item: 1. item ────────────────────────────────────
-        if (/^\d+\.\s+/.test(trimmed)) {
-            const items = []
-            let j = i
-            while (j < lines.length && /^\d+\.\s+/.test(lines[j].trim())) {
-                items.push(lines[j].trim().replace(/^\d+\.\s+/, ''))
-                j++
-            }
-            flushText()
-            const lis = items.map(it => `<li style="margin:3px 0">${inlineMarkdownToHtml(it)}</li>`).join('')
-            blocks.push({ type: 'html', value: `<ol style="padding-left:1.4em;margin:8px 0">${lis}</ol>` })
-            i = j - 1
-            continue
-        }
-
-        if (trimmed.toLowerCase().startsWith('codestart')) {
-            flushText()
-            const lang = trimmed.slice('codestart'.length).trim().toLowerCase() || 'auto'
-            const codeLines = []
-            i += 1
-            while (i < lines.length && lines[i].trim().toLowerCase() !== 'codeend') {
-                codeLines.push(lines[i])
-                i += 1
-            }
-            const code = codeLines.join('\n').trimEnd()
-            if (code) {
-                blocks.push({ type: 'code', lang, code })
-            }
-            continue
-        }
-
-        if (trimmed.startsWith('```')) {
-            flushText()
-            const lang = trimmed.slice(3).trim().toLowerCase()
-            const codeLines = []
-            i += 1
-            while (i < lines.length && !lines[i].trim().startsWith('```')) {
-                codeLines.push(lines[i])
-                i += 1
-            }
-            const code = codeLines.join('\n').trim()
-            if (code) {
-                if (lang === 'mermaid') {
-                    blocks.push({ type: 'mermaid', code })
-                } else {
-                    blocks.push({ type: 'code', lang: lang || 'text', code })
-                }
-            }
-            continue
-        }
-
-        const match = trimmed.match(INLINE_MEDIA_RE)
-        if (match) {
-            flushText()
-            blocks.push({ type: match[1] === 'img' ? 'image' : 'video', value: match[2].trim() })
-        } else if (MD_IMAGE_RE.test(trimmed)) {
-            flushText()
-            const mdSrc = trimmed.match(MD_IMAGE_RE)?.[1]?.trim() || ''
-            if (mdSrc) {
-                const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(mdSrc)
-                blocks.push({ type: isVideo ? 'video' : 'image', value: mdSrc })
-            }
+    if (trimmed.startsWith("```")) {
+      flushText();
+      const lang = trimmed.slice(3).trim().toLowerCase();
+      const codeLines = [];
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i += 1;
+      }
+      const code = codeLines.join("\n").trim();
+      if (code) {
+        if (lang === "mermaid") {
+          blocks.push({ type: "mermaid", code });
         } else {
-            textBuffer.push(line)
+          blocks.push({ type: "code", lang: lang || "text", code });
         }
+      }
+      continue;
     }
-    flushText()
-    return blocks
+
+    const match = trimmed.match(INLINE_MEDIA_RE);
+    if (match) {
+      flushText();
+      blocks.push({
+        type: match[1] === "img" ? "image" : "video",
+        value: match[2].trim(),
+      });
+    } else if (MD_IMAGE_RE.test(trimmed)) {
+      flushText();
+      const mdSrc = trimmed.match(MD_IMAGE_RE)?.[1]?.trim() || "";
+      if (mdSrc) {
+        const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(mdSrc);
+        blocks.push({ type: isVideo ? "video" : "image", value: mdSrc });
+      }
+    } else {
+      textBuffer.push(line);
+    }
+  }
+  flushText();
+  return blocks;
 }
 
 export function deriveCoverMedia(content) {
-    if (isLikelyHtmlContent(content)) {
-        const source = String(content || '')
-        const img = source.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1]
-        if (img) {
-            return {
-                mediaType: 'image',
-                mediaUrl: img.startsWith('media/') ? null : img,
-                mediaPath: img.startsWith('media/') ? img : null,
-            }
-        }
-        const vid =
-            source.match(/<video[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1] ||
-            source.match(/<source[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1]
-        if (vid) {
-            return {
-                mediaType: 'video',
-                mediaUrl: vid.startsWith('media/') ? null : vid,
-                mediaPath: vid.startsWith('media/') ? vid : null,
-            }
-        }
-        return { mediaType: null, mediaUrl: null, mediaPath: null }
+  if (isLikelyHtmlContent(content)) {
+    const source = String(content || "");
+    const img = source.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1];
+    if (img) {
+      return {
+        mediaType: "image",
+        mediaUrl: img.startsWith("media/") ? null : img,
+        mediaPath: img.startsWith("media/") ? img : null,
+      };
     }
+    const vid =
+      source.match(/<video[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1] ||
+      source.match(/<source[^>]+src=["']([^"']+)["'][^>]*>/i)?.[1];
+    if (vid) {
+      return {
+        mediaType: "video",
+        mediaUrl: vid.startsWith("media/") ? null : vid,
+        mediaPath: vid.startsWith("media/") ? vid : null,
+      };
+    }
+    return { mediaType: null, mediaUrl: null, mediaPath: null };
+  }
 
-    const firstMedia = parseContentBlocks(content).find(
-        (block) => block.type === 'image' || block.type === 'video',
-    )
-    if (!firstMedia) {
-        return { mediaType: null, mediaUrl: null, mediaPath: null }
-    }
-    const isPath = firstMedia.value.startsWith('media/')
-    return {
-        mediaType: firstMedia.type === 'image' ? 'image' : 'video',
-        mediaUrl: isPath ? null : firstMedia.value,
-        mediaPath: isPath ? firstMedia.value : null,
-    }
+  const firstMedia = parseContentBlocks(content).find(
+    (block) => block.type === "image" || block.type === "video",
+  );
+  if (!firstMedia) {
+    return { mediaType: null, mediaUrl: null, mediaPath: null };
+  }
+  const isPath = firstMedia.value.startsWith("media/");
+  return {
+    mediaType: firstMedia.type === "image" ? "image" : "video",
+    mediaUrl: isPath ? null : firstMedia.value,
+    mediaPath: isPath ? firstMedia.value : null,
+  };
 }
 
 export function stripReadableText(content) {
-    if (isLikelyHtmlContent(content)) {
-        return String(content || '')
-            .replace(/<pre[\s\S]*?<\/pre>/gi, ' ')
-            .replace(/<code[\s\S]*?<\/code>/gi, ' ')
-            .replace(/<img[^>]*>/gi, ' ')
-            .replace(/<video[\s\S]*?<\/video>/gi, ' ')
-            .replace(/<source[^>]*>/gi, ' ')
-            .replace(/<br\s*\/?>/gi, ' ')
-            .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, ' ')
-            .replace(/<[^>]+>/g, ' ')
-    }
+  if (isLikelyHtmlContent(content)) {
+    return String(content || "")
+      .replace(/<pre[\s\S]*?<\/pre>/gi, " ")
+      .replace(/<code[\s\S]*?<\/code>/gi, " ")
+      .replace(/<img[^>]*>/gi, " ")
+      .replace(/<video[\s\S]*?<\/video>/gi, " ")
+      .replace(/<source[^>]*>/gi, " ")
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, " ")
+      .replace(/<[^>]+>/g, " ");
+  }
 
-    return (content || '')
-        .replace(/\[\[(img|vid):.+?\]\]/g, ' ')
-        .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[^\n]*\n?/g, ' '))
-        .replace(/^\s*codestart[^\n]*$/gim, ' ')
-        .replace(/^\s*codeend\s*$/gim, ' ')
-        // strip markdown syntax from plain-text content
-        .replace(/^#{1,6}\s+/gm, '')        // ## headings
-        .replace(/\*\*\*(.+?)\*\*\*/g, '$1') // ***bold italic***
-        .replace(/\*\*(.+?)\*\*/g, '$1')    // **bold**
-        .replace(/\*(.+?)\*/g, '$1')        // *italic*
-        .replace(/`([^`]+)`/g, '$1')        // `code`
-        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // [link text](url) → link text
-        .replace(/^>\s+/gm, '')             // > blockquotes
-        .replace(/^[-*+]\s+/gm, '')         // - list items
-        .replace(/^\d+\.\s+/gm, '')         // 1. ordered lists
-        .replace(/^[|].*[|]$/gm, ' ')       // | table | rows |
+  return (
+    (content || "")
+      .replace(/\[\[(img|vid):.+?\]\]/g, " ")
+      .replace(/```[\s\S]*?```/g, (block) =>
+        block.replace(/```[^\n]*\n?/g, " "),
+      )
+      .replace(/^\s*codestart[^\n]*$/gim, " ")
+      .replace(/^\s*codeend\s*$/gim, " ")
+      // strip markdown syntax from plain-text content
+      .replace(/^#{1,6}\s+/gm, "") // ## headings
+      .replace(/\*\*\*(.+?)\*\*\*/g, "$1") // ***bold italic***
+      .replace(/\*\*(.+?)\*\*/g, "$1") // **bold**
+      .replace(/\*(.+?)\*/g, "$1") // *italic*
+      .replace(/`([^`]+)`/g, "$1") // `code`
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1") // [link text](url) → link text
+      .replace(/^>\s+/gm, "") // > blockquotes
+      .replace(/^[-*+]\s+/gm, "") // - list items
+      .replace(/^\d+\.\s+/gm, "") // 1. ordered lists
+      .replace(/^[|].*[|]$/gm, " ")
+  ); // | table | rows |
 }
 
 export function estimateReadMinutes(content) {
-    const words = stripReadableText(content)
-        .replace(/\s+/g, ' ')
-        .trim()
-        .split(' ')
-        .filter(Boolean).length
-    return Math.max(1, Math.ceil(words / 220))
+  const words = stripReadableText(content)
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 220));
 }
 
 export function skillMeta(level) {
-    const normalized = String(level || '').toLowerCase()
-    if (normalized === 'advanced') {
-        return { label: 'Advanced', icon: '\u{1F534}', cls: 'skill-advanced' }
-    }
-    if (normalized === 'intermediate') {
-        return { label: 'Intermediate', icon: '\u{1F7E1}', cls: 'skill-intermediate' }
-    }
-    return { label: 'Beginner friendly', icon: '\u{1F7E2}', cls: 'skill-beginner' }
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "advanced") {
+    return { label: "Advanced", icon: "\u{1F534}", cls: "skill-advanced" };
+  }
+  if (normalized === "intermediate") {
+    return {
+      label: "Intermediate",
+      icon: "\u{1F7E1}",
+      cls: "skill-intermediate",
+    };
+  }
+  return {
+    label: "Beginner friendly",
+    icon: "\u{1F7E2}",
+    cls: "skill-beginner",
+  };
 }
 
 export function progressMeta(status) {
-    const normalized = String(status || '').toLowerCase()
-    if (normalized === 'mastered') return { label: 'Mastered', icon: '\u2B50', cls: 'progress-mastered' }
-    if (normalized === 'revisit') return { label: 'Revisit', icon: '\u{1F516}', cls: 'progress-revisit' }
-    return { label: 'Read', icon: '\u2705', cls: 'progress-read' }
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "mastered")
+    return { label: "Mastered", icon: "\u2B50", cls: "progress-mastered" };
+  if (normalized === "revisit")
+    return { label: "Revisit", icon: "\u{1F516}", cls: "progress-revisit" };
+  return { label: "Read", icon: "\u2705", cls: "progress-read" };
 }
 
 export function detectCodeRuntimeHint(lang, code) {
-    const lower = String(lang || '').toLowerCase()
-    const sample = String(code || '').trim()
-    if (lower.includes('bash') || lower.includes('shell') || lower.includes('sh')) {
-        return {
-            windows: 'PowerShell: .\\script.ps1 or bash script.sh',
-            linux: 'bash script.sh',
-            mac: 'bash script.sh',
-        }
-    }
-    if (lower.includes('python') || /^def\s+\w+\(/m.test(sample)) {
-        return {
-            windows: 'python main.py',
-            linux: 'python3 main.py',
-            mac: 'python3 main.py',
-        }
-    }
-    if (lower.includes('javascript') || lower.includes('js') || /console\.log\(/.test(sample)) {
-        return {
-            windows: 'node app.js',
-            linux: 'node app.js',
-            mac: 'node app.js',
-        }
-    }
-    if (lower.includes('typescript') || /\.ts\b/m.test(sample)) {
-        return {
-            windows: 'npx tsx app.ts',
-            linux: 'npx tsx app.ts',
-            mac: 'npx tsx app.ts',
-        }
-    }
-    if (lower.includes('terraform') || /^provider\s+"/m.test(sample) || /^resource\s+"/m.test(sample)) {
-        return {
-            windows: 'terraform init && terraform plan',
-            linux: 'terraform init && terraform plan',
-            mac: 'terraform init && terraform plan',
-        }
-    }
-    return null
+  const lower = String(lang || "").toLowerCase();
+  const sample = String(code || "").trim();
+  if (
+    lower.includes("bash") ||
+    lower.includes("shell") ||
+    lower.includes("sh")
+  ) {
+    return {
+      windows: "PowerShell: .\\script.ps1 or bash script.sh",
+      linux: "bash script.sh",
+      mac: "bash script.sh",
+    };
+  }
+  if (lower.includes("python") || /^def\s+\w+\(/m.test(sample)) {
+    return {
+      windows: "python main.py",
+      linux: "python3 main.py",
+      mac: "python3 main.py",
+    };
+  }
+  if (
+    lower.includes("javascript") ||
+    lower.includes("js") ||
+    /console\.log\(/.test(sample)
+  ) {
+    return {
+      windows: "node app.js",
+      linux: "node app.js",
+      mac: "node app.js",
+    };
+  }
+  if (lower.includes("typescript") || /\.ts\b/m.test(sample)) {
+    return {
+      windows: "npx tsx app.ts",
+      linux: "npx tsx app.ts",
+      mac: "npx tsx app.ts",
+    };
+  }
+  if (
+    lower.includes("terraform") ||
+    /^provider\s+"/m.test(sample) ||
+    /^resource\s+"/m.test(sample)
+  ) {
+    return {
+      windows: "terraform init && terraform plan",
+      linux: "terraform init && terraform plan",
+      mac: "terraform init && terraform plan",
+    };
+  }
+  return null;
 }
 
 export function contentToSpeechText(content) {
-    // Parse into typed blocks and only speak prose — skip code/mermaid/diagram blocks
-    const blocks = parseContentBlocks(content || '')
-    const spoken = blocks
-        .filter((b) => b.type === 'text' || b.type === 'html')
-        .map((b) => {
-            if (b.type === 'html') {
-                return String(b.value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-            }
-            return String(b.value || '')
-                .replace(/^#{1,6}\s+/gm, '')
-                .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
-                .replace(/\*\*(.+?)\*\*/g, '$1')
-                .replace(/\*(.+?)\*/g, '$1')
-                .replace(/`([^`]+)`/g, '$1')
-                .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-                .replace(/^[>\-*+]\s+/gm, '')
-                .replace(/\s+/g, ' ')
-                .trim()
-        })
-        .filter(Boolean)
-        .join('. ')
-    // Strip emoji and non-verbal Unicode so TTS reads words only
-    return spoken
-        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{265F}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267E}\u{267F}\u{2692}-\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}]/gu, '')
-        .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim()
+  // Parse into typed blocks and only speak prose — skip code/mermaid/diagram blocks
+  const blocks = parseContentBlocks(content || "");
+  const spoken = blocks
+    .filter((b) => b.type === "text" || b.type === "html")
+    .map((b) => {
+      if (b.type === "html") {
+        return String(b.value || "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+      return String(b.value || "")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/^[>\-*+]\s+/gm, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    })
+    .filter(Boolean)
+    .join(". ");
+  // Strip emoji and non-verbal Unicode so TTS reads words only
+  return spoken
+    .replace(
+      /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{265F}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267E}\u{267F}\u{2692}-\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}]/gu,
+      "",
+    )
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 export function isOwnedByCurrentUser(currentUser, record) {
-    if (!currentUser || !record) return false
-    const userId = String(currentUser.userId || '')
-    const username = String(currentUser.username || '')
-    const authorSub = String(record.authorSub || '')
-    if (authorSub && (authorSub === userId || authorSub === username)) return true
+  if (!currentUser || !record) return false;
+  const userId = String(currentUser.userId || "");
+  const username = String(currentUser.username || "");
+  const authorSub = String(record.authorSub || "");
+  if (authorSub && (authorSub === userId || authorSub === username))
+    return true;
 
-    const owner = String(record.owner || '')
-    if (!owner) return false
-    const ownerParts = owner.split('::').filter(Boolean)
-    const candidates = [owner, ...ownerParts]
-    return candidates.some((value) => value === userId || value === username)
+  const owner = String(record.owner || "");
+  if (!owner) return false;
+  const ownerParts = owner.split("::").filter(Boolean);
+  const candidates = [owner, ...ownerParts];
+  return candidates.some((value) => value === userId || value === username);
 }
 
 export function isLikelyCode(text) {
-    const sample = (text || '').trim()
-    if (!sample) return false
-    const lines = sample.split('\n')
-    const signalPatterns = [
-        /\b(import|export|const|let|var|function|class|return|await|async)\b/,
-        /\b(def|public|private|void|if|else|for|while|try|catch)\b/,
-        /\b(from\s+['"`].+['"`])\b/,
-        /=>|[{()[\];]/,
-        /^\s*[.#]?[a-zA-Z0-9_-]+\s*:\s*.+$/m,
-    ]
+  const sample = (text || "").trim();
+  if (!sample) return false;
+  const lines = sample.split("\n");
+  const signalPatterns = [
+    /\b(import|export|const|let|var|function|class|return|await|async)\b/,
+    /\b(def|public|private|void|if|else|for|while|try|catch)\b/,
+    /\b(from\s+['"`].+['"`])\b/,
+    /=>|[{()[\];]/,
+    /^\s*[.#]?[a-zA-Z0-9_-]+\s*:\s*.+$/m,
+  ];
 
-    const signalHits = signalPatterns.reduce(
-        (count, re) => count + (re.test(sample) ? 1 : 0),
-        0,
-    )
+  const signalHits = signalPatterns.reduce(
+    (count, re) => count + (re.test(sample) ? 1 : 0),
+    0,
+  );
 
-    const punctuation = (sample.match(/[{}()[\];=<>]/g) || []).length
-    const likelyByDensity = punctuation >= 5 && sample.length <= 500
+  const punctuation = (sample.match(/[{}()[\];=<>]/g) || []).length;
+  const likelyByDensity = punctuation >= 5 && sample.length <= 500;
 
-    if (lines.length >= 2) {
-        return signalHits >= 1 || likelyByDensity
-    }
+  if (lines.length >= 2) {
+    return signalHits >= 1 || likelyByDensity;
+  }
 
-    return signalHits >= 2 || likelyByDensity
+  return signalHits >= 2 || likelyByDensity;
 }
